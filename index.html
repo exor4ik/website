@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>EgorNetwork</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0b0d10;
+      color: #eaeaea;
+    }
+    header, footer {
+      backdrop-filter: blur(14px);
+      background: rgba(20,20,25,0.6);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    footer { border-top: 1px solid rgba(255,255,255,0.08); border-bottom: none; }
+    .container {
+      max-width: 1100px;
+      margin: auto;
+      padding: 24px;
+    }
+    nav {
+      position: relative;
+      display: inline-flex;
+      gap: 16px;
+    }
+    nav a {
+      position: relative;
+      color: #aaa;
+      text-decoration: none;
+      padding: 6px 12px;
+      z-index: 2;
+      transition: color 0.3s ease;
+    }
+    nav a:hover { color: #fff; }
+    .nav-highlight {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(6px);
+      transition: all 0.35s ease;
+      z-index: 1;
+      opacity: 0;
+    }
+    nav a:hover { color: #fff; }
+    .hero {
+      min-height: 60vh;
+      display: flex;
+      align-items: center;
+      background: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.85)),
+        url('https://lh3.googleusercontent.com/sitesv/APaQ0ST3zt3x6FIYmJeN4hU8OCJHfdOU_yLcoaQkFSK9JIg7jOcxUOrPJ1-SoJopo-mTu_GdopODFXTsFJaYZhKUvDxbVtuRL5UjLEuxaqrQVhsXduA56KTSjYfU_SM9N3MFM1Pgy05wPTTJxs3NCpnZrCjJ2vhKd_61mbgcv7MeYWVN375z4pZ-0MbqhYk=w16383') center/cover;
+    }
+    .hero h1 { font-size: 48px; margin-bottom: 16px; }
+    section { margin: 64px 0; }
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 24px;
+      margin-top: 24px;
+    }
+    .btn {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 10px 18px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      text-decoration: none;
+    }
+    .btn:hover { background: rgba(255,255,255,0.22); }
+    html { scroll-behavior: smooth; }
+
+    .fade {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 0.8s ease;
+    }
+    .fade.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <nav>
+      <div class="nav-highlight"></div>
+      <a href="#">Главная</a>
+      <a href="#games">Игры</a>
+      <a href="#useful">Полезное</a>
+      <a href="#help">Помощь</a>
+      <a href="#archive">Архив</a>
+    </nav>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="container">
+    <h1>EgorNetwork</h1>
+    <p>Независимый игровой проект и техническое сообщество</p>
+  </div>
+</div>
+
+<main class="container">
+
+<section class="fade">
+  <h2>О проекте</h2>
+  <div class="card">
+    <p>
+      EgorNetwork — это независимый проект, в рамках которого создаются игры,
+      эксперименты и полезные технические материалы.
+      Сайт объединяет разработки, архивы и инструкции в одном месте.
+    </p>
+  </div>
+</section>
+
+<section class="fade" id="games">
+  <h2>Игры</h2>
+  <div class="card">
+    <h3>Симулятор кондиций</h3>
+    <p>
+      Экспериментальный симулятор, предназначенный для тестирования игровых механик
+      и пользовательского восприятия.
+    </p>
+    <a class="btn" href="#">Страница игры</a>
+  </div>
+</section>
+
+<section class="fade" id="useful">
+  <h2>Полезное</h2>
+  <div class="card">
+    <ul>
+      <li>AI‑материалы и эксперименты</li>
+      <li>Подборки изображений и ресурсов</li>
+      <li>Внутренние инструменты проекта</li>
+    </ul>
+  </div>
+</section>
+
+<section class="fade" id="help">
+  <h2>Помощь</h2>
+  <div class="card">
+    <p>Инструкции и рекомендации по работе с проектами EgorNetwork.</p>
+    <a class="btn" href="#">Linux</a>
+    <a class="btn" href="#">Доступ к ресурсам</a>
+  </div>
+</section>
+
+<section class="fade" id="archive">
+  <h2>Архив</h2>
+  <div class="card">
+    <p>
+      Старые версии страниц, материалы и записи,
+      сохранённые для истории проекта.
+    </p>
+    <a class="btn" href="#">Блог</a>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <p>© EgorNetwork</p>
+  </div>
+</footer>
+
+<script>
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.15 });
+
+  document.querySelectorAll('.fade').forEach(el => observer.observe(el));
+</script>
+
+<script>
+  const highlight = document.querySelector('.nav-highlight');
+  const links = document.querySelectorAll('nav a');
+
+  links.forEach(link => {
+    link.addEventListener('mouseenter', () => {
+      const rect = link.getBoundingClientRect();
+      const navRect = link.parentElement.getBoundingClientRect();
+      highlight.style.width = rect.width + 'px';
+      highlight.style.height = rect.height + 'px';
+      highlight.style.transform = `translate(${rect.left - navRect.left}px, ${rect.top - navRect.top}px)`;
+      highlight.style.opacity = '1';
+    });
+  });
+
+  document.querySelector('nav').addEventListener('mouseleave', () => {
+    highlight.style.opacity = '0';
+  });
+</script>
+
+</body>
+
+
+<!-- ================= PAGES ================= -->
+
+<!-- games.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Игры — EgorNetwork</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><!-- same header --></header>
+<main class="container">
+  <section class="fade">
+    <h2>Скачивание игр</h2>
+    <p>Здесь собраны игровые проекты EgorNetwork, доступные для свободного скачивания.</p>
+  </section>
+
+  <section class="fade card">
+    <h3>Симулятор кондиций</h3>
+    <p>Экспериментальный симулятор, предназначенный для тестирования игровых механик и восприятия.</p>
+    <a class="btn" href="game-condicii.html">Перейти</a>
+  </section>
+</main>
+<footer><!-- same footer --></footer>
+</body>
+</html>
+
+<!-- game-condicii.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Симулятор кондиций</title>
+</head>
+<body>
+<header></header>
+<main class="container">
+  <section class="fade">
+    <h2>Симулятор кондиций</h2>
+    <p>Проект создан в рамках экспериментов EgorNetwork и распространяется бесплатно.</p>
+  </section>
+
+  <section class="fade card">
+    <h3>Загрузка</h3>
+    <a class="btn">Windows</a>
+    <a class="btn">Linux</a>
+  </section>
+</main>
+<footer></footer>
+</body>
+</html>
+
+<!-- useful.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head><meta charset="UTF-8"><title>Полезное</title></head>
+<body>
+<header></header>
+<main class="container">
+  <section class="fade">
+    <h2>Полезная информация</h2>
+    <ul class="card">
+      <li>AI-промты и эксперименты</li>
+      <li>Изображения и ресурсы</li>
+      <li>Инструменты и утилиты</li>
+    </ul>
+  </section>
+</main>
+<footer></footer>
+</body>
+</html>
+
+<!-- help.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head><meta charset="UTF-8"><title>Помощь</title></head>
+<body>
+<header></header>
+<main class="container">
+  <section class="fade">
+    <h2>Помощь</h2>
+    <p>Инструкции и технические рекомендации по проектам EgorNetwork.</p>
+    <a class="btn" href="linux.html">Linux</a>
+    <a class="btn" href="blocks.html">Ограничения</a>
+  </section>
+</main>
+<footer></footer>
+</body>
+</html>
+
+<!-- linux.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head><meta charset="UTF-8"><title>Linux</title></head>
+<body>
+<header></header>
+<main class="container">
+  <section class="fade">
+    <h2>Установка игр на Linux</h2>
+    <p>Руководства по запуску и настройке игр в Linux-системах.</p>
+  </section>
+</main>
+<footer></footer>
+</body>
+</html>
+
+<!-- blocks.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head><meta charset="UTF-8"><title>Доступ к ресурсам</title></head>
+<body>
+<header></header>
+<main class="container">
+  <section class="fade">
+    <h2>Доступ к ресурсам</h2>
+    <p>Информация о восстановлении доступа к сайтам и сервисам.</p>
+  </section>
+</main>
+<footer></footer>
+</body>
+</html>
+
+<!-- archive.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head><meta charset="UTF-8"><title>Архив</title></head>
+<body>
+<header></header>
+<main class="container">
+  <section class="fade">
+    <h2>Архив проекта</h2>
+    <p>Старые версии страниц, материалы и записи.</p>
+    <a class="btn" href="blog.html">Блог</a>
+  </section>
+</main>
+<footer></footer>
+</body>
+</html>
+
+<!-- blog.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head><meta charset="UTF-8"><title>Блог</title></head>
+<body>
+<header></header>
+<main class="container">
+  <section class="fade">
+    <h2>Блог EgorNetwork</h2>
+    <article class="card">
+      <h3>Первая запись</h3>
+      <p>Новости и заметки проекта.</p>
+    </article>
+  </section>
+</main>
+<footer></footer>
+</body>
+</html>
+
+</html>
