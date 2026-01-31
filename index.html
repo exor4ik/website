@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#0b0d10;color:#eaeaea}
+body{margin:0;font-family:Arial,sans-serif;background:#0b0d10;color:#eaeaea;overflow-x:hidden}
 html{scroll-behavior:smooth}
 .container{max-width:1100px;margin:auto;padding:24px}
 .header{position:sticky;top:0;z-index:100;background:rgba(20,20,25,.6);backdrop-filter:blur(14px)}
@@ -18,11 +18,11 @@ html{scroll-behavior:smooth}
 .nav-highlight{position:absolute;top:0;left:0;height:100%;border-radius:8px;background:rgba(255,255,255,.12);backdrop-filter:blur(6px);transition:all .35s ease;opacity:0;z-index:1}
 .burger{display:none;flex-direction:column;gap:4px;background:none;border:0}
 .burger span{width:24px;height:2px;background:#fff}
-.hero{min-height:60vh;display:flex;align-items:center;justify-content:center;text-align:center;background:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.85)),url('https://lh3.googleusercontent.com/sitesv/APaQ0ST3zt3x6FIYmJeN4hU8OCJHfdOU_yLcoaQkFSK9JIg7jOcxUOrPJ1-SoJopo-mTu_GdopODFXTsFJaYZhKUvDxbVtuRL5UjLEuxaqrQVhsXduA56KTSjYfU_SM9N3MFM1Pgy05wPTTJxs3NCpnZrCjJ2vhKd_61mbgcv7MeYWVN375z4pZ-0MbqhYk=w16383') center/cover}
+.hero{min-height:60vh;display:flex;align-items:center;justify-content:center;text-align:center;background:url('/images/banner.gif') center/cover no-repeat;transition:transform .2s ease-out}
 .hero h1{font-size:3rem;margin-bottom:16px}
 .hero .btns{display:flex;gap:16px;justify-content:center;margin-top:16px}
-.hero .btn{padding:12px 24px;border:none;border-radius:8px;background:#1e1e1e;color:#fff;text-decoration:none;transition:background .3s}
-.hero .btn:hover{background:#2a2a2a}
+.hero .btn{padding:12px 24px;border:none;border-radius:8px;background:rgba(0,0,0,0.6);color:#fff;text-decoration:none;transition:background .3s}
+.hero .btn:hover{background:rgba(0,0,0,0.8)}
 .fade{opacity:0;transform:translateY(30px);transition:.8s ease}
 .fade.visible{opacity:1;transform:none}
 .footer{border-top:1px solid rgba(255,255,255,.08);padding:24px;text-align:center}
@@ -54,7 +54,7 @@ html{scroll-behavior:smooth}
   <a href="archive.html">Архив</a>
 </div>
 <main class="container">
-  <section class="hero fade">
+  <section class="hero fade" id="hero">
     <div>
       <h1>Добро пожаловать в EgorNetwork</h1>
       <div class="btns">
@@ -90,6 +90,14 @@ document.querySelectorAll('.fade').forEach(el=>obs.observe(el));
 const burger=document.querySelector('.burger');
 const mobile=document.querySelector('.mobile-menu');
 burger?.addEventListener('click',()=>{mobile.style.display=mobile.style.display==='flex'?'none':'flex'});
+
+// Параллакс движение баннера при движении мыши
+const hero = document.getElementById('hero');
+document.addEventListener('mousemove', (e) => {
+  const x = e.clientX / window.innerWidth - 0.5;
+  const y = e.clientY / window.innerHeight - 0.5;
+  hero.style.transform = `translate(${-x*20}px, ${-y*10}px)`;
+});
 </script>
 </body>
 </html>
