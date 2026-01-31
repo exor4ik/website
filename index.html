@@ -18,7 +18,18 @@ html{scroll-behavior:smooth}
 .nav-highlight{position:absolute;top:0;left:0;height:100%;border-radius:8px;background:rgba(255,255,255,.12);backdrop-filter:blur(6px);transition:all .35s ease;opacity:0;z-index:1}
 .burger{display:none;flex-direction:column;gap:4px;background:none;border:0}
 .burger span{width:24px;height:2px;background:#fff}
-.hero{min-height:60vh;display:flex;align-items:center;justify-content:center;text-align:center;background:url('images/banner.gif') center/cover no-repeat;transition:transform .2s ease-out}
+.hero{
+  position: relative;
+  width: 100vw;
+  min-height: 60vh;
+  margin-left: calc(50% - 50vw);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  background: url('images/hero.gif') center / cover no-repeat;
+  transition: transform .2s ease-out;
+}
 .hero h1{font-size:3rem;margin-bottom:16px}
 .hero .btns{display:flex;gap:16px;justify-content:center;margin-top:16px}
 .hero .btn{padding:12px 24px;border:none;border-radius:8px;background:rgba(0,0,0,0.6);color:#fff;text-decoration:none;transition:background .3s}
