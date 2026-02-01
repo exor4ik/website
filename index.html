@@ -21,7 +21,9 @@ html{scroll-behavior:smooth}
 .hero{
   position: relative;
   width: 100vw;
-  min-height: 60vh;
+  /* высота считается от пропорций GIF 1080x608 */
+  aspect-ratio: 1080 / 608;
+  min-height: 300px;
   margin-left: calc(50% - 50vw);
   display:flex;
   align-items:center;
@@ -112,3 +114,4 @@ document.addEventListener('mousemove', (e) => {
 </script>
 </body>
 </html>
+
