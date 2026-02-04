@@ -14,14 +14,14 @@ html{scroll-behavior:smooth}
 .logo{font-weight:700}
 .nav{position:relative;display:flex;gap:16px}
 .nav a{color:#aaa;text-decoration:none;padding:6px 12px;z-index:2;transition:color .3s}
-.nav a:hover,.nav a.active{color:#fff}
+.nav a:hover, .nav a.active{color:#fff}
 .nav-highlight{position:absolute;top:0;left:0;height:100%;border-radius:8px;background:rgba(255,255,255,.12);backdrop-filter:blur(6px);transition:all .35s ease;opacity:0;z-index:1}
 .burger{display:none;flex-direction:column;gap:4px;background:none;border:0}
 .burger span{width:24px;height:2px;background:#fff}
-
 .hero{
   position: relative;
   width: 100vw;
+  /* высота считается от пропорций GIF 1080x608 */
   aspect-ratio: 1080 / 608;
   min-height: 300px;
   margin-left: calc(50% - 50vw);
@@ -32,6 +32,7 @@ html{scroll-behavior:smooth}
   background: url('images/hero.gif') center / cover no-repeat;
   transition: transform .2s ease-out;
 }
+.hero h1{font-size:3rem;margin-bottom:16px}
 .hero-panel{
   padding:32px 40px;
   border-radius:20px;
@@ -39,42 +40,28 @@ html{scroll-behavior:smooth}
   backdrop-filter: blur(10px);
   box-shadow:0 20px 60px rgba(0,0,0,0.4);
 }
-.hero h1{font-size:3rem;margin-bottom:16px}
 .hero .btns{display:flex;gap:16px;justify-content:center;margin-top:16px}
-.hero .btn{padding:12px 24px;border-radius:8px;background:rgba(0,0,0,.6);color:#fff;text-decoration:none}
-
+.hero .btn{padding:12px 24px;border:none;border-radius:8px;background:rgba(0,0,0,0.6);color:#fff;text-decoration:none;transition:background .3s}
+.hero .btn:hover{background:rgba(0,0,0,0.8)}
 .fade{opacity:0;transform:translateY(30px);transition:.8s ease}
 .fade.visible{opacity:1;transform:none}
 .footer{border-top:1px solid rgba(255,255,255,.08);padding:24px;text-align:center}
 .mobile-menu{position:fixed;top:64px;left:0;right:0;background:rgba(20,20,25,.9);backdrop-filter:blur(14px);display:none;flex-direction:column}
 .mobile-menu a{padding:16px;color:#fff;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.08)}
 @media(max-width:768px){.nav{display:none}.burger{display:flex}}
-
-/* INTRO */
-#intro{
-  position:fixed;
-  inset:0;
-  z-index:9999;
-  background:#000;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-#intro img{width:100%;height:100%;object-fit:cover}
-#intro.hide{animation:introUp 2s ease forwards}
-@keyframes introUp{to{transform:translateY(-100%)}}
+.page-blur{position:fixed;inset:0;z-index:9999;pointer-events:none;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);animation:page-sharpen .8s ease forwards}
+@keyframes page-sharpen{0%{opacity:1;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}100%{opacity:0;backdrop-filter:blur(0);-webkit-backdrop-filter:blur(0)}}
 </style>
 </head>
 <body>
-<div id="intro"><img src="images/projectorCover.jpg" alt="Intro"></div>
-
+<div class="page-blur"></div>
 <header class="header">
   <div class="container header-inner">
-    <div class="logo">EgorNetwork</div>
+    <div class="logo">EgorNetwork - Официальный сайт</div>
     <nav class="nav">
       <div class="nav-highlight"></div>
-      <a href="index.html" class="active">Главная</a>
-      <a href="games.html">Проекты</a>
+      <a href="index.html">Главная</a>
+      <a href="games.html">Игры</a>
       <a href="useful.html">Полезное</a>
       <a href="help.html">Помощь</a>
       <a href="archive.html">Архив</a>
@@ -82,21 +69,19 @@ html{scroll-behavior:smooth}
     <button class="burger"><span></span><span></span><span></span></button>
   </div>
 </header>
-
 <div class="mobile-menu">
   <a href="index.html">Главная</a>
-  <a href="games.html">Проекты</a>
+  <a href="games.html">Игры</a>
   <a href="useful.html">Полезное</a>
   <a href="help.html">Помощь</a>
   <a href="archive.html">Архив</a>
 </div>
-
 <main class="container">
   <section class="hero fade" id="hero">
     <div class="hero-panel">
-      <h1>Добро пожаловать в EgorNetwork</h1>
+      <h1>Добро пожаловать на сайт EgorNetwork</h1>
       <div class="btns">
-        <a href="games.html" class="btn">Проекты</a>
+        <a href="games.html" class="btn">Игры</a>
         <a href="useful.html" class="btn">Полезное</a>
         <a href="help.html" class="btn">Помощь</a>
         <a href="archive.html" class="btn">Архив</a>
@@ -104,24 +89,37 @@ html{scroll-behavior:smooth}
     </div>
   </section>
 </main>
-
-<footer class="footer">© EgorNetwork</footer>
-
-<audio id="intro-sound" src="sounds/projector_static.ogg"></audio>
+<footer class="footer">
+  © EgorNetwork, 2026. Сайт сделан с большой помощью ChatGPT (Я полный ноль в html-разработке ;) )
+</footer>
 <script>
-const intro=document.getElementById('intro');
-const sound=document.getElementById('intro-sound');
-window.addEventListener('load',()=>{
-  sound.volume=.6; sound.play().catch(()=>{});
-  setTimeout(()=>intro.classList.add('hide'),100);
-  setTimeout(()=>intro.remove(),2200);
+const highlight=document.querySelector('.nav-highlight');
+const links=document.querySelectorAll('.nav a');
+const currentURL=window.location.href;
+links.forEach(link=>{
+  if(currentURL.includes(link.getAttribute('href'))){link.classList.add('active');}
+  link.addEventListener('mouseenter',()=>{
+    const r=link.getBoundingClientRect();
+    const n=link.parentElement.getBoundingClientRect();
+    highlight.style.width=r.width+'px';
+    highlight.style.height=r.height+'px';
+    highlight.style.transform=`translate(${r.left-n.left}px,${r.top-n.top}px)`;
+    highlight.style.opacity='1';
+  });
 });
+document.querySelector('.nav')?.addEventListener('mouseleave',()=>highlight.style.opacity='0');
+const obs=new IntersectionObserver(e=>e.forEach(i=>i.isIntersecting&&i.target.classList.add('visible')),{threshold:.15});
+document.querySelectorAll('.fade').forEach(el=>obs.observe(el));
+const burger=document.querySelector('.burger');
+const mobile=document.querySelector('.mobile-menu');
+burger?.addEventListener('click',()=>{mobile.style.display=mobile.style.display==='flex'?'none':'flex'});
 
-const hero=document.getElementById('hero');
-document.addEventListener('mousemove',e=>{
-  const x=e.clientX/window.innerWidth-.5;
-  const y=e.clientY/window.innerHeight-.5;
-  hero.style.transform=`translate(${-x*20}px,${-y*10}px)`;
+// Параллакс движение баннера при движении мыши
+const hero = document.getElementById('hero');
+document.addEventListener('mousemove', (e) => {
+  const x = e.clientX / window.innerWidth - 0.5;
+  const y = e.clientY / window.innerHeight - 0.5;
+  hero.style.transform = `translate(${-x*20}px, ${-y*10}px)`;
 });
 </script>
 </body>
