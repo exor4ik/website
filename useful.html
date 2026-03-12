@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>EgorNetwork</title>
+  <title>Полезное — EgorNetwork</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
 *{box-sizing:border-box}
@@ -18,11 +18,11 @@ html{scroll-behavior:smooth}
 .nav-highlight{position:absolute;top:0;left:0;height:100%;border-radius:8px;background:rgba(255,255,255,.12);backdrop-filter:blur(6px);transition:all .35s ease;opacity:0;z-index:1}
 .burger{display:none;flex-direction:column;gap:4px;background:none;border:0}
 .burger span{width:24px;height:2px;background:#fff}
-.hero{min-height:60vh;display:flex;align-items:center;background:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.85)),url('https://lh3.googleusercontent.com/sitesv/APaQ0ST3zt3x6FIYmJeN4hU8OCJHfdOU_yLcoaQkFSK9JIg7jOcxUOrPJ1-SoJopo-mTu_GdopODFXTsFJaYZhKUvDxbVtuRL5UjLEuxaqrQVhsXduA56KTSjYfU_SM9N3MFM1Pgy05wPTTJxs3NCpnZrCjJ2vhKd_61mbgcv7MeYWVN375z4pZ-0MbqhYk=w16383') center/cover}
-.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px}
+.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;margin-bottom:16px;transition:transform .3s}
+.card:hover{transform:translateY(-4px)}
 .fade{opacity:0;transform:translateY(30px);transition:.8s ease}
 .fade.visible{opacity:1;transform:none}
-.footer{border-top:1px solid rgba(255,255,255,.08)}
+.footer{border-top:1px solid rgba(255,255,255,.08);padding:24px;text-align:center}
 .mobile-menu{position:fixed;top:64px;left:0;right:0;background:rgba(20,20,25,.9);backdrop-filter:blur(14px);display:none;flex-direction:column}
 .mobile-menu a{padding:16px;color:#fff;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.08)}
 @media(max-width:768px){.nav{display:none}.burger{display:flex}}
@@ -38,8 +38,8 @@ html{scroll-behavior:smooth}
     <nav class="nav">
       <div class="nav-highlight"></div>
       <a href="index.html">Главная</a>
-      <a href="games.html">Проекты</a>
-      <a href="useful.html">Полезное</a>
+      <a href="games.html">Игры</a>
+      <a href="useful.html" class="active">Полезное</a>
       <a href="help.html">Помощь</a>
       <a href="archive.html">Архив</a>
     </nav>
@@ -48,7 +48,7 @@ html{scroll-behavior:smooth}
 </header>
 <div class="mobile-menu">
   <a href="index.html">Главная</a>
-  <a href="games.html">Проекты</a>
+  <a href="games.html">Игры</a>
   <a href="useful.html">Полезное</a>
   <a href="help.html">Помощь</a>
   <a href="archive.html">Архив</a>
@@ -56,14 +56,38 @@ html{scroll-behavior:smooth}
 <main class="container">
   <section class="fade">
     <h1>Полезное</h1>
-    <p>Это раздел с всякой полезной информации для быта.</p>
+    <p>Это раздел с всякой полезной информацией для быта.</p>
+  </section>
+
+  <section class="fade card">
+    <h2>🤖 Промты для DeepSeek</h2>
+    <p>Полезные промты и шаблоны для работы с нейросетью DeepSeek.</p>
+  </section>
+
+  <section class="fade card">
+    <h2>📸 Позыркать фоточки</h2>
+    <p>Галерея с фотографиями и изображениями.</p>
+  </section>
+
+  <section class="fade card">
+    <h2>🎂 Когда дни рождения?</h2>
+    <p>Календарь дней рождения друзей и знакомых.</p>
   </section>
 </main>
 <footer class="footer">
-  <div class="container">© EgorNetwork</div>
+  <div class="container" style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:24px;">
+    <div style="text-align:left;">
+      <p>© EgorNetwork, 2026.</p>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <a href="https://t.me/egornetwork_official" target="_blank" rel="noopener" style="color:#aaa;text-decoration:none;">Telegram</a>
+      <a href="https://discord.gg/4e3wN9t79R" target="_blank" rel="noopener" style="color:#aaa;text-decoration:none;">Discord</a>
+      <a href="https://www.donationalerts.com/r/egornetworkpayment" target="_blank" rel="noopener" style="color:#aaa;text-decoration:none;">Донаты</a>
+      <a href="mailto:windowsvistaegor@gmail.com" style="color:#aaa;text-decoration:none;">Email</a>
+    </div>
+  </div>
 </footer>
 <script>
-// header highlight
 const highlight=document.querySelector('.nav-highlight');
 const links=document.querySelectorAll('.nav a');
 const currentURL=window.location.href;
@@ -79,10 +103,8 @@ links.forEach(link=>{
   });
 });
 document.querySelector('.nav')?.addEventListener('mouseleave',()=>highlight.style.opacity='0');
-// fade in
 const obs=new IntersectionObserver(e=>e.forEach(i=>i.isIntersecting&&i.target.classList.add('visible')),{threshold:.15});
 document.querySelectorAll('.fade').forEach(el=>obs.observe(el));
-// mobile menu
 const burger=document.querySelector('.burger');
 const mobile=document.querySelector('.mobile-menu');
 burger?.addEventListener('click',()=>{mobile.style.display=mobile.style.display==='flex'?'none':'flex'});

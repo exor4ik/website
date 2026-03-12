@@ -45,6 +45,7 @@ html{scroll-behavior:smooth}
 .hero .btn:hover{background:rgba(0,0,0,0.8)}
 .fade{opacity:0;transform:translateY(30px);transition:.8s ease}
 .fade.visible{opacity:1;transform:none}
+.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;margin-bottom:16px}
 .footer{border-top:1px solid rgba(255,255,255,.08);padding:24px;text-align:center}
 .mobile-menu{position:fixed;top:64px;left:0;right:0;background:rgba(20,20,25,.9);backdrop-filter:blur(14px);display:none;flex-direction:column}
 .mobile-menu a{padding:16px;color:#fff;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.08)}
@@ -80,6 +81,8 @@ html{scroll-behavior:smooth}
   <section class="hero fade" id="hero">
     <div class="hero-panel">
       <h1>Добро пожаловать на сайт EgorNetwork</h1>
+      <p style="font-size:1.2rem;margin:16px 0;">Мы делаем игры.</p>
+      <p style="color:#ccc;margin-bottom:24px;">Добро пожаловать на наш сайт! Вы можете скачать игры на странице скачивания. Архив сайта — это архив разделов, которые были выпущены и закрыты.</p>
       <div class="btns">
         <a href="games.html" class="btn">Игры</a>
         <a href="useful.html" class="btn">Полезное</a>
@@ -88,9 +91,20 @@ html{scroll-behavior:smooth}
       </div>
     </div>
   </section>
+
 </main>
 <footer class="footer">
-  © EgorNetwork, 2026. Сайт сделан с большой помощью ChatGPT (Я полный ноль в html-разработке ;) )
+  <div class="container" style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:24px;">
+    <div style="text-align:left;">
+      <p>© EgorNetwork, 2026.</p>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <a href="https://t.me/egornetwork_official" target="_blank" rel="noopener" style="color:#aaa;text-decoration:none;">Telegram</a>
+      <a href="https://discord.gg/4e3wN9t79R" target="_blank" rel="noopener" style="color:#aaa;text-decoration:none;">Discord</a>
+      <a href="https://www.donationalerts.com/r/egornetworkpayment" target="_blank" rel="noopener" style="color:#aaa;text-decoration:none;">Донаты</a>
+      <a href="mailto:windowsvistaegor@gmail.com" style="color:#aaa;text-decoration:none;">Email</a>
+    </div>
+  </div>
 </footer>
 <script>
 const highlight=document.querySelector('.nav-highlight');

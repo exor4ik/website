@@ -19,9 +19,11 @@ html{scroll-behavior:smooth}
 .burger{display:none;flex-direction:column;gap:4px;background:none;border:0}
 .burger span{width:24px;height:2px;background:#fff}
 .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;margin-bottom:16px}
+.btn{display:inline-block;padding:10px 20px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;text-decoration:none;transition:background .3s}
+.btn:hover{background:rgba(255,255,255,.2)}
 .fade{opacity:0;transform:translateY(30px);transition:.8s ease}
 .fade.visible{opacity:1;transform:none}
-.footer{border-top:1px solid rgba(255,255,255,.08)}
+.footer{border-top:1px solid rgba(255,255,255,.08);padding:24px;text-align:center}
 .mobile-menu{position:fixed;top:64px;left:0;right:0;background:rgba(20,20,25,.9);backdrop-filter:blur(14px);display:none;flex-direction:column}
 .mobile-menu a{padding:16px;color:#fff;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.08)}
 @media(max-width:768px){.nav{display:none}.burger{display:flex}}
@@ -55,12 +57,32 @@ html{scroll-behavior:smooth}
 <main class="container">
   <section class="fade">
     <h2>Архив сайта</h2>
-    <div class="card">Блог и записи</div>
-    <div class="card">Старые проекты</div>
+    <p>Архив разделов, которые были выпущены и закрыты.</p>
+  </section>
+
+  <section class="fade card">
+    <h3>📝 Блог EgorNetwork</h3>
+    <p style="color:#aaa;margin:12px 0;">Старые записи и новости проекта.</p>
+    <a class="btn" href="blog.html">Перейти к блогу</a>
+  </section>
+
+  <section class="fade card">
+    <h3>🗄️ Старые проекты</h3>
+    <p style="color:#aaa;margin:12px 0;">Заархивированные проекты и игры.</p>
   </section>
 </main>
 <footer class="footer">
-  <div class="container">© EgorNetwork</div>
+  <div class="container" style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:24px;">
+    <div style="text-align:left;">
+      <p>© EgorNetwork, 2026.</p>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <a href="https://t.me/egornetwork_official" target="_blank" rel="noopener" style="color:#aaa;text-decoration:none;">Telegram</a>
+      <a href="https://discord.gg/4e3wN9t79R" target="_blank" rel="noopener" style="color:#aaa;text-decoration:none;">Discord</a>
+      <a href="https://www.donationalerts.com/r/egornetworkpayment" target="_blank" rel="noopener" style="color:#aaa;text-decoration:none;">Донаты</a>
+      <a href="mailto:windowsvistaegor@gmail.com" style="color:#aaa;text-decoration:none;">Email</a>
+    </div>
+  </div>
 </footer>
 <script>
 const highlight=document.querySelector('.nav-highlight');
