@@ -6,8 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#0b0d10;color:#eaeaea}
-html{scroll-behavior:smooth}
+body{margin:0;font-family:Arial,sans-serif;background:#0b0d10;color:#eaeaea;overflow:hidden;height:100vh}
+html{scroll-behavior:smooth;height:100vh}
+body{overflow-y:scroll}
+html{scrollbar-gutter:stable}
+@supports(scrollbar-color:rgba(255,255,255,.3) transparent){
+  html{scrollbar-color:rgba(255,255,255,.3) transparent;scrollbar-width:thin}
+}
 .container{max-width:1100px;margin:auto;padding:24px}
 .header{position:sticky;top:0;z-index:100;background:rgba(20,20,25,.6);backdrop-filter:blur(14px)}
 .header-inner{display:flex;align-items:center;justify-content:space-between}
@@ -22,7 +27,7 @@ html{scroll-behavior:smooth}
 .fade{opacity:0;transform:translateY(30px);transition:.8s ease}
 .fade.visible{opacity:1;transform:none}
 .footer{border-top:1px solid rgba(255,255,255,.08);padding:24px;text-align:center}
-.mobile-menu{position:fixed;top:64px;left:0;right:0;background:rgba(20,20,25,.9);backdrop-filter:blur(14px);display:none;flex-direction:column}
+.mobile-menu{position:fixed;top:64px;left:0;right:0;background:rgba(20,20,25,.95);backdrop-filter:blur(14px);display:none;flex-direction:column;z-index:101}
 .mobile-menu a{padding:16px;color:#fff;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.08)}
 @media(max-width:768px){.nav{display:none}.burger{display:flex}}
 .page-blur{position:fixed;inset:0;z-index:9999;pointer-events:none;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);animation:page-sharpen .8s ease forwards}
@@ -118,6 +123,113 @@ document.querySelectorAll('.fade').forEach(el=>obs.observe(el));
 const burger=document.querySelector('.burger');
 const mobile=document.querySelector('.mobile-menu');
 burger?.addEventListener('click',()=>{mobile.style.display=mobile.style.display==='flex'?'none':'flex'});
+
+// Ультраплавная прокрутка
+let currentScroll = 0;
+let targetScroll = 0;
+let isScrolling = false;
+let velocity = 0;
+let isDragging = false;
+
+function smoothScroll() {
+  const delta = targetScroll - currentScroll;
+  const distance = Math.abs(delta);
+  
+  // Вычисляем скорость с инерцией
+  const targetVelocity = delta * 0.1;
+  velocity = velocity * 0.85 + targetVelocity * 0.15;
+  
+  // Замедление в конце
+  if (distance < 50) {
+    velocity *= 0.7;
+  }
+  if (distance < 10) {
+    velocity *= 0.5;
+  }
+  if (distance < 3) {
+    velocity *= 0.3;
+  }
+  
+  currentScroll += velocity;
+  
+  // Ограничиваем скролл
+  const maxScroll = document.body.scrollHeight - window.innerHeight;
+  currentScroll = Math.max(0, Math.min(currentScroll, maxScroll));
+  
+  window.scrollTo(0, currentScroll);
+  
+  // Продолжаем если есть движение
+  if (Math.abs(velocity) > 0.01 || distance > 0.1) {
+    requestAnimationFrame(smoothScroll);
+  } else {
+    isScrolling = false;
+    velocity = 0;
+  }
+}
+
+// Синхронизация при перетаскивании скроллбара
+window.addEventListener('scroll', () => {
+  if (!isScrolling && !isDragging) {
+    currentScroll = window.scrollY;
+    targetScroll = currentScroll;
+    velocity = 0;
+  }
+}, { passive: true });
+
+window.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  isDragging = false;
+  
+  targetScroll += e.deltaY;
+  const maxScroll = document.body.scrollHeight - window.innerHeight;
+  targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+  
+  if (!isScrolling) {
+    isScrolling = true;
+    smoothScroll();
+  }
+}, { passive: false });
+
+// Отслеживание перетаскивания скроллбара
+window.addEventListener('mousedown', (e) => {
+  // Проверяем, кликнули ли по скроллбару (приблизительно)
+  if (e.clientX > window.innerWidth - 20) {
+    isDragging = true;
+    isScrolling = false;
+    velocity = 0;
+  }
+});
+
+window.addEventListener('mouseup', () => {
+  if (isDragging) {
+    isDragging = false;
+    currentScroll = window.scrollY;
+    targetScroll = currentScroll;
+  }
+});
+
+// Обработка клавиш клавиатуры
+window.addEventListener('keydown', (e) => {
+  const step = 100;
+  if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+    e.preventDefault();
+    targetScroll += e.key === 'PageDown' ? window.innerHeight : step;
+    const maxScroll = document.body.scrollHeight - window.innerHeight;
+    targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+    if (!isScrolling) {
+      isScrolling = true;
+      smoothScroll();
+    }
+  } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+    e.preventDefault();
+    targetScroll -= e.key === 'PageUp' ? window.innerHeight : step;
+    targetScroll = Math.max(0, Math.min(targetScroll, document.body.scrollHeight - window.innerHeight));
+    if (!isScrolling) {
+      isScrolling = true;
+      smoothScroll();
+    }
+  }
+});
 </script>
 </body>
 </html>
