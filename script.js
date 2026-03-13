@@ -1,28 +1,60 @@
-// Header highlight
-const highlight=document.querySelector('.nav-highlight');
-const links=document.querySelectorAll('.nav a');
-const currentURL=window.location.href;
-links.forEach(link=>{
-  if(currentURL.includes(link.getAttribute('href'))){link.classList.add('active');}
-  link.addEventListener('mouseenter',()=>{
-    const r=link.getBoundingClientRect();
-    const n=link.parentElement.getBoundingClientRect();
-    highlight.style.width=r.width+'px';
-    highlight.style.height=r.height+'px';
-    highlight.style.transform=`translate(${r.left-n.left}px,${r.top-n.top}px)`;
-    highlight.style.opacity='1';
+// Загрузка header и footer
+async function loadComponent(id, file) {
+  try {
+    const response = await fetch(file);
+    if (response.ok) {
+      const html = await response.text();
+      document.getElementById(id).innerHTML = html;
+      
+      // После загрузки header инициализируем навигацию
+      if (id === 'header-container') {
+        initNav();
+      }
+    }
+  } catch (e) {
+    console.error(`Ошибка загрузки ${file}:`, e);
+  }
+}
+
+function initNav() {
+  // Header highlight
+  const highlight = document.querySelector('.nav-highlight');
+  const links = document.querySelectorAll('.nav a');
+  const currentURL = window.location.href;
+  
+  links.forEach(link => {
+    if (currentURL.includes(link.getAttribute('href'))) {
+      link.classList.add('active');
+    }
+    link.addEventListener('mouseenter', () => {
+      const r = link.getBoundingClientRect();
+      const n = link.parentElement.getBoundingClientRect();
+      highlight.style.width = r.width + 'px';
+      highlight.style.height = r.height + 'px';
+      highlight.style.transform = `translate(${r.left - n.left}px, ${r.top - n.top}px)`;
+      highlight.style.opacity = '1';
+    });
   });
-});
-document.querySelector('.nav')?.addEventListener('mouseleave',()=>highlight.style.opacity='0');
+  
+  if (document.querySelector('.nav')) {
+    document.querySelector('.nav').addEventListener('mouseleave', () => {
+      highlight.style.opacity = '0';
+    });
+  }
+  
+  // Mobile menu
+  const burger = document.querySelector('.burger');
+  const mobile = document.querySelector('.mobile-menu');
+  if (burger && mobile) {
+    burger.addEventListener('click', () => {
+      mobile.style.display = mobile.style.display === 'flex' ? 'none' : 'flex';
+    });
+  }
+}
 
 // Fade in animation
-const obs=new IntersectionObserver(e=>e.forEach(i=>i.isIntersecting&&i.target.classList.add('visible')),{threshold:.15});
-document.querySelectorAll('.fade').forEach(el=>obs.observe(el));
-
-// Mobile menu
-const burger=document.querySelector('.burger');
-const mobile=document.querySelector('.mobile-menu');
-burger?.addEventListener('click',()=>{mobile.style.display=mobile.style.display==='flex'?'none':'flex'});
+const obs = new IntersectionObserver(e => e.forEach(i => i.isIntersecting && i.target.classList.add('visible')), { threshold: .15 });
+document.querySelectorAll('.fade').forEach(el => obs.observe(el));
 
 // Параллакс для главной страницы
 const hero = document.getElementById('hero');
@@ -33,6 +65,12 @@ if (hero) {
     hero.style.transform = `translate(${-x*20}px, ${-y*10}px)`;
   });
 }
+
+// Загружаем header и footer при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+  loadComponent('header-container', 'components/header.html');
+  loadComponent('footer-container', 'components/footer.html');
+});
 
 // Ультраплавная прокрутка
 let currentScroll = 0;
