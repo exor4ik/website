@@ -1,0 +1,92 @@
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#0b0d10;color:#eaeaea;overflow:hidden;height:100vh}
+html{scroll-behavior:smooth;height:100vh}
+body{overflow-y:scroll}
+html{scrollbar-gutter:stable}
+@supports(scrollbar-color:rgba(255,255,255,.3) transparent){
+  html{scrollbar-color:rgba(255,255,255,.3) transparent;scrollbar-width:thin}
+}
+.container{max-width:1100px;margin:auto;padding:24px}
+.header{position:sticky;top:0;z-index:100;background:rgba(20,20,25,.6);backdrop-filter:blur(14px)}
+.header-inner{display:flex;align-items:center;justify-content:space-between}
+.logo{font-weight:700}
+.nav{position:relative;display:flex;gap:16px}
+.nav a{color:#aaa;text-decoration:none;padding:6px 12px;z-index:2;transition:color .3s}
+.nav a:hover, .nav a.active{color:#fff}
+.nav-highlight{position:absolute;top:0;left:0;height:100%;border-radius:8px;background:rgba(255,255,255,.12);backdrop-filter:blur(6px);transition:all .35s ease;opacity:0;z-index:1}
+.burger{display:none;flex-direction:column;gap:4px;background:none;border:0}
+.burger span{width:24px;height:2px;background:#fff}
+
+/* Hero секция (только для главной) */
+.hero{
+  position: relative;
+  width: 100vw;
+  aspect-ratio: 1080 / 608;
+  min-height: 300px;
+  margin-left: calc(50% - 50vw);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  background: url('images/hero.gif') center / cover no-repeat;
+  transition: transform .2s ease-out;
+}
+.hero h1{font-size:clamp(1.5rem,5vw,3rem);margin-bottom:16px;line-height:1.2;word-wrap:break-word}
+.hero-panel{
+  padding:24px 20px;
+  border-radius:20px;
+  background:rgba(0,0,0,0.55);
+  backdrop-filter: blur(10px);
+  box-shadow:0 20px 60px rgba(0,0,0,0.4);
+  max-width:calc(100vw - 40px);
+}
+.hero .btns{display:flex;gap:12px;justify-content:center;margin-top:16px;flex-wrap:wrap}
+.hero .btn{padding:10px 18px;border:none;border-radius:8px;background:rgba(0,0,0,0.6);color:#fff;text-decoration:none;transition:background .3s;font-size:clamp(0.85rem,2vw,1rem)}
+.hero .btn:hover{background:rgba(0,0,0,0.8)}
+
+/* Карточки и кнопки */
+.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;margin-bottom:16px}
+.card:hover{transform:translateY(-4px)}
+.btn{display:inline-block;padding:10px 20px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;text-decoration:none;transition:background .3s}
+.btn:hover{background:rgba(255,255,255,.2)}
+
+/* Кнопки игр */
+.game-btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+.game-btn{padding:12px 24px;border:none;border-radius:8px;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);color:#fff;text-decoration:none;transition:background .3s;cursor:pointer}
+.game-btn:hover{background:rgba(0,0,0,0.8)}
+
+/* Анимации */
+.fade{opacity:0;transform:translateY(30px);transition:.8s ease}
+.fade.visible{opacity:1;transform:none}
+.fade.card-1{transition-delay:.1s}
+.fade.card-2{transition-delay:.2s}
+.fade.card-3{transition-delay:.3s}
+.fade.card-4{transition-delay:.4s}
+.fade.card-5{transition-delay:.5s}
+.fade.card-6{transition-delay:.6s}
+.fade.card-7{transition-delay:.7s}
+.fade.card-8{transition-delay:.8s}
+.fade.card-9{transition-delay:.9s}
+.fade.card-10{transition-delay:1.0s}
+
+/* Футер */
+.footer{border-top:1px solid rgba(255,255,255,.08);padding:24px;text-align:center}
+
+/* Мобильное меню */
+.mobile-menu{position:fixed;top:64px;left:0;right:0;background:rgba(20,20,25,.95);backdrop-filter:blur(14px);display:none;flex-direction:column;z-index:101}
+.mobile-menu a{padding:16px;color:#fff;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.08)}
+@media(max-width:768px){.nav{display:none}.burger{display:flex}}
+
+/* Эффекты страниц */
+.page-blur{position:fixed;inset:0;z-index:9999;pointer-events:none;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);animation:page-sharpen .8s ease forwards}
+@keyframes page-sharpen{0%{opacity:1;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}100%{opacity:0;backdrop-filter:blur(0);-webkit-backdrop-filter:blur(0)}}
+
+/* Header box для страницы игр */
+.header-box{
+  margin-top:16px;
+  padding:24px 28px;
+  border-radius:18px;
+  background:rgba(0,0,0,0.45);
+  backdrop-filter:blur(12px);
+  box-shadow:0 16px 40px rgba(0,0,0,.4);
+}
