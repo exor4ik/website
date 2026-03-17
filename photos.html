@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Фото — EgorNetwork</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="images/favicon.jpg" type="image/jpeg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page-blur"></div>
+<div id="header-container"></div>
+<main class="container">
+  <section class="fade">
+    <h2>Фотогалерея со скринами проектов</h2>
+    <p>(В основном они дублируются с страницы блога)</p>
+  </section>
+
+  <div class="gallery">
+    <div class="gallery-item fade">
+      <img src="images/projectorCover.jpg" alt="Проект 1">
+      <div class="gallery-caption">Название проекта 1</div>
+    </div>
+    <div class="gallery-item fade">
+      <img src="images/projectorCover.jpg" alt="Проект 2">
+      <div class="gallery-caption">Название проекта 2</div>
+    </div>
+    <div class="gallery-item fade">
+      <img src="images/projectorCover.jpg" alt="Проект 3">
+      <div class="gallery-caption">Название проекта 3</div>
+    </div>
+    <div class="gallery-item fade">
+      <img src="images/projectorCover.jpg" alt="Проект 4">
+      <div class="gallery-caption">Название проекта 4</div>
+    </div>
+    <div class="gallery-item fade">
+      <img src="images/projectorCover.jpg" alt="Проект 5">
+      <div class="gallery-caption">Название проекта 5</div>
+    </div>
+    <div class="gallery-item fade">
+      <img src="images/projectorCover.jpg" alt="Проект 6">
+      <div class="gallery-caption">Название проекта 6</div>
+    </div>
+  </div>
+</main>
+
+<!-- Лайтбокс -->
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" id="lightbox-close">&times;</button>
+  <button class="lightbox-prev" id="lightbox-prev">&#10094;</button>
+  <img src="" alt="Fullscreen" id="lightbox-img">
+  <button class="lightbox-next" id="lightbox-next">&#10095;</button>
+</div>
+
+<div id="footer-container"></div>
+<script src="script.js"></script>
+<script>
+// Лайтбокс с плавным масштабированием: миниатюра -> центр -> миниатюра
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightbox-img');
+const lightboxClose = document.getElementById('lightbox-close');
+const lightboxPrev = document.getElementById('lightbox-prev');
+const lightboxNext = document.getElementById('lightbox-next');
+const galleryItems = document.querySelectorAll('.gallery-item img');
+
+const ANIMATION_DURATION = 420;
+const CENTER_MAX_WIDTH_RATIO = 0.9;
+const CENTER_MAX_HEIGHT_RATIO = 0.9;
+
+let currentIndex = 0;
+let isAnimating = false;
+let centeredRect = null;
+
+function setBodyScrollLocked(locked) {
+  document.body.style.overflow = locked ? 'hidden' : '';
+  document.body.style.overflowY = locked ? 'hidden' : '';
+}
+
+function normalizeRect(rect) {
+  return {
+    left: Number.isFinite(rect.left) ? rect.left : (window.innerWidth - 1) / 2,
+    top: Number.isFinite(rect.top) ? rect.top : (window.innerHeight - 1) / 2,
+    width: Math.max(1, Number.isFinite(rect.width) ? rect.width : 1),
+    height: Math.max(1, Number.isFinite(rect.height) ? rect.height : 1)
+  };
+}
+
+function getCenteredRect(img) {
+  const maxWidth = window.innerWidth * CENTER_MAX_WIDTH_RATIO;
+  const maxHeight = window.innerHeight * CENTER_MAX_HEIGHT_RATIO;
+  const ratio = (img.naturalWidth > 0 && img.naturalHeight > 0) ? img.naturalWidth / img.naturalHeight : 16 / 9;
+
+  let width = maxWidth;
+  let height = width / ratio;
+
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = height * ratio;
+  }
+
+  return {
+    left: (window.innerWidth - width) / 2,
+    top: (window.innerHeight - height) / 2,
+    width,
+    height
+  };
+}
+
+function setImageRect(rect) {
+  const safe = normalizeRect(rect);
+  lightboxImg.style.left = `${safe.left}px`;
+  lightboxImg.style.top = `${safe.top}px`;
+  lightboxImg.style.width = `${safe.width}px`;
+  lightboxImg.style.height = `${safe.height}px`;
+  lightboxImg.style.transform = 'translate3d(0, 0, 0) scale(1, 1)';
+}
+
+function animateImageBetweenRects(fromRect, toRect, onDone) {
+  const start = normalizeRect(fromRect);
+  const end = normalizeRect(toRect);
+  const dx = end.left - start.left;
+  const dy = end.top - start.top;
+  const scaleX = end.width / start.width;
+  const scaleY = end.height / start.height;
+
+  lightboxImg.style.transition = 'none';
+  lightboxImg.style.opacity = '1';
+  setImageRect(start);
+  lightboxImg.getBoundingClientRect();
+
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    clearTimeout(fallbackTimer);
+    lightboxImg.removeEventListener('transitionend', onTransitionEnd);
+    lightboxImg.style.transition = 'none';
+    setImageRect(end);
+    onDone();
+  };
+
+  const onTransitionEnd = (event) => {
+    if (event.propertyName === 'transform') {
+      finish();
+    }
+  };
+
+  lightboxImg.addEventListener('transitionend', onTransitionEnd);
+  const fallbackTimer = setTimeout(finish, ANIMATION_DURATION + 100);
+
+  requestAnimationFrame(() => {
+    lightboxImg.style.transition = `transform ${ANIMATION_DURATION}ms cubic-bezier(.22,1,.36,1)`;
+    lightboxImg.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${scaleX}, ${scaleY})`;
+  });
+}
+
+function openLightbox(index) {
+  if (isAnimating || !galleryItems[index]) return;
+
+  currentIndex = index;
+  isAnimating = true;
+
+  const source = galleryItems[currentIndex];
+  const startRect = source.getBoundingClientRect();
+  centeredRect = getCenteredRect(source);
+
+  lightboxImg.src = source.currentSrc || source.src;
+  lightboxImg.alt = source.alt || 'Фото';
+
+  setBodyScrollLocked(true);
+  lightbox.classList.add('active');
+
+  requestAnimationFrame(() => {
+    animateImageBetweenRects(startRect, centeredRect, () => {
+      isAnimating = false;
+    });
+  });
+}
+
+function closeLightbox() {
+  if (isAnimating || !lightbox.classList.contains('active')) return;
+
+  isAnimating = true;
+  const source = galleryItems[currentIndex];
+  const endRect = source ? source.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 1, height: 1 };
+  const startRect = centeredRect || getCenteredRect(source || lightboxImg);
+
+  animateImageBetweenRects(startRect, endRect, () => {
+    lightbox.classList.remove('active');
+    setBodyScrollLocked(false);
+    centeredRect = null;
+    lightboxImg.style.transition = 'none';
+    lightboxImg.style.opacity = '1';
+    lightboxImg.style.left = '0';
+    lightboxImg.style.top = '0';
+    lightboxImg.style.width = '0';
+    lightboxImg.style.height = '0';
+    lightboxImg.style.transform = 'translate3d(0, 0, 0) scale(1, 1)';
+    isAnimating = false;
+  });
+}
+
+function swapImage(nextIndex) {
+  if (isAnimating || !lightbox.classList.contains('active')) return;
+
+  isAnimating = true;
+  currentIndex = (nextIndex + galleryItems.length) % galleryItems.length;
+
+  const next = galleryItems[currentIndex];
+  centeredRect = getCenteredRect(next);
+
+  lightboxImg.style.transition = 'opacity 180ms ease';
+  lightboxImg.style.opacity = '0';
+
+  setTimeout(() => {
+    lightboxImg.src = next.currentSrc || next.src;
+    lightboxImg.alt = next.alt || 'Фото';
+    setImageRect(centeredRect);
+
+    requestAnimationFrame(() => {
+      lightboxImg.style.opacity = '1';
+      setTimeout(() => {
+        lightboxImg.style.transition = 'none';
+        isAnimating = false;
+      }, 190);
+    });
+  }, 180);
+}
+
+function showPrev() {
+  swapImage(currentIndex - 1);
+}
+
+function showNext() {
+  swapImage(currentIndex + 1);
+}
+
+galleryItems.forEach((img, index) => {
+  img.addEventListener('click', () => openLightbox(index));
+});
+
+lightboxClose.addEventListener('click', closeLightbox);
+lightboxPrev.addEventListener('click', showPrev);
+lightboxNext.addEventListener('click', showNext);
+lightbox.addEventListener('click', (e) => {
+  if (e.target === lightbox) closeLightbox();
+});
+
+lightbox.addEventListener('wheel', (e) => {
+  if (!lightbox.classList.contains('active')) return;
+  e.preventDefault();
+  e.stopPropagation();
+}, { passive: false });
+
+document.addEventListener('keydown', (e) => {
+  if (!lightbox.classList.contains('active')) return;
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowLeft') showPrev();
+  if (e.key === 'ArrowRight') showNext();
+});
+
+window.addEventListener('resize', () => {
+  if (!lightbox.classList.contains('active') || isAnimating) return;
+  const source = galleryItems[currentIndex];
+  centeredRect = getCenteredRect(source || lightboxImg);
+  setImageRect(centeredRect);
+});
+</script>
+</body>
+</html>
