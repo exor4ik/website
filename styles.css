@@ -1,6 +1,6 @@
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#0b0d10;color:#eaeaea;overflow:hidden;height:100vh}
-html{scroll-behavior:smooth;height:100vh}
+html{scroll-behavior:auto;height:100vh}
 body{overflow-y:scroll}
 html{scrollbar-gutter:stable}
 @supports(scrollbar-color:rgba(255,255,255,.3) transparent){
@@ -45,8 +45,10 @@ html{scrollbar-gutter:stable}
 .hero .btn:hover{background:rgba(0,0,0,0.8)}
 
 /* Карточки и кнопки */
-.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;margin-bottom:16px}
+.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;padding-right:170px;margin-bottom:16px;position:relative}
 .card:hover{transform:translateY(-4px)}
+.card-image{position:absolute;top:24px;right:24px;width:128px;height:128px;border-radius:16px;border:2px solid rgba(255,255,255,0.3);object-fit:cover;z-index:1}
+.card h2,.card h3,.card p,.card .game-btns{max-width:calc(100% - 196px)}
 .btn{display:inline-block;padding:10px 20px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;text-decoration:none;transition:background .3s}
 .btn:hover{background:rgba(255,255,255,.2)}
 

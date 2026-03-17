@@ -72,109 +72,130 @@ document.addEventListener('DOMContentLoaded', () => {
   loadComponent('footer-container', 'components/footer.html');
 });
 
-// Ультраплавная прокрутка
-let currentScroll = 0;
-let targetScroll = 0;
-let isScrolling = false;
-let velocity = 0;
-let isDragging = false;
+// Плавная прокрутка без резкого торможения в конце
+let currentScroll = window.scrollY;
+let targetScroll = currentScroll;
+let scrollRaf = null;
+let isDraggingScrollbar = false;
 
-function smoothScroll() {
+const SCROLL_LERP = 0.14;
+const SCROLL_STOP_EPSILON = 0.35;
+const KEY_SCROLL_STEP = 100;
+const SCROLLBAR_DRAG_ZONE = 20;
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function getMaxScroll() {
+  return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+}
+
+function clampTargetScroll() {
+  targetScroll = Math.max(0, Math.min(targetScroll, getMaxScroll()));
+}
+
+function smoothScrollStep() {
   const delta = targetScroll - currentScroll;
-  const distance = Math.abs(delta);
-  
-  // Вычисляем скорость с инерцией
-  const targetVelocity = delta * 0.1;
-  velocity = velocity * 0.85 + targetVelocity * 0.15;
-  
-  // Замедление в конце
-  if (distance < 50) {
-    velocity *= 0.7;
+
+  if (Math.abs(delta) <= SCROLL_STOP_EPSILON) {
+    currentScroll = targetScroll;
+    window.scrollTo(0, currentScroll);
+    scrollRaf = null;
+    return;
   }
-  if (distance < 10) {
-    velocity *= 0.5;
-  }
-  if (distance < 3) {
-    velocity *= 0.3;
-  }
-  
-  currentScroll += velocity;
-  
-  // Ограничиваем скролл
-  const maxScroll = document.body.scrollHeight - window.innerHeight;
-  currentScroll = Math.max(0, Math.min(currentScroll, maxScroll));
-  
+
+  currentScroll += delta * SCROLL_LERP;
   window.scrollTo(0, currentScroll);
-  
-  // Продолжаем если есть движение
-  if (Math.abs(velocity) > 0.01 || distance > 0.1) {
-    requestAnimationFrame(smoothScroll);
-  } else {
-    isScrolling = false;
-    velocity = 0;
+  scrollRaf = requestAnimationFrame(smoothScrollStep);
+}
+
+function startSmoothScroll() {
+  if (scrollRaf === null) {
+    scrollRaf = requestAnimationFrame(smoothScrollStep);
   }
 }
 
-// Синхронизация при перетаскивании скроллбара
+function stopSmoothScroll() {
+  if (scrollRaf !== null) {
+    cancelAnimationFrame(scrollRaf);
+    scrollRaf = null;
+  }
+  currentScroll = window.scrollY;
+  targetScroll = currentScroll;
+}
+
 window.addEventListener('scroll', () => {
-  if (!isScrolling && !isDragging) {
+  if (scrollRaf === null && !isDraggingScrollbar) {
     currentScroll = window.scrollY;
     targetScroll = currentScroll;
-    velocity = 0;
   }
 }, { passive: true });
 
 window.addEventListener('wheel', (e) => {
-  e.preventDefault();
-  isDragging = false;
-  
-  targetScroll += e.deltaY;
-  const maxScroll = document.body.scrollHeight - window.innerHeight;
-  targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
-  
-  if (!isScrolling) {
-    isScrolling = true;
-    smoothScroll();
+  if (prefersReducedMotion || e.ctrlKey) {
+    return;
   }
+
+  e.preventDefault();
+  isDraggingScrollbar = false;
+
+  targetScroll += e.deltaY;
+  clampTargetScroll();
+  startSmoothScroll();
 }, { passive: false });
 
-// Отслеживание перетаскивания скроллбара
 window.addEventListener('mousedown', (e) => {
-  // Проверяем, кликнули ли по скроллбару (приблизительно)
-  if (e.clientX > window.innerWidth - 20) {
-    isDragging = true;
-    isScrolling = false;
-    velocity = 0;
+  if (e.clientX >= window.innerWidth - SCROLLBAR_DRAG_ZONE) {
+    isDraggingScrollbar = true;
+    stopSmoothScroll();
   }
 });
 
 window.addEventListener('mouseup', () => {
-  if (isDragging) {
-    isDragging = false;
+  if (isDraggingScrollbar) {
+    isDraggingScrollbar = false;
     currentScroll = window.scrollY;
     targetScroll = currentScroll;
   }
 });
 
-// Обработка клавиш клавиатуры
+window.addEventListener('resize', () => {
+  clampTargetScroll();
+  currentScroll = Math.max(0, Math.min(currentScroll, getMaxScroll()));
+});
+
 window.addEventListener('keydown', (e) => {
-  const step = 100;
-  if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+  if (prefersReducedMotion) {
+    return;
+  }
+
+  if (e.key === 'Home') {
     e.preventDefault();
-    targetScroll += e.key === 'PageDown' ? window.innerHeight : step;
-    const maxScroll = document.body.scrollHeight - window.innerHeight;
-    targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
-    if (!isScrolling) {
-      isScrolling = true;
-      smoothScroll();
-    }
-  } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+    targetScroll = 0;
+    startSmoothScroll();
+    return;
+  }
+
+  if (e.key === 'End') {
     e.preventDefault();
-    targetScroll -= e.key === 'PageUp' ? window.innerHeight : step;
-    targetScroll = Math.max(0, Math.min(targetScroll, document.body.scrollHeight - window.innerHeight));
-    if (!isScrolling) {
-      isScrolling = true;
-      smoothScroll();
-    }
+    targetScroll = getMaxScroll();
+    startSmoothScroll();
+    return;
+  }
+
+  let delta = 0;
+  if (e.key === 'ArrowDown') {
+    delta = KEY_SCROLL_STEP;
+  } else if (e.key === 'ArrowUp') {
+    delta = -KEY_SCROLL_STEP;
+  } else if (e.key === 'PageDown') {
+    delta = window.innerHeight * 0.9;
+  } else if (e.key === 'PageUp') {
+    delta = -window.innerHeight * 0.9;
+  }
+
+  if (delta !== 0) {
+    e.preventDefault();
+    targetScroll += delta;
+    clampTargetScroll();
+    startSmoothScroll();
   }
 });
