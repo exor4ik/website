@@ -72,6 +72,36 @@ document.addEventListener('DOMContentLoaded', () => {
   loadComponent('footer-container', 'components/footer.html');
 });
 
+// Умный header - скрывается при скролле вниз, показывается при скролле вверх
+let lastScrollY = window.scrollY;
+let ticking = false;
+
+function toggleHeader() {
+  const header = document.querySelector('.header');
+  if (!header) return;
+  
+  const currentScrollY = window.scrollY;
+  
+  if (currentScrollY > lastScrollY && currentScrollY > 100) {
+    // Скролл вниз - скрываем header
+    header.classList.add('header-hidden');
+  } else {
+    // Скролл вверх - показываем header
+    header.classList.remove('header-hidden');
+  }
+  
+  lastScrollY = currentScrollY;
+  ticking = false;
+}
+
+// Слушаем скролл для header
+window.addEventListener('scroll', () => {
+  if (!ticking) {
+    requestAnimationFrame(toggleHeader);
+    ticking = true;
+  }
+}, { passive: true });
+
 // Плавная прокрутка без резкого торможения в конце
 let currentScroll = window.scrollY;
 let targetScroll = currentScroll;
