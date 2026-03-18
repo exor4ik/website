@@ -66,6 +66,10 @@ const galleryItems = document.querySelectorAll('.gallery-item img');
 const ANIMATION_DURATION = 420;
 const CENTER_MAX_WIDTH_RATIO = 0.9;
 const CENTER_MAX_HEIGHT_RATIO = 0.9;
+const SWAP_FADE_OUT_MS = 170;
+const SWAP_FADE_IN_MS = 210;
+const SWAP_ZOOM_OUT = 0.94;
+const SWAP_ZOOM_IN_START = 1.06;
 
 let currentIndex = 0;
 let isAnimating = false;
@@ -209,22 +213,27 @@ function swapImage(nextIndex) {
   const next = galleryItems[currentIndex];
   centeredRect = getCenteredRect(next);
 
-  lightboxImg.style.transition = 'opacity 180ms ease';
+  lightboxImg.style.transition = `opacity ${SWAP_FADE_OUT_MS}ms ease, transform ${SWAP_FADE_OUT_MS}ms ease`;
   lightboxImg.style.opacity = '0';
+  lightboxImg.style.transform = `translate3d(0, 0, 0) scale(${SWAP_ZOOM_OUT})`;
 
   setTimeout(() => {
     lightboxImg.src = next.currentSrc || next.src;
     lightboxImg.alt = next.alt || 'Фото';
     setImageRect(centeredRect);
+    lightboxImg.style.opacity = '0';
+    lightboxImg.style.transform = `translate3d(0, 0, 0) scale(${SWAP_ZOOM_IN_START})`;
 
     requestAnimationFrame(() => {
+      lightboxImg.style.transition = `opacity ${SWAP_FADE_IN_MS}ms ease, transform ${SWAP_FADE_IN_MS}ms cubic-bezier(.22,1,.36,1)`;
       lightboxImg.style.opacity = '1';
+      lightboxImg.style.transform = 'translate3d(0, 0, 0) scale(1)';
       setTimeout(() => {
         lightboxImg.style.transition = 'none';
         isAnimating = false;
-      }, 190);
+      }, SWAP_FADE_IN_MS + 20);
     });
-  }, 180);
+  }, SWAP_FADE_OUT_MS);
 }
 
 function showPrev() {

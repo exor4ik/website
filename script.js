@@ -229,3 +229,21 @@ window.addEventListener('keydown', (e) => {
     startSmoothScroll();
   }
 });
+
+// Копирование текста из code-block
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('copy-btn')) {
+    const codeBlock = e.target.closest('.code-block');
+    const code = codeBlock.querySelector('code');
+    if (code) {
+      navigator.clipboard.writeText(code.textContent).then(() => {
+        e.target.textContent = 'Скопировано!';
+        e.target.classList.add('copied');
+        setTimeout(() => {
+          e.target.textContent = 'Копировать';
+          e.target.classList.remove('copied');
+        }, 2000);
+      });
+    }
+  }
+});
