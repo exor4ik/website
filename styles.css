@@ -1,5 +1,70 @@
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#0b0d10;color:#eaeaea;overflow:hidden;height:100vh}
+body{margin:0;font-family:Arial,sans-serif;background:#0b0d10;color:#eaeaea;overflow:hidden;height:100vh;position:relative}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(circle at 50% 50%,rgba(255,255,255,0.03) 0%,transparent 50%);pointer-events:none;animation:pulse-bg 8s ease-in-out infinite}
+@keyframes pulse-bg{0%,100%{opacity:0.5}50%{opacity:1}}
+body .dust{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+body .dust span{position:absolute;width:2px;height:2px;background:rgba(255,255,255,0.8);border-radius:50%;animation:dust-random 15s infinite}
+body .dust span:nth-child(1){left:5%;animation-delay:0s;animation-duration:12s}
+body .dust span:nth-child(2){left:10%;animation-delay:1s;animation-duration:15s}
+body .dust span:nth-child(3){left:15%;animation-delay:2s;animation-duration:14s}
+body .dust span:nth-child(4){left:20%;animation-delay:0s;animation-duration:16s}
+body .dust span:nth-child(5){left:25%;animation-delay:1s;animation-duration:13s}
+body .dust span:nth-child(6){left:30%;animation-delay:2s;animation-duration:15s}
+body .dust span:nth-child(7){left:35%;animation-delay:0s;animation-duration:14s}
+body .dust span:nth-child(8){left:40%;animation-delay:1s;animation-duration:12s}
+body .dust span:nth-child(9){left:45%;animation-delay:2s;animation-duration:16s}
+body .dust span:nth-child(10){left:50%;animation-delay:0s;animation-duration:15s}
+body .dust span:nth-child(11){left:55%;animation-delay:1s;animation-duration:13s}
+body .dust span:nth-child(12){left:60%;animation-delay:2s;animation-duration:14s}
+body .dust span:nth-child(13){left:65%;animation-delay:0s;animation-duration:12s}
+body .dust span:nth-child(14){left:70%;animation-delay:1s;animation-duration:15s}
+body .dust span:nth-child(15){left:75%;animation-delay:2s;animation-duration:16s}
+body .dust span:nth-child(16){left:80%;animation-delay:0s;animation-duration:14s}
+body .dust span:nth-child(17){left:85%;animation-delay:1s;animation-duration:13s}
+body .dust span:nth-child(18){left:90%;animation-delay:2s;animation-duration:15s}
+body .dust span:nth-child(19){left:95%;animation-delay:0s;animation-duration:12s}
+body .dust span:nth-child(20){left:3%;animation-delay:1s;animation-duration:14s}
+body .dust span:nth-child(21){left:8%;animation-delay:2s;animation-duration:16s}
+body .dust span:nth-child(22){left:13%;animation-delay:0s;animation-duration:13s}
+body .dust span:nth-child(23){left:18%;animation-delay:1s;animation-duration:15s}
+body .dust span:nth-child(24){left:23%;animation-delay:2s;animation-duration:14s}
+body .dust span:nth-child(25){left:28%;animation-delay:0s;animation-duration:12s}
+body .dust span:nth-child(26){left:33%;animation-delay:1s;animation-duration:16s}
+body .dust span:nth-child(27){left:38%;animation-delay:2s;animation-duration:15s}
+body .dust span:nth-child(28){left:43%;animation-delay:0s;animation-duration:13s}
+body .dust span:nth-child(29){left:48%;animation-delay:1s;animation-duration:14s}
+body .dust span:nth-child(30){left:53%;animation-delay:2s;animation-duration:12s}
+body .dust span:nth-child(31){left:58%;animation-delay:0s;animation-duration:15s}
+body .dust span:nth-child(32){left:63%;animation-delay:1s;animation-duration:16s}
+body .dust span:nth-child(33){left:68%;animation-delay:2s;animation-duration:14s}
+body .dust span:nth-child(34){left:73%;animation-delay:0s;animation-duration:13s}
+body .dust span:nth-child(35){left:78%;animation-delay:1s;animation-duration:15s}
+body .dust span:nth-child(36){left:83%;animation-delay:2s;animation-duration:12s}
+body .dust span:nth-child(37){left:88%;animation-delay:0s;animation-duration:14s}
+body .dust span:nth-child(38){left:93%;animation-delay:1s;animation-duration:16s}
+body .dust span:nth-child(39){left:98%;animation-delay:2s;animation-duration:15s}
+body .dust span:nth-child(40){left:2%;animation-delay:0s;animation-duration:13s}
+body .dust span:nth-child(41){left:7%;animation-delay:1s;animation-duration:14s}
+body .dust span:nth-child(42){left:12%;animation-delay:2s;animation-duration:12s}
+body .dust span:nth-child(43){left:17%;animation-delay:0s;animation-duration:15s}
+body .dust span:nth-child(44){left:22%;animation-delay:1s;animation-duration:16s}
+body .dust span:nth-child(45){left:27%;animation-delay:2s;animation-duration:14s}
+body .dust span:nth-child(46){left:32%;animation-delay:0s;animation-duration:13s}
+body .dust span:nth-child(47){left:37%;animation-delay:1s;animation-duration:15s}
+body .dust span:nth-child(48){left:42%;animation-delay:2s;animation-duration:12s}
+body .dust span:nth-child(49){left:47%;animation-delay:0s;animation-duration:14s}
+body .dust span:nth-child(50){left:52%;animation-delay:1s;animation-duration:16s}
+body .dust span:nth-child(51){left:57%;animation-delay:2s;animation-duration:15s}
+body .dust span:nth-child(52){left:62%;animation-delay:0s;animation-duration:13s}
+body .dust span:nth-child(53){left:67%;animation-delay:1s;animation-duration:14s}
+body .dust span:nth-child(54){left:72%;animation-delay:2s;animation-duration:12s}
+body .dust span:nth-child(55){left:77%;animation-delay:0s;animation-duration:15s}
+body .dust span:nth-child(56){left:82%;animation-delay:1s;animation-duration:16s}
+body .dust span:nth-child(57){left:87%;animation-delay:2s;animation-duration:14s}
+body .dust span:nth-child(58){left:92%;animation-delay:0s;animation-duration:13s}
+body .dust span:nth-child(59){left:97%;animation-delay:1s;animation-duration:15s}
+body .dust span:nth-child(60){left:50%;animation-delay:2s;animation-duration:12s}
+@keyframes dust-random{0%{transform:translate(0,0);opacity:0}10%{opacity:0.5}90%{opacity:0.5}100%{transform:translate(var(--dx,50px),var(--dy,-100vh));opacity:0}}
 html{scroll-behavior:auto;height:100vh}
 body{overflow-y:scroll}
 html{scrollbar-gutter:stable}
@@ -14,7 +79,9 @@ main.container{padding-top:100px}
 .header-inner{display:flex;align-items:center;justify-content:space-between}
 .logo{font-weight:700}
 .nav{position:relative;display:flex;gap:16px}
-.nav a{color:#aaa;text-decoration:none;padding:6px 12px;z-index:2;transition:color .3s}
+.nav a{color:#aaa;text-decoration:none;padding:6px 12px;z-index:2;transition:color .3s;position:relative}
+.nav a::after{content:'';position:absolute;bottom:0;left:0;width:0;height:2px;background:rgba(255,255,255,0.3);transition:width .3s ease}
+.nav a:hover::after,.nav a.active::after{width:100%}
 .nav a:hover, .nav a.active{color:#fff}
 .nav-highlight{position:absolute;top:0;left:0;height:100%;border-radius:8px;background:rgba(255,255,255,.12);backdrop-filter:blur(6px);transition:all .35s ease;opacity:0;z-index:1}
 .burger{display:none;flex-direction:column;gap:4px;background:none;border:0}
@@ -33,8 +100,17 @@ main.container{padding-top:100px}
   text-align:center;
   background: url('images/hero.gif') center / cover no-repeat;
   transition: transform .2s ease-out;
+  overflow: hidden;
 }
-.hero h1{font-size:clamp(1.5rem,5vw,3rem);margin-bottom:16px;line-height:1.2;word-wrap:break-word}
+.hero::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(180deg,transparent 0%,rgba(0,0,0,0.4) 100%);
+  pointer-events:none;
+}
+.hero h1{font-size:clamp(1.5rem,5vw,3rem);margin-bottom:16px;line-height:1.2;word-wrap:break-word;animation:fadeInUp 1s ease}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
 .hero-panel{
   padding:24px 20px;
   border-radius:20px;
@@ -48,9 +124,12 @@ main.container{padding-top:100px}
 .hero .btn:hover{background:rgba(0,0,0,0.8)}
 
 /* Карточки и кнопки */
-.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;padding-right:170px;margin-bottom:16px;position:relative}
-.card:hover{transform:translateY(-4px)}
-.card-image{position:absolute;top:24px;right:24px;width:128px;height:128px;border-radius:16px;border:2px solid rgba(255,255,255,0.3);object-fit:cover;z-index:1}
+.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;padding-right:170px;margin-bottom:16px;position:relative;transition:transform .3s cubic-bezier(.22,1,.36,1),box-shadow .3s ease,border-color .3s ease;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.05),transparent);transition:left .5s ease}
+.card:hover::before{left:100%}
+.card:hover{transform:translateY(-8px);box-shadow:0 20px 40px rgba(0,0,0,0.4);border-color:rgba(255,255,255,0.15)}
+.card-image{position:absolute;top:24px;right:24px;width:128px;height:128px;border-radius:16px;border:2px solid rgba(255,255,255,0.3);object-fit:cover;z-index:1;transition:transform .5s ease}
+.card:hover .card-image{transform:scale(1.05)}
 .card h2,.card h3,.card p,.card .game-btns{max-width:calc(100% - 196px)}
 .btn{display:inline-block;padding:10px 20px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;text-decoration:none;transition:background .3s}
 .btn:hover{background:rgba(255,255,255,.2)}
@@ -70,10 +149,11 @@ main.container{padding-top:100px}
 /* Фотогалерея */
 .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;margin-top:24px}
 .gallery-item{position:relative;border-radius:16px;overflow:hidden;cursor:pointer;transform:translateY(0);transition:transform .35s cubic-bezier(.22,1,.36,1),box-shadow .35s ease}
+.gallery-item:hover{transform:translateY(-8px);box-shadow:0 20px 40px rgba(0,0,0,0.4)}
 .gallery-item img{width:100%;height:280px;object-fit:cover;display:block;transition:transform .5s cubic-bezier(.22,1,.36,1)}
-.gallery-item:hover{transform:translateY(-4px);box-shadow:0 14px 34px rgba(0,0,0,.35)}
-.gallery-item:hover img{transform:scale(1.06)}
-.gallery-caption{position:absolute;bottom:0;left:0;right:0;padding:16px;background:linear-gradient(transparent,rgba(0,0,0,0.8));color:#fff;font-size:0.9rem}
+.gallery-item:hover img{transform:scale(1.1)}
+.gallery-caption{position:absolute;bottom:0;left:0;right:0;padding:16px;background:linear-gradient(transparent,rgba(0,0,0,0.8));color:#fff;font-size:0.9rem;transition:transform .3s ease}
+.gallery-item:hover .gallery-caption{transform:translateY(-4px)}
 
 /* Лайтбокс для просмотра фото */
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:10000;display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .35s ease,visibility 0s linear .35s}
@@ -100,8 +180,34 @@ main.container{padding-top:100px}
 .fade.card-9{transition-delay:.9s}
 .fade.card-10{transition-delay:1.0s}
 
+/* Плавающие элементы для живости */
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.float-slow{animation:float 6s ease-in-out infinite}
+.float-medium{animation:float 4s ease-in-out infinite}
+.float-fast{animation:float 3s ease-in-out infinite}
+
+/* Пульсация для кнопок/акцентов */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
+.pulse{animation:pulse 2s ease-in-out infinite}
+
+/* Градиентная анимация */
+@keyframes gradient-shift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.gradient-animated{background:linear-gradient(-45deg,#1a1a2e,#16213e,#0f3460,#1a1a2e);background-size:400% 400%;animation:gradient-shift 15s ease infinite}
+
+/* Свечение при наведении */
+.glow-hover{transition:box-shadow .3s ease}
+.glow-hover:hover{box-shadow:0 0 30px rgba(255,255,255,0.1)}
+
+/* Мерцание для статусов */
+@keyframes shimmer{0%{opacity:.6}50%{opacity:1}100%{opacity:.6}}
+.shimmer{animation:shimmer 2s infinite}
+
 /* Футер */
-.footer{border-top:1px solid rgba(255,255,255,.08);padding:24px;text-align:center}
+.footer{border-top:1px solid rgba(255,255,255,.08);padding:0px;text-align:center;position:relative}
+.footer::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:80%;height:100px;background:radial-gradient(ellipse at center bottom,rgba(100,150,255,0.1) 0%,transparent 70%);pointer-events:none;animation:footer-glow 6s ease-in-out infinite}
+@keyframes footer-glow{0%,100%{opacity:0.4;transform:translateX(-50%) scale(1)}50%{opacity:0.8;transform:translateX(-50%) scale(1.1)}}
+.footer a{position:relative;display:inline-block;transition:transform .3s ease,color .3s ease}
+.footer a:hover{transform:translateY(-2px);color:#fff}
 
 /* Мобильное меню */
 .mobile-menu{position:fixed;top:64px;left:0;right:0;background:rgba(20,20,25,.95);backdrop-filter:blur(14px);display:none;flex-direction:column;z-index:101}

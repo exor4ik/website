@@ -247,3 +247,24 @@ document.addEventListener('click', (e) => {
     }
   }
 });
+
+// Генерация пыли на фоне
+function createDust() {
+  const dustContainer = document.querySelector('.dust');
+  if (!dustContainer) return;
+  
+  const particles = dustContainer.querySelectorAll('span');
+  particles.forEach(span => {
+    const randomX = (Math.random() - 0.5) * 100;
+    const randomY = -Math.random() * 100 - 50;
+    span.style.setProperty('--dx', randomX + 'px');
+    span.style.setProperty('--dy', randomY + 'px');
+    span.style.top = Math.random() * 100 + '%';
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadComponent('header-container', 'components/header.html');
+  loadComponent('footer-container', 'components/footer.html');
+  createDust();
+});
