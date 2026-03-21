@@ -32,28 +32,28 @@
 
   <div class="gallery">
     <div class="gallery-item fade">
-      <img src="images/projectorCover.jpg" alt="Проект 1">
-      <div class="gallery-caption">Название проекта 1</div>
+      <img src="https://lh3.googleusercontent.com/sitesv/APaQ0SSpLMW90Cj4Cxfn0A3-4yx45soIFM6km58H7dikzEgiON2Pt5LPQcA0AtidNLyUHDQtPUpSMkl5IDtvsKX8j3wFwVTrOHRdNLg_JJUsPhcuUFTMFCtqFqTAeNLoarFGbqZjullAJ4JDMRWl1BK13v8dxhmmey_nw-_RgSmURTELuOz4TvG1j-VA=w16383" alt="Фото 1">
+      <div class="gallery-caption">Первый Плейтест Катакомб. (Фото 1)</div>
     </div>
     <div class="gallery-item fade">
-      <img src="images/projectorCover.jpg" alt="Проект 2">
-      <div class="gallery-caption">Название проекта 2</div>
+      <img src="https://lh3.googleusercontent.com/sitesv/APaQ0SSoW2_fEh6NDXxGQDkPGRPQhHoh5fGAvtx29QxKN31WHabHYPOzu2qF2OuPwBlQHKOq-XueA6psly58Yaq4Kcc7AlIcWWiK90iOJHAbpVaAN6up2LN-5yD2sn9lop1ihclulHyouxVzwK-FuFVx3xyBzJLQ3QaU43jsVSu-K-PPJfBgQABqkCtKbwk=w16383" alt="Фото 2">
+      <div class="gallery-caption">Первый Плейтест Катакомб. (Фото 2)</div>
     </div>
     <div class="gallery-item fade">
-      <img src="images/projectorCover.jpg" alt="Проект 3">
-      <div class="gallery-caption">Название проекта 3</div>
+      <img src="https://lh3.googleusercontent.com/sitesv/APaQ0SRTcqmsRO9xeFfS-a239wVE-FiPov-wEX_GtksFsFQEg_GO2oRCR1FHmcCdYpyg7-bJY6ux8q2ONiqGmPzDM91JDWfIeczD7x4Pf-MK7YvTl9m-rFXgINqA-amZQw2w0CfFNEAMjzvXI86StsWMAr4WuNu5pv8ZE9Bo7Q_XTZdKINbyayzE22Vlqmy3m-wrLi5KGQH5LG0PDpq5rn0KLQLB1p5OFmPMNNWN_Ms=w1280" alt="Фото 3">
+      <div class="gallery-caption">А вот это главное меню когда Катакомбы только родились в моей голове</div>
     </div>
     <div class="gallery-item fade">
-      <img src="images/projectorCover.jpg" alt="Проект 4">
-      <div class="gallery-caption">Название проекта 4</div>
+      <img src="images/old_site.png" alt="Фото 4">
+      <div class="gallery-caption">Старый сайт, Press F (2024-2026)</div>
     </div>
     <div class="gallery-item fade">
-      <img src="images/projectorCover.jpg" alt="Проект 5">
-      <div class="gallery-caption">Название проекта 5</div>
+      <img src="https://media.discordapp.net/attachments/1414301976480583692/1484950191139459072/06-03-2026_182655.png?ex=69c01722&is=69bec5a2&hm=fec2fd6bc8f1a7aecaee8ac5a575f71078617b3fd7f0e237d53c07f66dc6029b&=&format=webp&quality=lossless" alt="Фото 5">
+      <div class="gallery-caption">Жесткая пикча от Роцка</div>
     </div>
     <div class="gallery-item fade">
-      <img src="images/projectorCover.jpg" alt="Проект 6">
-      <div class="gallery-caption">Название проекта 6</div>
+      <img src="images/logo_4k.png" alt="Фото 6">
+      <div class="gallery-caption">Логотип EgorNetwork в 4K разрешении 😮</div>
     </div>
   </div>
 </main>
@@ -370,7 +370,7 @@ function setImageRect(rect) {
   lightboxImg.style.top = `${safe.top}px`;
   lightboxImg.style.width = `${safe.width}px`;
   lightboxImg.style.height = `${safe.height}px`;
-  lightboxImg.style.transform = 'translate3d(0, 0, 0) scale(1, 1)';
+  lightboxImg.style.transform = 'none';
 }
 
 function animateImageBetweenRects(fromRect, toRect, onDone) {
@@ -382,10 +382,6 @@ function animateImageBetweenRects(fromRect, toRect, onDone) {
 
   const start = normalizeRect(fromRect);
   const end = normalizeRect(toRect);
-  const dx = end.left - start.left;
-  const dy = end.top - start.top;
-  const scaleX = end.width / start.width;
-  const scaleY = end.height / start.height;
 
   lightboxImg.style.transition = 'none';
   lightboxImg.style.opacity = '1';
@@ -404,7 +400,7 @@ function animateImageBetweenRects(fromRect, toRect, onDone) {
   };
 
   const onTransitionEnd = (event) => {
-    if (event.propertyName === 'transform') {
+    if (event.propertyName === 'width') {
       finish();
     }
   };
@@ -413,8 +409,16 @@ function animateImageBetweenRects(fromRect, toRect, onDone) {
   const fallbackTimer = setTimeout(finish, ANIMATION_DURATION + 100);
 
   requestAnimationFrame(() => {
-    lightboxImg.style.transition = `transform ${ANIMATION_DURATION}ms cubic-bezier(.22,1,.36,1)`;
-    lightboxImg.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${scaleX}, ${scaleY})`;
+    lightboxImg.style.transition = [
+      `left ${ANIMATION_DURATION}ms cubic-bezier(.22,1,.36,1)`,
+      `top ${ANIMATION_DURATION}ms cubic-bezier(.22,1,.36,1)`,
+      `width ${ANIMATION_DURATION}ms cubic-bezier(.22,1,.36,1)`,
+      `height ${ANIMATION_DURATION}ms cubic-bezier(.22,1,.36,1)`
+    ].join(', ');
+    lightboxImg.style.left = `${end.left}px`;
+    lightboxImg.style.top = `${end.top}px`;
+    lightboxImg.style.width = `${end.width}px`;
+    lightboxImg.style.height = `${end.height}px`;
   });
 }
 
@@ -469,7 +473,7 @@ function closeLightbox() {
     lightboxImg.style.top = '0';
     lightboxImg.style.width = '0';
     lightboxImg.style.height = '0';
-    lightboxImg.style.transform = 'translate3d(0, 0, 0) scale(1, 1)';
+    lightboxImg.style.transform = 'none';
     if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
       lastFocusedElement.focus({ preventScroll: true });
     }
