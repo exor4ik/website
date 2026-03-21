@@ -54,10 +54,15 @@ function initCardTilt() {
     return;
   }
 
-  const cards = document.querySelectorAll('.card');
+  const cards = document.querySelectorAll('.card, .gallery-item');
   cards.forEach((card) => {
     if (card.dataset.tiltReady === '1') return;
     card.dataset.tiltReady = '1';
+    const isGalleryCard = card.classList.contains('gallery-item');
+    const tiltXMax = isGalleryCard ? 2.8 : 4.4;
+    const tiltYMax = isGalleryCard ? 3.4 : 5.4;
+    const hoverRaise = isGalleryCard ? -2.6 : -4.8;
+    const easing = isGalleryCard ? 0.09 : 0.12;
 
     const state = {
       rx: 0,
@@ -76,7 +81,6 @@ function initCardTilt() {
     let rafId = null;
 
     const step = () => {
-      const easing = 0.12;
       state.rx += (target.rx - state.rx) * easing;
       state.ry += (target.ry - state.ry) * easing;
       state.mx += (target.mx - state.mx) * easing;
@@ -114,11 +118,11 @@ function initCardTilt() {
       const rect = card.getBoundingClientRect();
       const px = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
       const py = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
-      target.rx = (0.5 - py) * 4.4;
-      target.ry = (px - 0.5) * 5.4;
+      target.rx = (0.5 - py) * tiltXMax;
+      target.ry = (px - 0.5) * tiltYMax;
       target.mx = px * 100;
       target.my = py * 100;
-      target.raise = -4.8;
+      target.raise = hoverRaise;
       start();
     };
 
@@ -132,7 +136,7 @@ function initCardTilt() {
     };
 
     card.addEventListener('pointerenter', () => {
-      target.raise = -4.8;
+      target.raise = hoverRaise;
       start();
     });
     card.addEventListener('pointermove', onMove);

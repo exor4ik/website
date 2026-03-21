@@ -59,11 +59,17 @@
 </main>
 
 <!-- Лайтбокс -->
-<div class="lightbox" id="lightbox">
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Просмотр фотографии">
   <button class="lightbox-close" id="lightbox-close">&times;</button>
   <button class="lightbox-prev" id="lightbox-prev">&#10094;</button>
   <img src="" alt="Fullscreen" id="lightbox-img">
   <button class="lightbox-next" id="lightbox-next">&#10095;</button>
+  <div class="lightbox-meta">
+    <span class="lightbox-counter" id="lightbox-counter" aria-live="polite"></span>
+    <p class="lightbox-caption" id="lightbox-caption" aria-live="polite"></p>
+    <p class="lightbox-hint">Esc — закрыть · ←/→ — переключить</p>
+    <div class="lightbox-thumbs" id="lightbox-thumbs" aria-label="Миниатюры фото"></div>
+  </div>
 </div>
 
 <div id="footer-container"></div>
@@ -75,7 +81,11 @@ const lightboxImg = document.getElementById('lightbox-img');
 const lightboxClose = document.getElementById('lightbox-close');
 const lightboxPrev = document.getElementById('lightbox-prev');
 const lightboxNext = document.getElementById('lightbox-next');
+const lightboxCounter = document.getElementById('lightbox-counter');
+const lightboxCaption = document.getElementById('lightbox-caption');
+const lightboxThumbs = document.getElementById('lightbox-thumbs');
 const galleryItems = document.querySelectorAll('.gallery-item img');
+const galleryCards = document.querySelectorAll('.gallery-item');
 
 const ANIMATION_DURATION = 420;
 const CENTER_MAX_WIDTH_RATIO = 0.9;
@@ -84,14 +94,244 @@ const SWAP_FADE_OUT_MS = 170;
 const SWAP_FADE_IN_MS = 210;
 const SWAP_ZOOM_OUT = 0.94;
 const SWAP_ZOOM_IN_START = 1.06;
+const SWIPE_THRESHOLD = 40;
+const THUMB_DRAG_THRESHOLD = 6;
+const THUMB_MOMENTUM_FRICTION = 0.92;
+const THUMB_MOMENTUM_MIN_VELOCITY = 0.02;
+const prefersReducedMotionLightbox = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let currentIndex = 0;
 let isAnimating = false;
 let centeredRect = null;
+let lastFocusedElement = null;
+let touchStartX = 0;
+let touchStartY = 0;
+let touchStartedOnThumbs = false;
+const thumbButtons = [];
+let thumbPointerId = null;
+let thumbDragActive = false;
+let thumbDragMoved = false;
+let thumbStartX = 0;
+let thumbStartScrollLeft = 0;
+let thumbLastTime = 0;
+let thumbLastScrollLeft = 0;
+let thumbVelocity = 0;
+let thumbMomentumRaf = null;
+let suppressThumbClickUntil = 0;
+
+lightboxClose.setAttribute('aria-label', 'Закрыть');
+lightboxPrev.setAttribute('aria-label', 'Предыдущее фото');
+lightboxNext.setAttribute('aria-label', 'Следующее фото');
 
 function setBodyScrollLocked(locked) {
   document.body.style.overflow = locked ? 'hidden' : '';
   document.body.style.overflowY = locked ? 'hidden' : '';
+}
+
+function getCaptionForIndex(index) {
+  const card = galleryCards[index];
+  const captionEl = card ? card.querySelector('.gallery-caption') : null;
+  return captionEl ? captionEl.textContent.trim() : '';
+}
+
+function updateLightboxMeta() {
+  lightboxCounter.textContent = `${currentIndex + 1} / ${galleryItems.length}`;
+  lightboxCaption.textContent = getCaptionForIndex(currentIndex);
+  updateLightboxThumbs();
+}
+
+function updateLightboxThumbs() {
+  thumbButtons.forEach((button, index) => {
+    const rawDistance = Math.abs(index - currentIndex);
+    const distance = Math.min(rawDistance, thumbButtons.length - rawDistance);
+    const isActive = index === currentIndex;
+    const isNear = distance === 1;
+    const isFar = distance >= 2;
+
+    button.classList.toggle('is-active', isActive);
+    button.classList.toggle('is-near', isNear);
+    button.classList.toggle('is-far', isFar);
+    button.setAttribute('aria-current', isActive ? 'true' : 'false');
+  });
+
+  const activeThumb = thumbButtons[currentIndex];
+  if (activeThumb) {
+    activeThumb.scrollIntoView({
+      block: 'nearest',
+      inline: 'center',
+      behavior: prefersReducedMotionLightbox ? 'auto' : 'smooth'
+    });
+  }
+}
+
+function buildLightboxThumbs() {
+  lightboxThumbs.innerHTML = '';
+  thumbButtons.length = 0;
+
+  galleryItems.forEach((img, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'lightbox-thumb';
+    button.setAttribute('aria-label', `Открыть фото ${index + 1}`);
+
+    const thumbImg = document.createElement('img');
+    thumbImg.src = img.currentSrc || img.src;
+    thumbImg.alt = img.alt || `Фото ${index + 1}`;
+    thumbImg.loading = 'lazy';
+    thumbImg.decoding = 'async';
+
+    button.appendChild(thumbImg);
+    button.addEventListener('click', () => {
+      if (isAnimating) return;
+      if (performance.now() < suppressThumbClickUntil) return;
+      if (!lightbox.classList.contains('active')) {
+        openLightbox(index);
+        return;
+      }
+      if (index !== currentIndex) {
+        swapImage(index);
+      }
+    });
+
+    lightboxThumbs.appendChild(button);
+    thumbButtons.push(button);
+  });
+}
+
+function stopThumbMomentum() {
+  if (thumbMomentumRaf !== null) {
+    cancelAnimationFrame(thumbMomentumRaf);
+    thumbMomentumRaf = null;
+  }
+}
+
+function startThumbMomentum() {
+  if (prefersReducedMotionLightbox || Math.abs(thumbVelocity) < THUMB_MOMENTUM_MIN_VELOCITY) {
+    thumbVelocity = 0;
+    return;
+  }
+
+  stopThumbMomentum();
+  const maxScroll = Math.max(0, lightboxThumbs.scrollWidth - lightboxThumbs.clientWidth);
+
+  const step = () => {
+    if (Math.abs(thumbVelocity) < THUMB_MOMENTUM_MIN_VELOCITY) {
+      thumbVelocity = 0;
+      thumbMomentumRaf = null;
+      return;
+    }
+
+    lightboxThumbs.scrollLeft += thumbVelocity * 16;
+    if (lightboxThumbs.scrollLeft <= 0 || lightboxThumbs.scrollLeft >= maxScroll) {
+      thumbVelocity *= 0.55;
+    }
+    thumbVelocity *= THUMB_MOMENTUM_FRICTION;
+    thumbMomentumRaf = requestAnimationFrame(step);
+  };
+
+  thumbMomentumRaf = requestAnimationFrame(step);
+}
+
+function startThumbDrag(e) {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  stopThumbMomentum();
+
+  thumbDragActive = true;
+  thumbDragMoved = false;
+  thumbPointerId = e.pointerId;
+  thumbStartX = e.clientX;
+  thumbStartScrollLeft = lightboxThumbs.scrollLeft;
+  thumbLastTime = performance.now();
+  thumbLastScrollLeft = lightboxThumbs.scrollLeft;
+  thumbVelocity = 0;
+
+  lightboxThumbs.classList.add('is-dragging');
+  lightboxThumbs.setPointerCapture(e.pointerId);
+}
+
+function moveThumbDrag(e) {
+  if (!thumbDragActive || e.pointerId !== thumbPointerId) return;
+
+  const deltaX = e.clientX - thumbStartX;
+  if (Math.abs(deltaX) > THUMB_DRAG_THRESHOLD) {
+    thumbDragMoved = true;
+  }
+
+  lightboxThumbs.scrollLeft = thumbStartScrollLeft - deltaX;
+
+  const now = performance.now();
+  const dt = Math.max(1, now - thumbLastTime);
+  thumbVelocity = (lightboxThumbs.scrollLeft - thumbLastScrollLeft) / dt;
+  thumbLastTime = now;
+  thumbLastScrollLeft = lightboxThumbs.scrollLeft;
+
+  if (thumbDragMoved) {
+    e.preventDefault();
+  }
+}
+
+function endThumbDrag(e) {
+  if (!thumbDragActive) return;
+  if (thumbPointerId !== null && e.pointerId !== undefined && e.pointerId !== thumbPointerId) return;
+
+  if (thumbPointerId !== null) {
+    try {
+      lightboxThumbs.releasePointerCapture(thumbPointerId);
+    } catch (_) {
+      // ignore release errors
+    }
+  }
+
+  thumbDragActive = false;
+  thumbPointerId = null;
+  lightboxThumbs.classList.remove('is-dragging');
+
+  if (thumbDragMoved) {
+    suppressThumbClickUntil = performance.now() + 140;
+    startThumbMomentum();
+  }
+}
+
+function bindThumbFilmstripInteractions() {
+  lightboxThumbs.addEventListener('pointerdown', startThumbDrag);
+  lightboxThumbs.addEventListener('pointermove', moveThumbDrag);
+  lightboxThumbs.addEventListener('pointerup', endThumbDrag);
+  lightboxThumbs.addEventListener('pointercancel', endThumbDrag);
+  lightboxThumbs.addEventListener('lostpointercapture', endThumbDrag);
+
+  lightboxThumbs.addEventListener('wheel', (e) => {
+    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (delta === 0) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    stopThumbMomentum();
+
+    lightboxThumbs.scrollLeft += delta;
+    thumbVelocity = delta / 16;
+    startThumbMomentum();
+  }, { passive: false });
+}
+
+function trapLightboxFocus(event) {
+  const focusable = Array.from(
+    lightbox.querySelectorAll('button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])')
+  );
+  if (!focusable.length) return;
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+    return;
+  }
+
+  if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 function normalizeRect(rect) {
@@ -134,6 +374,12 @@ function setImageRect(rect) {
 }
 
 function animateImageBetweenRects(fromRect, toRect, onDone) {
+  if (prefersReducedMotionLightbox) {
+    setImageRect(toRect);
+    onDone();
+    return;
+  }
+
   const start = normalizeRect(fromRect);
   const end = normalizeRect(toRect);
   const dx = end.left - start.left;
@@ -177,6 +423,7 @@ function openLightbox(index) {
 
   currentIndex = index;
   isAnimating = true;
+  lastFocusedElement = document.activeElement;
 
   const source = galleryItems[currentIndex];
   const startRect = source.getBoundingClientRect();
@@ -184,12 +431,14 @@ function openLightbox(index) {
 
   lightboxImg.src = source.currentSrc || source.src;
   lightboxImg.alt = source.alt || 'Фото';
+  updateLightboxMeta();
 
   setBodyScrollLocked(true);
   lightbox.classList.add('active');
 
   requestAnimationFrame(() => {
     animateImageBetweenRects(startRect, centeredRect, () => {
+      lightboxClose.focus({ preventScroll: true });
       isAnimating = false;
     });
   });
@@ -206,6 +455,13 @@ function closeLightbox() {
   animateImageBetweenRects(startRect, endRect, () => {
     lightbox.classList.remove('active');
     setBodyScrollLocked(false);
+    stopThumbMomentum();
+    lightboxThumbs.classList.remove('is-dragging');
+    thumbVelocity = 0;
+    thumbDragActive = false;
+    thumbDragMoved = false;
+    thumbPointerId = null;
+    touchStartedOnThumbs = false;
     centeredRect = null;
     lightboxImg.style.transition = 'none';
     lightboxImg.style.opacity = '1';
@@ -214,6 +470,10 @@ function closeLightbox() {
     lightboxImg.style.width = '0';
     lightboxImg.style.height = '0';
     lightboxImg.style.transform = 'translate3d(0, 0, 0) scale(1, 1)';
+    if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+      lastFocusedElement.focus({ preventScroll: true });
+    }
+    lastFocusedElement = null;
     isAnimating = false;
   });
 }
@@ -226,6 +486,15 @@ function swapImage(nextIndex) {
 
   const next = galleryItems[currentIndex];
   centeredRect = getCenteredRect(next);
+  updateLightboxMeta();
+
+  if (prefersReducedMotionLightbox) {
+    lightboxImg.src = next.currentSrc || next.src;
+    lightboxImg.alt = next.alt || 'Фото';
+    setImageRect(centeredRect);
+    isAnimating = false;
+    return;
+  }
 
   lightboxImg.style.transition = `opacity ${SWAP_FADE_OUT_MS}ms ease, transform ${SWAP_FADE_OUT_MS}ms ease`;
   lightboxImg.style.opacity = '0';
@@ -258,9 +527,23 @@ function showNext() {
   swapImage(currentIndex + 1);
 }
 
-galleryItems.forEach((img, index) => {
-  img.addEventListener('click', () => openLightbox(index));
+galleryCards.forEach((card, index) => {
+  const cardCaption = getCaptionForIndex(index) || `Фото ${index + 1}`;
+  card.setAttribute('tabindex', '0');
+  card.setAttribute('role', 'button');
+  card.setAttribute('aria-label', `Открыть: ${cardCaption}`);
+
+  card.addEventListener('click', () => openLightbox(index));
+  card.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openLightbox(index);
+    }
+  });
 });
+
+buildLightboxThumbs();
+bindThumbFilmstripInteractions();
 
 lightboxClose.addEventListener('click', closeLightbox);
 lightboxPrev.addEventListener('click', showPrev);
@@ -275,12 +558,60 @@ lightbox.addEventListener('wheel', (e) => {
   e.stopPropagation();
 }, { passive: false });
 
+lightbox.addEventListener('touchstart', (e) => {
+  if (!lightbox.classList.contains('active')) return;
+  touchStartedOnThumbs = !!e.target.closest('.lightbox-thumbs');
+  const touch = e.changedTouches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+}, { passive: true });
+
+lightbox.addEventListener('touchend', (e) => {
+  if (!lightbox.classList.contains('active') || isAnimating) return;
+  if (touchStartedOnThumbs) {
+    touchStartedOnThumbs = false;
+    return;
+  }
+  const touch = e.changedTouches[0];
+  const deltaX = touch.clientX - touchStartX;
+  const deltaY = touch.clientY - touchStartY;
+
+  if (Math.abs(deltaX) > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY)) {
+    if (deltaX > 0) {
+      showPrev();
+    } else {
+      showNext();
+    }
+  }
+}, { passive: true });
+
 document.addEventListener('keydown', (e) => {
   if (!lightbox.classList.contains('active')) return;
-  if (e.key === 'Escape') closeLightbox();
-  if (e.key === 'ArrowLeft') showPrev();
-  if (e.key === 'ArrowRight') showNext();
+  if (e.key === 'Tab') {
+    trapLightboxFocus(e);
+    return;
+  }
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    closeLightbox();
+  }
+  if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    showPrev();
+  }
+  if (e.key === 'ArrowRight') {
+    e.preventDefault();
+    showNext();
+  }
 });
+
+document.addEventListener('keydown', (e) => {
+  if (!lightbox.classList.contains('active')) return;
+  if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(e.key)) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+}, true);
 
 window.addEventListener('resize', () => {
   if (!lightbox.classList.contains('active') || isAnimating) return;
