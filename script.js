@@ -16,11 +16,184 @@ async function loadComponent(id, file) {
   }
 }
 
+function initScrollProgress() {
+  let progressBar = document.querySelector('.scroll-progress');
+  if (!progressBar) {
+    progressBar = document.createElement('div');
+    progressBar.className = 'scroll-progress';
+    document.body.appendChild(progressBar);
+  }
+
+  const updateProgress = () => {
+    const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    const progress = maxScroll === 0 ? 1 : Math.min(1, Math.max(0, window.scrollY / maxScroll));
+    progressBar.style.transform = `scaleX(${progress})`;
+  };
+
+  updateProgress();
+  window.addEventListener('scroll', updateProgress, { passive: true });
+  window.addEventListener('resize', updateProgress);
+}
+
+function initCursorGlow() {
+  const hasFinePointer = window.matchMedia('(pointer: fine)').matches;
+  if (!hasFinePointer || prefersReducedMotion) {
+    document.documentElement.style.setProperty('--cursor-x', '50%');
+    document.documentElement.style.setProperty('--cursor-y', '50%');
+    return;
+  }
+
+  window.addEventListener('mousemove', (e) => {
+    document.documentElement.style.setProperty('--cursor-x', `${e.clientX}px`);
+    document.documentElement.style.setProperty('--cursor-y', `${e.clientY}px`);
+  }, { passive: true });
+}
+
+function initCardTilt() {
+  if (prefersReducedMotion || !window.matchMedia('(pointer: fine)').matches) {
+    return;
+  }
+
+  const cards = document.querySelectorAll('.card');
+  cards.forEach((card) => {
+    if (card.dataset.tiltReady === '1') return;
+    card.dataset.tiltReady = '1';
+
+    const state = {
+      rx: 0,
+      ry: 0,
+      mx: 50,
+      my: 50,
+      raise: 0
+    };
+    const target = {
+      rx: 0,
+      ry: 0,
+      mx: 50,
+      my: 50,
+      raise: 0
+    };
+    let rafId = null;
+
+    const step = () => {
+      const easing = 0.12;
+      state.rx += (target.rx - state.rx) * easing;
+      state.ry += (target.ry - state.ry) * easing;
+      state.mx += (target.mx - state.mx) * easing;
+      state.my += (target.my - state.my) * easing;
+      state.raise += (target.raise - state.raise) * easing;
+
+      card.style.setProperty('--rx', `${state.rx.toFixed(2)}deg`);
+      card.style.setProperty('--ry', `${state.ry.toFixed(2)}deg`);
+      card.style.setProperty('--mx', `${state.mx.toFixed(2)}%`);
+      card.style.setProperty('--my', `${state.my.toFixed(2)}%`);
+      card.style.setProperty('--raise', `${state.raise.toFixed(2)}px`);
+
+      const settled =
+        Math.abs(target.rx - state.rx) < 0.02 &&
+        Math.abs(target.ry - state.ry) < 0.02 &&
+        Math.abs(target.mx - state.mx) < 0.05 &&
+        Math.abs(target.my - state.my) < 0.05 &&
+        Math.abs(target.raise - state.raise) < 0.02;
+
+      if (settled) {
+        rafId = null;
+        return;
+      }
+
+      rafId = requestAnimationFrame(step);
+    };
+
+    const start = () => {
+      if (rafId === null) {
+        rafId = requestAnimationFrame(step);
+      }
+    };
+
+    const onMove = (e) => {
+      const rect = card.getBoundingClientRect();
+      const px = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      const py = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
+      target.rx = (0.5 - py) * 4.4;
+      target.ry = (px - 0.5) * 5.4;
+      target.mx = px * 100;
+      target.my = py * 100;
+      target.raise = -4.8;
+      start();
+    };
+
+    const reset = () => {
+      target.rx = 0;
+      target.ry = 0;
+      target.mx = 50;
+      target.my = 50;
+      target.raise = 0;
+      start();
+    };
+
+    card.addEventListener('pointerenter', () => {
+      target.raise = -4.8;
+      start();
+    });
+    card.addEventListener('pointermove', onMove);
+    card.addEventListener('pointerleave', reset);
+    card.addEventListener('pointercancel', reset);
+  });
+}
+
 function initNav() {
+  // Mobile menu
+  const burger = document.querySelector('.burger');
+  const mobile = document.querySelector('.mobile-menu');
+  if (burger && mobile && burger.dataset.menuReady !== '1') {
+    burger.dataset.menuReady = '1';
+
+    const closeMenu = () => {
+      mobile.classList.remove('is-open');
+      burger.classList.remove('is-open');
+      burger.setAttribute('aria-expanded', 'false');
+      document.body.classList.remove('menu-open');
+    };
+
+    const openMenu = () => {
+      mobile.classList.add('is-open');
+      burger.classList.add('is-open');
+      burger.setAttribute('aria-expanded', 'true');
+      document.body.classList.add('menu-open');
+    };
+
+    burger.addEventListener('click', () => {
+      const isOpen = mobile.classList.contains('is-open');
+      if (isOpen) {
+        closeMenu();
+      } else {
+        openMenu();
+      }
+    });
+
+    mobile.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', closeMenu);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth > 768) return;
+      if (!mobile.classList.contains('is-open')) return;
+      if (burger.contains(e.target) || mobile.contains(e.target)) return;
+      closeMenu();
+    });
+
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 768) {
+        closeMenu();
+      }
+    });
+  }
+
   // Header highlight
   const highlight = document.querySelector('.nav-highlight');
   const links = document.querySelectorAll('.nav a');
   const currentURL = window.location.href;
+  if (!highlight || links.length === 0) return;
   
   links.forEach(link => {
     if (currentURL.includes(link.getAttribute('href'))) {
@@ -39,15 +212,6 @@ function initNav() {
   if (document.querySelector('.nav')) {
     document.querySelector('.nav').addEventListener('mouseleave', () => {
       highlight.style.opacity = '0';
-    });
-  }
-  
-  // Mobile menu
-  const burger = document.querySelector('.burger');
-  const mobile = document.querySelector('.mobile-menu');
-  if (burger && mobile) {
-    burger.addEventListener('click', () => {
-      mobile.style.display = mobile.style.display === 'flex' ? 'none' : 'flex';
     });
   }
 }
@@ -70,6 +234,10 @@ if (hero) {
 document.addEventListener('DOMContentLoaded', () => {
   loadComponent('header-container', 'components/header.html');
   loadComponent('footer-container', 'components/footer.html');
+  initScrollProgress();
+  initCursorGlow();
+  initCardTilt();
+  createDust();
 });
 
 // Умный header - скрывается при скролле вниз, показывается при скролле вверх
@@ -249,22 +417,40 @@ document.addEventListener('click', (e) => {
 });
 
 // Генерация пыли на фоне
+function randomRange(min, max) {
+  return Math.random() * (max - min) + min;
+}
+
+function randomizeDustParticle(span, useNegativeDelay = false) {
+  const duration = randomRange(11, 19);
+  const dx = randomRange(-90, 90);
+  const dy = -window.innerHeight * randomRange(0.35, 1.2);
+  const size = randomRange(1, 3);
+  const opacity = randomRange(0.25, 0.75);
+  const delay = useNegativeDelay ? -Math.random() * duration : 0;
+
+  span.style.left = `${randomRange(0, 100).toFixed(2)}%`;
+  span.style.top = `${randomRange(0, 100).toFixed(2)}%`;
+  span.style.setProperty('--dx', `${dx.toFixed(2)}px`);
+  span.style.setProperty('--dy', `${dy.toFixed(2)}px`);
+  span.style.setProperty('--dust-size', `${size.toFixed(2)}px`);
+  span.style.setProperty('--dust-opacity', opacity.toFixed(2));
+  span.style.animationDuration = `${duration.toFixed(2)}s`;
+  span.style.animationDelay = `${delay.toFixed(2)}s`;
+}
+
 function createDust() {
   const dustContainer = document.querySelector('.dust');
   if (!dustContainer) return;
-  
+
   const particles = dustContainer.querySelectorAll('span');
-  particles.forEach(span => {
-    const randomX = (Math.random() - 0.5) * 100;
-    const randomY = -Math.random() * 100 - 50;
-    span.style.setProperty('--dx', randomX + 'px');
-    span.style.setProperty('--dy', randomY + 'px');
-    span.style.top = Math.random() * 100 + '%';
+  particles.forEach((span) => {
+    if (span.dataset.dustReady === '1') return;
+    span.dataset.dustReady = '1';
+
+    randomizeDustParticle(span, true);
+    span.addEventListener('animationiteration', () => {
+      randomizeDustParticle(span);
+    });
   });
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-  loadComponent('header-container', 'components/header.html');
-  loadComponent('footer-container', 'components/footer.html');
-  createDust();
-});
