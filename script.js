@@ -59,9 +59,9 @@ function initCardTilt() {
     if (card.dataset.tiltReady === '1') return;
     card.dataset.tiltReady = '1';
     const isGalleryCard = card.classList.contains('gallery-item');
-    const tiltXMax = isGalleryCard ? 2.8 : 4.4;
-    const tiltYMax = isGalleryCard ? 3.4 : 5.4;
-    const hoverRaise = isGalleryCard ? -2.6 : -4.8;
+    const tiltXMax = isGalleryCard ? 8 : 12;
+    const tiltYMax = isGalleryCard ? 8 : 12;
+    const hoverRaise = isGalleryCard ? -3.0 : -4.8;
     const easing = isGalleryCard ? 0.09 : 0.12;
 
     const state = {
