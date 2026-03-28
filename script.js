@@ -5,15 +5,40 @@ async function loadComponent(id, file) {
     if (response.ok) {
       const html = await response.text();
       document.getElementById(id).innerHTML = html;
-      
+
       // После загрузки header инициализируем навигацию
       if (id === 'header-container') {
         initNav();
+      }
+      if (id === 'footer-container') {
+        createBugs();
       }
     }
   } catch (e) {
     console.error(`Ошибка загрузки ${file}:`, e);
   }
+}
+
+// Создание фоновых эффектов
+function createBackgroundEffects() {
+  // Волны
+  const waves = document.createElement('div');
+  waves.className = 'bg-waves';
+  document.body.appendChild(waves);
+
+  // Туман
+  const fog = document.createElement('div');
+  fog.className = 'bg-fog';
+  for (let i = 0; i < 5; i++) {
+    const span = document.createElement('span');
+    fog.appendChild(span);
+  }
+  document.body.appendChild(fog);
+
+  // Северное сияние
+  const aurora = document.createElement('div');
+  aurora.className = 'bg-aurora';
+  document.body.appendChild(aurora);
 }
 
 function initScrollProgress() {
@@ -236,12 +261,14 @@ if (hero) {
 
 // Загружаем header и footer при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
+  createBackgroundEffects();
   loadComponent('header-container', 'components/header.html');
   loadComponent('footer-container', 'components/footer.html');
   initScrollProgress();
   initCursorGlow();
   initCardTilt();
   createDust();
+  createBugs();
 });
 
 // Умный header - скрывается при скролле вниз, показывается при скролле вверх
@@ -455,6 +482,37 @@ function createDust() {
     randomizeDustParticle(span, true);
     span.addEventListener('animationiteration', () => {
       randomizeDustParticle(span);
+    });
+  });
+}
+
+function randomizeBugParticle(span, useNegativeDelay = false) {
+  const duration = randomRange(24, 38);
+  const delay = useNegativeDelay ? -Math.random() * duration : randomRange(0, 8);
+  const left = randomRange(2, 98);
+  const size = randomRange(1.8, 3.4);
+  const glow = randomRange(0.18, 0.42);
+
+  span.style.left = `${left.toFixed(2)}%`;
+  span.style.width = `${size.toFixed(2)}px`;
+  span.style.height = `${size.toFixed(2)}px`;
+  span.style.animationDuration = `${duration.toFixed(2)}s`;
+  span.style.animationDelay = `${delay.toFixed(2)}s`;
+  span.style.boxShadow = `0 0 ${Math.max(2, size * 1.6).toFixed(2)}px rgba(100, 255, 100, ${glow.toFixed(2)})`;
+}
+
+function createBugs() {
+  const bugsContainer = document.querySelector('.bugs');
+  if (!bugsContainer) return;
+
+  const particles = bugsContainer.querySelectorAll('span');
+  particles.forEach((span) => {
+    if (span.dataset.bugReady === '1') return;
+    span.dataset.bugReady = '1';
+
+    randomizeBugParticle(span);
+    span.addEventListener('animationiteration', () => {
+      randomizeBugParticle(span);
     });
   });
 }

@@ -67,67 +67,8 @@ body .dust span{
   animation-delay:var(--dust-delay,0s);
   animation-timing-function:linear;
   animation-iteration-count:infinite;
+  /* Все параметры задаются через JS */
 }
-body .dust span:nth-child(1){left:5%;animation-delay:0s;animation-duration:12s}
-body .dust span:nth-child(2){left:10%;animation-delay:1s;animation-duration:15s}
-body .dust span:nth-child(3){left:15%;animation-delay:2s;animation-duration:14s}
-body .dust span:nth-child(4){left:20%;animation-delay:0s;animation-duration:16s}
-body .dust span:nth-child(5){left:25%;animation-delay:1s;animation-duration:13s}
-body .dust span:nth-child(6){left:30%;animation-delay:2s;animation-duration:15s}
-body .dust span:nth-child(7){left:35%;animation-delay:0s;animation-duration:14s}
-body .dust span:nth-child(8){left:40%;animation-delay:1s;animation-duration:12s}
-body .dust span:nth-child(9){left:45%;animation-delay:2s;animation-duration:16s}
-body .dust span:nth-child(10){left:50%;animation-delay:0s;animation-duration:15s}
-body .dust span:nth-child(11){left:55%;animation-delay:1s;animation-duration:13s}
-body .dust span:nth-child(12){left:60%;animation-delay:2s;animation-duration:14s}
-body .dust span:nth-child(13){left:65%;animation-delay:0s;animation-duration:12s}
-body .dust span:nth-child(14){left:70%;animation-delay:1s;animation-duration:15s}
-body .dust span:nth-child(15){left:75%;animation-delay:2s;animation-duration:16s}
-body .dust span:nth-child(16){left:80%;animation-delay:0s;animation-duration:14s}
-body .dust span:nth-child(17){left:85%;animation-delay:1s;animation-duration:13s}
-body .dust span:nth-child(18){left:90%;animation-delay:2s;animation-duration:15s}
-body .dust span:nth-child(19){left:95%;animation-delay:0s;animation-duration:12s}
-body .dust span:nth-child(20){left:3%;animation-delay:1s;animation-duration:14s}
-body .dust span:nth-child(21){left:8%;animation-delay:2s;animation-duration:16s}
-body .dust span:nth-child(22){left:13%;animation-delay:0s;animation-duration:13s}
-body .dust span:nth-child(23){left:18%;animation-delay:1s;animation-duration:15s}
-body .dust span:nth-child(24){left:23%;animation-delay:2s;animation-duration:14s}
-body .dust span:nth-child(25){left:28%;animation-delay:0s;animation-duration:12s}
-body .dust span:nth-child(26){left:33%;animation-delay:1s;animation-duration:16s}
-body .dust span:nth-child(27){left:38%;animation-delay:2s;animation-duration:15s}
-body .dust span:nth-child(28){left:43%;animation-delay:0s;animation-duration:13s}
-body .dust span:nth-child(29){left:48%;animation-delay:1s;animation-duration:14s}
-body .dust span:nth-child(30){left:53%;animation-delay:2s;animation-duration:12s}
-body .dust span:nth-child(31){left:58%;animation-delay:0s;animation-duration:15s}
-body .dust span:nth-child(32){left:63%;animation-delay:1s;animation-duration:16s}
-body .dust span:nth-child(33){left:68%;animation-delay:2s;animation-duration:14s}
-body .dust span:nth-child(34){left:73%;animation-delay:0s;animation-duration:13s}
-body .dust span:nth-child(35){left:78%;animation-delay:1s;animation-duration:15s}
-body .dust span:nth-child(36){left:83%;animation-delay:2s;animation-duration:12s}
-body .dust span:nth-child(37){left:88%;animation-delay:0s;animation-duration:14s}
-body .dust span:nth-child(38){left:93%;animation-delay:1s;animation-duration:16s}
-body .dust span:nth-child(39){left:98%;animation-delay:2s;animation-duration:15s}
-body .dust span:nth-child(40){left:2%;animation-delay:0s;animation-duration:13s}
-body .dust span:nth-child(41){left:7%;animation-delay:1s;animation-duration:14s}
-body .dust span:nth-child(42){left:12%;animation-delay:2s;animation-duration:12s}
-body .dust span:nth-child(43){left:17%;animation-delay:0s;animation-duration:15s}
-body .dust span:nth-child(44){left:22%;animation-delay:1s;animation-duration:16s}
-body .dust span:nth-child(45){left:27%;animation-delay:2s;animation-duration:14s}
-body .dust span:nth-child(46){left:32%;animation-delay:0s;animation-duration:13s}
-body .dust span:nth-child(47){left:37%;animation-delay:1s;animation-duration:15s}
-body .dust span:nth-child(48){left:42%;animation-delay:2s;animation-duration:12s}
-body .dust span:nth-child(49){left:47%;animation-delay:0s;animation-duration:14s}
-body .dust span:nth-child(50){left:52%;animation-delay:1s;animation-duration:16s}
-body .dust span:nth-child(51){left:57%;animation-delay:2s;animation-duration:15s}
-body .dust span:nth-child(52){left:62%;animation-delay:0s;animation-duration:13s}
-body .dust span:nth-child(53){left:67%;animation-delay:1s;animation-duration:14s}
-body .dust span:nth-child(54){left:72%;animation-delay:2s;animation-duration:12s}
-body .dust span:nth-child(55){left:77%;animation-delay:0s;animation-duration:15s}
-body .dust span:nth-child(56){left:82%;animation-delay:1s;animation-duration:16s}
-body .dust span:nth-child(57){left:87%;animation-delay:2s;animation-duration:14s}
-body .dust span:nth-child(58){left:92%;animation-delay:0s;animation-duration:13s}
-body .dust span:nth-child(59){left:97%;animation-delay:1s;animation-duration:15s}
-body .dust span:nth-child(60){left:50%;animation-delay:2s;animation-duration:12s}
 @keyframes dust-random{
   0%{transform:translate3d(0,0,0);opacity:0}
   10%{opacity:var(--dust-opacity,0.55)}
@@ -492,7 +433,7 @@ main.container{padding-top:100px}
 .shimmer{animation:shimmer 2s infinite}
 
 /* Футер */
-.footer{border-top:1px solid rgba(255,255,255,.08);padding:0;text-align:center;position:relative;overflow:visible;isolation:isolate}
+.footer{border-top:1px solid rgba(255,255,255,.08);padding:0 0 0px;text-align:center;position:relative;overflow:visible;isolation:isolate}
 .footer::before{
   content:'';
   position:absolute;
@@ -566,11 +507,13 @@ main.container{padding-top:100px}
   .lightbox-thumbs{gap:6px}
   .lightbox-thumb{flex-basis:50px;width:50px;height:38px}
   .lightbox-hint{display:none}
+  .footer{padding-bottom:130px}
   .footer::before{width:min(560px,92vw);bottom:-84px;height:160px;opacity:.26}
 }
 @media(max-width:480px){
   .logo-text{max-width:48vw}
   .logo-icon{width:30px;height:30px;border-radius:9px}
+  .footer{padding-bottom:108px}
   .footer::before{display:none}
 }
 
@@ -596,4 +539,585 @@ main.container{padding-top:100px}
   background:rgba(0,0,0,0.45);
   backdrop-filter:blur(12px);
   box-shadow:0 16px 40px rgba(0,0,0,.4);
+}
+
+/* ============================================
+   Фоновые эффекты (комбо)
+   ============================================ */
+
+/* Волны/аура */
+.bg-waves
+{
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.bg-waves::before,
+.bg-waves::after
+{
+    content: '';
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    top: -50%;
+    left: -50%;
+    background: radial-gradient(ellipse at center, rgba(109, 213, 255, 0.08) 0%, transparent 60%);
+    animation: wave-rotate 20s linear infinite;
+    opacity: 0.5;
+}
+
+.bg-waves::after
+{
+    background: radial-gradient(ellipse at center, rgba(139, 123, 255, 0.06) 0%, transparent 60%);
+    animation: wave-rotate 25s linear infinite reverse;
+    opacity: 0.4;
+}
+
+@keyframes wave-rotate
+{
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.1); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+/* Туман/дым */
+.bg-fog
+{
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.bg-fog span
+{
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(109, 213, 255, 0.12), transparent 70%);
+    border-radius: 50%;
+    filter: blur(40px);
+    animation: fog-drift linear infinite;
+    opacity: 0;
+}
+
+.bg-fog span:nth-child(1)
+{
+    left: 10%;
+    top: 60%;
+    animation-duration: 35s;
+    animation-delay: 0s;
+}
+
+.bg-fog span:nth-child(2)
+{
+    left: 70%;
+    top: 40%;
+    animation-duration: 40s;
+    animation-delay: 5s;
+}
+
+.bg-fog span:nth-child(3)
+{
+    left: 50%;
+    top: 80%;
+    animation-duration: 38s;
+    animation-delay: 10s;
+}
+
+.bg-fog span:nth-child(4)
+{
+    left: 30%;
+    top: 30%;
+    animation-duration: 42s;
+    animation-delay: 3s;
+}
+
+.bg-fog span:nth-child(5)
+{
+    left: 80%;
+    top: 70%;
+    animation-duration: 36s;
+    animation-delay: 8s;
+}
+
+@keyframes fog-drift
+{
+    0%
+    {
+        transform: translate(0, 0) scale(0.8);
+        opacity: 0;
+    }
+    10%
+    {
+        opacity: 0.6;
+    }
+    90%
+    {
+        opacity: 0.6;
+    }
+    100%
+    {
+        transform: translate(100px, -150px) scale(1.2);
+        opacity: 0;
+    }
+}
+
+/* Северное сияние */
+.bg-aurora
+{
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.bg-aurora::before,
+.bg-aurora::after
+{
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, 
+        transparent 0%, 
+        rgba(109, 213, 255, 0.06) 20%, 
+        rgba(139, 123, 255, 0.08) 40%, 
+        rgba(79, 112, 255, 0.06) 60%, 
+        transparent 80%);
+    opacity: 0;
+    animation: aurora-pulse 15s ease-in-out infinite;
+    mix-blend-mode: screen;
+}
+
+.bg-aurora::after
+{
+    background: linear-gradient(180deg, 
+        transparent 0%, 
+        rgba(109, 213, 255, 0.04) 30%, 
+        rgba(139, 123, 255, 0.06) 50%, 
+        rgba(79, 112, 255, 0.04) 70%, 
+        transparent 100%);
+    animation: aurora-pulse 18s ease-in-out infinite reverse;
+    animation-delay: 3s;
+}
+
+@keyframes aurora-pulse
+{
+    0%, 100%
+    {
+        opacity: 0.3;
+        transform: translateY(0) scaleY(1);
+    }
+    50%
+    {
+        opacity: 0.6;
+        transform: translateY(-20px) scaleY(1.1);
+    }
+}
+
+/* ============================================
+   Сверчки / жучки внизу сайта
+   ============================================ */
+
+.footer .bugs
+{
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 170px;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+}
+
+.footer .container
+{
+    position: relative;
+    z-index: 2;
+}
+
+.footer .bugs span
+{
+    position: absolute;
+    bottom: 0;
+    width: 3px;
+    height: 3px;
+    background: rgba(100, 255, 100, 0.6);
+    border-radius: 50%;
+    opacity: 0;
+    animation: bug-crawl ease-in-out infinite;
+    box-shadow: 0 0 4px rgba(100, 255, 100, 0.4);
+    /* Все параметры задаются через JS */
+}
+
+@keyframes bug-crawl
+{
+    0%
+    {
+        transform: translateX(0) translateY(0);
+        opacity: 0;
+    }
+    10%
+    {
+        opacity: 0.72;
+    }
+    25%
+    {
+        transform: translateX(12px) translateY(-14px);
+    }
+    50%
+    {
+        transform: translateX(-10px) translateY(-30px);
+    }
+    75%
+    {
+        transform: translateX(8px) translateY(-12px);
+    }
+    90%
+    {
+        opacity: 0.72;
+    }
+    100%
+    {
+        transform: translateX(0) translateY(0);
+        opacity: 0;
+    }
+}
+
+/* ============================================
+   Падающие звёзды
+   ============================================ */
+
+.shooting-stars
+{
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.shooting-stars span
+{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    background: linear-gradient(45deg, #fff, transparent);
+    border-radius: 50%;
+    opacity: 0;
+    animation: shooting-star 8s ease-in-out infinite;
+    box-shadow: 0 0 10px rgba(109, 213, 255, 0.8), 0 0 20px rgba(109, 213, 255, 0.4);
+}
+
+.shooting-stars span:nth-child(1) { top: 10%; left: 80%; animation-delay: 0s; animation-duration: 6s; }
+.shooting-stars span:nth-child(2) { top: 20%; left: 60%; animation-delay: 2s; animation-duration: 7s; }
+.shooting-stars span:nth-child(3) { top: 15%; left: 90%; animation-delay: 4s; animation-duration: 5s; }
+.shooting-stars span:nth-child(4) { top: 25%; left: 70%; animation-delay: 6s; animation-duration: 8s; }
+.shooting-stars span:nth-child(5) { top: 5%; left: 85%; animation-delay: 8s; animation-duration: 6s; }
+
+@keyframes shooting-star
+{
+    0%
+    {
+        transform: translateX(0) translateY(0) rotate(45deg);
+        opacity: 0;
+        width: 4px;
+    }
+    5%
+    {
+        opacity: 1;
+        width: 60px;
+    }
+    20%
+    {
+        transform: translateX(-300px) translateY(300px) rotate(45deg);
+        opacity: 0;
+        width: 4px;
+    }
+    100%
+    {
+        opacity: 0;
+    }
+}
+
+/* ============================================
+   Плавающие орбы
+   ============================================ */
+
+.floating-orbs
+{
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.floating-orbs span
+{
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(109, 213, 255, 0.4), transparent 70%);
+    filter: blur(8px);
+    animation: orb-float linear infinite;
+    opacity: 0;
+}
+
+.floating-orbs span:nth-child(1)
+{
+    width: 80px;
+    height: 80px;
+    left: 10%;
+    top: 80%;
+    animation-duration: 20s;
+    animation-delay: 0s;
+}
+
+.floating-orbs span:nth-child(2)
+{
+    width: 60px;
+    height: 60px;
+    left: 80%;
+    top: 60%;
+    animation-duration: 25s;
+    animation-delay: 5s;
+}
+
+.floating-orbs span:nth-child(3)
+{
+    width: 100px;
+    height: 100px;
+    left: 60%;
+    top: 90%;
+    animation-duration: 22s;
+    animation-delay: 10s;
+}
+
+.floating-orbs span:nth-child(4)
+{
+    width: 50px;
+    height: 50px;
+    left: 30%;
+    top: 70%;
+    animation-duration: 18s;
+    animation-delay: 3s;
+}
+
+.floating-orbs span:nth-child(5)
+{
+    width: 70px;
+    height: 70px;
+    left: 90%;
+    top: 85%;
+    animation-duration: 24s;
+    animation-delay: 8s;
+}
+
+@keyframes orb-float
+{
+    0%
+    {
+        transform: translate(0, 0) scale(0.8);
+        opacity: 0;
+    }
+    10%
+    {
+        opacity: 0.5;
+    }
+    90%
+    {
+        opacity: 0.5;
+    }
+    100%
+    {
+        transform: translate(100px, -200px) scale(1.2);
+        opacity: 0;
+    }
+}
+
+/* ============================================
+   Анимация текста при появлении
+   ============================================ */
+
+.text-reveal
+{
+    overflow: hidden;
+}
+
+.text-reveal span
+{
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(100%);
+    animation: reveal-text 0.8s ease forwards;
+}
+
+@keyframes reveal-text
+{
+    to
+    {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================
+   Ripple эффект для кнопок
+   ============================================ */
+
+.ripple
+{
+    position: relative;
+    overflow: hidden;
+}
+
+.ripple::after
+{
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.ripple:active::after
+{
+    width: 300px;
+    height: 300px;
+}
+
+/* ============================================
+   Глитч эффект для заголовков
+   ============================================ */
+
+.glitch-text
+{
+    position: relative;
+}
+
+.glitch-text::before,
+.glitch-text::after
+{
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.glitch-text::before
+{
+    animation: glitch-1 2s infinite;
+    clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+    transform: translate(-2px, 0);
+    opacity: 0.8;
+}
+
+.glitch-text::after
+{
+    animation: glitch-2 3s infinite;
+    clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+    transform: translate(2px, 0);
+    opacity: 0.8;
+}
+
+@keyframes glitch-1
+{
+    0%, 100% { transform: translate(0); }
+    20% { transform: translate(-2px, 2px); }
+    40% { transform: translate(-2px, -2px); }
+    60% { transform: translate(2px, 2px); }
+    80% { transform: translate(2px, -2px); }
+}
+
+@keyframes glitch-2
+{
+    0%, 100% { transform: translate(0); }
+    20% { transform: translate(2px, -2px); }
+    40% { transform: translate(2px, 2px); }
+    60% { transform: translate(-2px, -2px); }
+    80% { transform: translate(-2px, 2px); }
+}
+
+/* ============================================
+   Неоновая обводка для карточек
+   ============================================ */
+
+.neon-border
+{
+    position: relative;
+}
+
+.neon-border::before
+{
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(45deg, #6cd5ff, #8b7bff, #6cd5ff);
+    background-size: 400%;
+    border-radius: inherit;
+    opacity: 0;
+    z-index: -1;
+    transition: opacity 0.3s;
+    animation: neon-flow 3s linear infinite;
+}
+
+.neon-border:hover::before
+{
+    opacity: 1;
+}
+
+@keyframes neon-flow
+{
+    0% { background-position: 0% 50%; }
+    100% { background-position: 400% 50%; }
+}
+
+/* ============================================
+   Частицы при наведении
+   ============================================ */
+
+.particle-hover
+{
+    position: relative;
+}
+
+.particle-hover::after
+{
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    background: radial-gradient(circle, rgba(109, 213, 255, 0.8), transparent);
+    border-radius: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+    transition: transform 0.4s, opacity 0.4s;
+    pointer-events: none;
+}
+
+.particle-hover:hover::after
+{
+    transform: translate(-50%, -50%) scale(4);
+    opacity: 0;
 }
