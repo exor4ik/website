@@ -88,6 +88,9 @@ function initCardTilt() {
     const tiltYMax = isGalleryCard ? 8 : 12;
     const hoverRaise = isGalleryCard ? -3.0 : -4.8;
     const easing = isGalleryCard ? 0.09 : 0.12;
+    const shadowMul = isGalleryCard ? 1.1 : 1.4;
+    const shadowBaseY = isGalleryCard ? 12 : 16;
+    const shadowBlur = isGalleryCard ? 28 : 34;
 
     const state = {
       rx: 0,
@@ -117,6 +120,9 @@ function initCardTilt() {
       card.style.setProperty('--mx', `${state.mx.toFixed(2)}%`);
       card.style.setProperty('--my', `${state.my.toFixed(2)}%`);
       card.style.setProperty('--raise', `${state.raise.toFixed(2)}px`);
+      const shadowX = (-state.ry * shadowMul).toFixed(2);
+      const shadowY = (shadowBaseY + state.rx * (shadowMul * 0.8)).toFixed(2);
+      card.style.setProperty('--depth-shadow', `${shadowX}px ${shadowY}px ${shadowBlur}px rgba(0,0,0,.26)`);
 
       const settled =
         Math.abs(target.rx - state.rx) < 0.02 &&
@@ -168,6 +174,79 @@ function initCardTilt() {
     card.addEventListener('pointerleave', reset);
     card.addEventListener('pointercancel', reset);
   });
+}
+
+function initHeroDepth() {
+  const hero = document.getElementById('hero');
+  if (!hero) return;
+
+  const setHeroVars = (rx, ry, shiftX, shiftY) => {
+    hero.style.setProperty('--hero-rx', `${rx.toFixed(2)}deg`);
+    hero.style.setProperty('--hero-ry', `${ry.toFixed(2)}deg`);
+    hero.style.setProperty('--hero-shift-x', `${shiftX.toFixed(2)}px`);
+    hero.style.setProperty('--hero-shift-y', `${shiftY.toFixed(2)}px`);
+  };
+
+  if (prefersReducedMotion || !window.matchMedia('(pointer: fine)').matches) {
+    setHeroVars(0, 0, 0, 0);
+    return;
+  }
+
+  const state = { rx: 0, ry: 0, shiftX: 0, shiftY: 0 };
+  const target = { rx: 0, ry: 0, shiftX: 0, shiftY: 0 };
+  let rafId = null;
+
+  const step = () => {
+    const ease = 0.1;
+    state.rx += (target.rx - state.rx) * ease;
+    state.ry += (target.ry - state.ry) * ease;
+    state.shiftX += (target.shiftX - state.shiftX) * ease;
+    state.shiftY += (target.shiftY - state.shiftY) * ease;
+    setHeroVars(state.rx, state.ry, state.shiftX, state.shiftY);
+
+    const settled =
+      Math.abs(target.rx - state.rx) < 0.02 &&
+      Math.abs(target.ry - state.ry) < 0.02 &&
+      Math.abs(target.shiftX - state.shiftX) < 0.03 &&
+      Math.abs(target.shiftY - state.shiftY) < 0.03;
+
+    if (settled) {
+      rafId = null;
+      return;
+    }
+
+    rafId = requestAnimationFrame(step);
+  };
+
+  const start = () => {
+    if (rafId === null) {
+      rafId = requestAnimationFrame(step);
+    }
+  };
+
+  const onMove = (e) => {
+    const rect = hero.getBoundingClientRect();
+    const px = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    const py = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
+
+    target.rx = (0.5 - py) * 7;
+    target.ry = (px - 0.5) * 9;
+    target.shiftX = (px - 0.5) * 18;
+    target.shiftY = (py - 0.5) * 12;
+    start();
+  };
+
+  const reset = () => {
+    target.rx = 0;
+    target.ry = 0;
+    target.shiftX = 0;
+    target.shiftY = 0;
+    start();
+  };
+
+  hero.addEventListener('pointermove', onMove);
+  hero.addEventListener('pointerleave', reset);
+  hero.addEventListener('pointercancel', reset);
 }
 
 function initNav() {
@@ -249,16 +328,6 @@ function initNav() {
 const obs = new IntersectionObserver(e => e.forEach(i => i.isIntersecting && i.target.classList.add('visible')), { threshold: .15 });
 document.querySelectorAll('.fade').forEach(el => obs.observe(el));
 
-// Параллакс для главной страницы
-const hero = document.getElementById('hero');
-if (hero) {
-  document.addEventListener('mousemove', (e) => {
-    const x = e.clientX / window.innerWidth - 0.5;
-    const y = e.clientY / window.innerHeight - 0.5;
-    hero.style.transform = `translate(${-x*20}px, ${-y*10}px)`;
-  });
-}
-
 // Загружаем header и footer при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
   createBackgroundEffects();
@@ -267,6 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initScrollProgress();
   initCursorGlow();
   initCardTilt();
+  initHeroDepth();
   createDust();
   createBugs();
 });

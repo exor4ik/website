@@ -277,11 +277,18 @@ main.container { padding-top: 100px; }
 
 /* ---------- 8. HERO СЕКЦИЯ ---------- */
 .hero {
+  --hero-rx: 0deg;
+  --hero-ry: 0deg;
+  --hero-shift-x: 0px;
+  --hero-shift-y: 0px;
+  --hero-lift: 0px;
   position: relative; width: 100vw; aspect-ratio: 1080/608; min-height: 300px;
   margin-left: calc(50% - 50vw);
   display: flex; align-items: center; justify-content: center; text-align: center;
   background: url('images/hero.gif') center/cover no-repeat;
   transition: transform .2s ease-out; overflow: hidden;
+  perspective: 1400px;
+  transform-style: preserve-3d;
 }
 .hero::before {
   content: ''; position: absolute; inset: 0;
@@ -312,14 +319,28 @@ main.container { padding-top: 100px; }
   backdrop-filter: blur(12px) saturate(120%);
   box-shadow: var(--shadow-lg), var(--shadow-glow);
   max-width: calc(100vw - 40px);
-  transform: translateZ(0);
-  transition: transform .4s ease, box-shadow .4s ease;
+  transform: translate3d(var(--hero-shift-x), var(--hero-shift-y), calc(18px + var(--hero-lift))) rotateX(var(--hero-rx)) rotateY(var(--hero-ry));
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: transform .45s var(--ease-smooth), box-shadow .4s ease;
 }
-.hero-panel:hover {
-  transform: translateZ(20px);
+.hero:hover .hero-panel {
+  --hero-lift: 14px;
   box-shadow: 0 32px 80px rgba(0,0,0,.5), 0 0 50px rgba(109,213,255,.25);
 }
-.hero .btns { display: flex; gap: 12px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+.hero-panel p {
+  transform: translateZ(24px);
+  transition: transform .4s var(--ease-smooth);
+}
+.hero:hover .hero-panel p {
+  transform: translateZ(30px);
+}
+.hero .btns {
+  display: flex; gap: 12px; justify-content: center; margin-top: 16px; flex-wrap: wrap;
+  transform: translateZ(34px);
+  transition: transform .4s var(--ease-smooth);
+}
+.hero:hover .btns { transform: translateZ(42px); }
 
 /* ---------- 9. КНОПКИ (базовые) ---------- */
 .btn, .hero .btn, .game-btn {
@@ -353,11 +374,12 @@ main.container { padding-top: 100px; }
 /* ---------- 10. КАРТОЧКИ И ГАЛЕРЕЯ (объединённые стили) ---------- */
 .card, .gallery-item {
   --rx: 0deg; --ry: 0deg; --raise: 0px; --mx: 50%; --my: 50%;
+  --depth-shadow: 0px 14px 30px rgba(0,0,0,.22);
   background: var(--grad-glass);
   border: 1px solid rgba(160,195,255,.16);
   border-radius: 18px; padding: 24px;
   position: relative;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-md), var(--depth-shadow);
   transform: perspective(1100px) rotateX(var(--rx)) rotateY(var(--ry)) translateY(var(--raise));
   transform-style: preserve-3d;
   isolation: isolate;
@@ -388,7 +410,7 @@ main.container { padding-top: 100px; }
 
 /* Hover-эффекты */
 .card:hover, .gallery-item:hover {
-  box-shadow: 0 24px 44px rgba(0,0,0,.4), 0 0 35px var(--glow-cyan);
+  box-shadow: 0 24px 44px rgba(0,0,0,.4), 0 0 35px var(--glow-cyan), var(--depth-shadow);
   border-color: rgba(170,225,255,.28);
 }
 .card:hover::before, .gallery-item:hover::before { left: 100%; }
@@ -401,9 +423,25 @@ main.container { padding-top: 100px; }
   width: 128px; height: 128px; border-radius: 16px;
   border: 2px solid rgba(170,205,255,.38);
   object-fit: cover; z-index: 2;
-  transition: transform .5s ease;
+  transform: translateZ(34px) rotateX(calc(var(--rx) * -0.35)) rotateY(calc(var(--ry) * 0.42)) scale(1);
+  transition: transform .55s var(--ease-smooth);
 }
-.card:hover .card-image { transform: scale(1.05); }
+.card:hover .card-image { transform: translateZ(42px) rotateX(calc(var(--rx) * -0.35)) rotateY(calc(var(--ry) * 0.42)) scale(1.06); }
+.card h2, .card h3 {
+  transform: translateZ(26px);
+  transition: transform .45s var(--ease-smooth);
+}
+.card p {
+  transform: translateZ(18px);
+  transition: transform .45s var(--ease-smooth);
+}
+.card .game-btns {
+  transform: translateZ(30px);
+  transition: transform .45s var(--ease-smooth);
+}
+.card:hover h2, .card:hover h3 { transform: translateZ(32px); }
+.card:hover p { transform: translateZ(22px); }
+.card:hover .game-btns { transform: translateZ(36px); }
 .card h2, .card h3, .card p, .card .game-btns { max-width: calc(100% - 196px); }
 
 /* Галерея: изображение */
@@ -414,10 +452,14 @@ main.container { padding-top: 100px; }
 }
 .gallery-item img {
   width: 100%; height: 280px; object-fit: cover; display: block;
-  transform: translateZ(20px) scale(1);
-  transition: transform .62s var(--ease-smooth);
+  transform: translateZ(24px) rotateX(calc(var(--rx) * -0.28)) rotateY(calc(var(--ry) * 0.32)) scale(1);
+  transition: transform .62s var(--ease-smooth), filter .62s var(--ease-smooth);
+  filter: saturate(1.02);
 }
-.gallery-item:hover img { transform: translateZ(20px) scale(1.05); }
+.gallery-item:hover img {
+  transform: translateZ(30px) rotateX(calc(var(--rx) * -0.28)) rotateY(calc(var(--ry) * 0.32)) scale(1.06);
+  filter: saturate(1.08);
+}
 .gallery-item:focus-visible { outline: 2px solid rgba(255,255,255,.7); outline-offset: 3px; }
 
 /* Подпись галереи */
@@ -426,10 +468,11 @@ main.container { padding-top: 100px; }
   padding: 16px;
   background: linear-gradient(transparent, rgba(0,0,0,.8));
   color: #fff; font-size: .9rem;
+  transform: translateZ(20px);
   transition: transform .3s ease;
   z-index: 2;
 }
-.gallery-item:hover .gallery-caption { transform: translateY(-4px); }
+.gallery-item:hover .gallery-caption { transform: translateY(-4px) translateZ(24px); }
 
 /* ---------- 11. LIGHTBOX ---------- */
 .lightbox {
@@ -763,7 +806,7 @@ main.container { padding-top: 100px; }
   .mobile-menu { top: 68px; left: 10px; right: 10px; }
   .hero-panel { padding: 22px 16px; }
   .card, .gallery-item { padding-right: 24px; }
-  .card-image { position: static; width: 100%; height: auto; max-height: 220px; margin-top: 14px; }
+  .card-image { position: static; width: 100%; height: auto; max-height: 220px; margin-top: 14px; transform: none !important; }
   .card h2, .card h3, .card p, .card .game-btns { max-width: 100%; }
   .lightbox-prev, .lightbox-next { font-size: 28px; padding: 10px 12px; }
   .lightbox-prev { left: 10px; }
@@ -796,9 +839,18 @@ main.container { padding-top: 100px; }
   .lightbox-thumb, .gallery-item img, .card-image {
     transition: none !important;
   }
+  .hero, .hero-panel, .hero .btns,
+  .hero-panel p, .card h2, .card h3, .card p, .card .game-btns,
+  .gallery-caption {
+    transform: none !important;
+  }
   .card, .gallery-item {
     --rx: 0deg; --ry: 0deg; --raise: 0px;
     transform: translateY(0) !important;
+  }
+  .gallery-item img, .card-image {
+    transform: none !important;
+    filter: none !important;
   }
   .card::after, .gallery-item::after { display: none; }
   .lightbox-thumb, .lightbox-thumb.is-near, .lightbox-thumb.is-active {
