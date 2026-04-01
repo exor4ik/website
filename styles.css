@@ -857,3 +857,28 @@ main.container { padding-top: 100px; }
     transform: none !important;
   }
 }
+
+/* Для анимируемых элементов */
+.card, .gallery-item, #hero {
+  will-change: transform;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+
+/* Для частиц */
+.dust, .bugs {
+  contain: layout style paint;
+  pointer-events: none;
+}
+
+/* Для прогресс-бара */
+.scroll-progress {
+  will-change: transform;
+  transform-origin: left;
+}
+
+/* Глобально: отключаем выделение текста на интерактивных элементах */
+.card, .burger, .copy-btn {
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
