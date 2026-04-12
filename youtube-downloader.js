@@ -1,54 +1,54 @@
-/**
- * 🎬 YouTube Downloader Script
- * Полноценное скачивание видео через API co9k
- */
-
 'use strict';
 
-document.addEventListener('DOMContentLoaded', function() {
-  // DOM элементы
-  const form = document.getElementById('download-form');
-  const urlInput = document.getElementById('youtube-url');
+/**
+ * 🎬 YouTube Downloader — Frontend
+ * Работает через публичный API co.wuk.sh (без своего бэкенда)
+ */
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  // ──────────────────────────────────────────────
+  // ⚙️  КОНФИГУРАЦИЯ
+  // ──────────────────────────────────────────────
+  const API_BASE = 'https://co.wuk.sh/api/json';
+  const REQUEST_TIMEOUT = 45_000; // 45 секунд на запрос
+
+  // ──────────────────────────────────────────────
+  // DOM
+  // ──────────────────────────────────────────────
+  const form         = document.getElementById('download-form');
+  const urlInput     = document.getElementById('youtube-url');
   const qualitySelect = document.getElementById('quality-select');
-  const downloadBtn = document.getElementById('download-btn');
-  const statusMessage = document.getElementById('status-message');
-  const examplePanel = document.getElementById('example-panel');
+  const downloadBtn  = document.getElementById('download-btn');
+  const statusMsg    = document.getElementById('status-message');
 
-  // Результаты скачивания
-  let downloadResults = null;
+  // ──────────────────────────────────────────────
+  // UTILS
+  // ──────────────────────────────────────────────
 
-  // ============================================================================
-  // УТИЛИТЫ
-  // ============================================================================
-
-  /**
-   * Валидация YouTube URL
-   */
   function isValidYouTubeUrl(url) {
     return /^https?:\/\/(?:www\.)?(youtube\.com|youtu\.?be)\/.+/.test(url);
   }
 
-  /**
-   * Показ сообщения
-   */
-  function showStatus(message, type = 'error') {
-    statusMessage.textContent = message;
-    statusMessage.style.color = type === 'error' ? '#ff6b6b' : 
-                                type === 'success' ? '#4ade80' : '#6cd5ff';
+  function showStatus(text, type = 'error') {
+    statusMsg.textContent = text;
+    statusMsg.style.color =
+      type === 'error'   ? '#ff6b6b' :
+      type === 'success' ? '#4ade80' : '#6cd5ff';
   }
 
-  // ============================================================================
-  // API CO9K
-  // ============================================================================
+  function removeById(id) {
+    document.getElementById(id)?.remove();
+  }
 
-  /**
-   * Запрос к API co9k для получения информации о видео
-   */
-  async function fetchVideoInfo(url, signal = null) {
-    const API_BASE = 'https://co.wuk.sh/api/json';
+  // ──────────────────────────────────────────────
+  // API ЗАПРОС
+  // ──────────────────────────────────────────────
+
+  async function fetchVideoInfo(url, signal) {
     const mode = qualitySelect.value;
-    
-    // Параметры запроса в зависимости от режима
+
+    // Параметры в зависимости от режима
     const params = {
       url: url,
       vCodec: 'h264',
@@ -57,42 +57,40 @@ document.addEventListener('DOMContentLoaded', function() {
       filenamePattern: 'basic'
     };
 
-    // Для аудио-режима включаем isAudioOnly
     if (mode === 'audio') {
       params.isAudioOnly = true;
-      params.dubLang = 'ru';
     }
-    
-    try {
-      const response = await fetch(API_BASE, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(params),
-        signal: signal
-      });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error?.code || `HTTP ${response.status}`);
+    const response = await fetch(API_BASE, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(params),
+      signal: signal
+    });
+
+    if (!response.ok) {
+      let errorMsg = `HTTP ${response.status}`;
+      try {
+        const data = await response.json();
+        if (data?.error?.code) {
+          errorMsg = data.error.code;
+        }
+      } catch {
+        // Не удалось распарсить ошибку
       }
-
-      return await response.json();
-    } catch (error) {
-      console.error('API Error:', error);
-      throw error;
+      throw new Error(errorMsg);
     }
+
+    return await response.json();
   }
 
-  // ============================================================================
-  // СКАЧИВАНИЕ
-  // ============================================================================
+  // ──────────────────────────────────────────────
+  // СКАЧИВАНИЕ ФАЙЛА
+  // ──────────────────────────────────────────────
 
-  /**
-   * Скачивание файла через временную ссылку
-   */
   function downloadFile(url, filename) {
     const a = document.createElement('a');
     a.href = url;
@@ -102,68 +100,50 @@ document.addEventListener('DOMContentLoaded', function() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    
-    // Очистка через 5 секунд
-    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }
 
-  // ============================================================================
-  // ОТОБРАЖЕНИЕ РЕЗУЛЬТАТОВ
-  // ============================================================================
+  // ──────────────────────────────────────────────
+  // РЕЗУЛЬТАТ
+  // ──────────────────────────────────────────────
 
-  /**
-   * Показать информацию о видео
-   */
-  function showVideoInfo(data, filename) {
-    // Удаляем старые результаты если есть
-    const oldResults = document.getElementById('download-results');
-    if (oldResults) oldResults.remove();
+  function showDownloadResult(data, filename) {
+    removeById('download-results');
 
-    const resultsDiv = document.createElement('div');
-    resultsDiv.id = 'download-results';
-    resultsDiv.style.cssText = `
-      margin-top: 24px;
-      padding: 20px;
-      background: rgba(0,0,0,.3);
-      border-radius: 12px;
-      border: 1px solid rgba(74, 222, 128, 0.3);
-    `;
-
-    // Извлекаем информацию о видео
-    const title = data.filename || 'Видео с YouTube';
+    const title = data.filename || filename || 'Видео с YouTube';
     const size = data.filesize ? ` (${(data.filesize / 1024 / 1024).toFixed(2)} MB)` : '';
 
-    resultsDiv.innerHTML = `
+    const div = document.createElement('div');
+    div.id = 'download-results';
+    div.style.cssText = `
+      margin-top: 20px;
+      padding: 20px;
+      background: rgba(74,222,128,.05);
+      border: 1px solid rgba(74,222,128,.3);
+      border-radius: 12px;
+    `;
+    div.innerHTML = `
       <div style="background: rgba(74, 222, 128, 0.1); padding: 16px; border-radius: 8px; border-left: 4px solid #4ade80;">
         <h3 style="color: #4ade80; margin-bottom: 12px; font-size: 1.1rem;">✅ Готово к скачиванию!</h3>
         <p style="color: #e8ecff; margin: 8px 0; font-size: .9rem;">
-          <strong>Файл:</strong> ${title}${size}
+          <strong>Файл:</strong> ${escapeHtml(title)}${size}
         </p>
         <p style="color: #a8b3cc; margin: 8px 0; font-size: .85rem;">
-          Если скачивание не началось автоматически, 
-          <a href="${data.url}" download="${filename}" target="_blank" rel="noopener" 
+          Если скачивание не началось автоматически,
+          <a href="${data.url}" download="${filename}" target="_blank" rel="noopener"
              style="color: #6cd5ff; text-decoration: underline;">нажмите здесь</a>
         </p>
       </div>
     `;
 
-    // Вставляем после формы
-    form.parentNode.insertBefore(resultsDiv, form.nextSibling);
+    form.parentNode.insertBefore(div, form.nextSibling);
   }
 
-  /**
-   * Показать варианты для выбора (если API вернул picker)
-   */
   function showPickerOptions(picker) {
-    if (!picker || picker.length === 0) return;
+    removeById('download-results');
 
-    // Удаляем старые результаты если есть
-    const oldResults = document.getElementById('download-results');
-    if (oldResults) oldResults.remove();
-
-    const resultsDiv = document.createElement('div');
-    resultsDiv.id = 'download-results';
-    resultsDiv.style.cssText = `
+    const div = document.createElement('div');
+    div.id = 'download-results';
+    div.style.cssText = `
       margin-top: 24px;
       padding: 20px;
       background: rgba(0,0,0,.3);
@@ -171,11 +151,11 @@ document.addEventListener('DOMContentLoaded', function() {
       border: 1px solid rgba(130, 170, 255, .18);
     `;
 
-    resultsDiv.innerHTML = `
+    div.innerHTML = `
       <h3 style="color: #e8ecff; margin-bottom: 16px; font-size: 1.1rem;">📹 Доступные варианты:</h3>
       <div style="display: grid; gap: 12px;">
         ${picker.map((item, idx) => `
-          <button class="picker-btn" data-url="${item.url}" 
+          <button class="picker-btn" data-url="${item.url}"
             style="
               padding: 12px 16px;
               background: rgba(108, 213, 255, 0.1);
@@ -193,16 +173,14 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
     `;
 
-    // Вставляем после формы
-    form.parentNode.insertBefore(resultsDiv, form.nextSibling);
+    form.parentNode.insertBefore(div, form.nextSibling);
 
-    // Обработка кликов по кнопкам
-    resultsDiv.querySelectorAll('.picker-btn').forEach(btn => {
+    // Обработка кликов
+    div.querySelectorAll('.picker-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const url = btn.dataset.url;
         const mode = qualitySelect.value;
         const ext = mode === 'audio' ? 'mp3' : 'mp4';
-        downloadFile(url, `video.${ext}`);
+        downloadFile(btn.dataset.url, `video.${ext}`);
         showStatus('✅ Скачивание началось!', 'success');
       });
 
@@ -218,112 +196,109 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // ============================================================================
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ──────────────────────────────────────────────
   // ОБРАБОТКА ФОРМЫ
-  // ============================================================================
+  // ──────────────────────────────────────────────
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const url = urlInput.value.trim();
+    const mode = qualitySelect.value;
 
-    // Сброс состояния
+    // Сброс
     showStatus('', 'info');
-    downloadResults = null;
+    removeById('download-results');
 
     if (!url) {
-      showStatus('Пожалуйста, введите URL видео');
+      showStatus('Введите URL видео');
       return;
     }
-
     if (!isValidYouTubeUrl(url)) {
       showStatus('Некорректный URL YouTube. Проверьте ссылку.');
       return;
     }
-
-    // Показ примеров использования
-    examplePanel.style.display = 'block';
 
     // Блокировка кнопки
     downloadBtn.disabled = true;
     downloadBtn.innerHTML = '⏳ Подключение...';
     showStatus('Отправка запроса на сервер...', 'info');
 
-    try {
-      // Запрос к API с таймаутом
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд таймаут
+    // Таймаут 45 секунд
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
+    try {
       downloadBtn.innerHTML = '⏳ Обработка видео...';
       showStatus('Сервер обрабатывает ваше видео. Это может занять 10-30 секунд...', 'info');
 
       const data = await fetchVideoInfo(url, controller.signal);
       clearTimeout(timeoutId);
 
+      // Проверка на ошибку
       if (data.status === 'error' || data.error) {
-        throw new Error(data.error?.code || 'Ошибка обработки видео');
+        throw new Error(data.error?.code || data.error || 'Ошибка обработки видео');
       }
 
+      // Успех — прямая ссылка
       if (data.status === 'tunnel' || data.status === 'redirect') {
-        // Прямая ссылка для скачивания
-        downloadResults = data;
-        
-        const mode = qualitySelect.value;
         const ext = mode === 'audio' ? 'mp3' : 'mp4';
-        
-        // Формируем имя файла с информацией о видео
         const filename = data.filename || `youtube_video.${ext}`;
 
         showStatus('✅ Видео готово! Начинается скачивание...', 'success');
         downloadBtn.innerHTML = '📥 Скачать ещё раз';
         downloadBtn.disabled = false;
 
-        // Показываем информацию о видео
-        showVideoInfo(data, filename);
-
-        // Автоматическое скачивание
+        showDownloadResult(data, filename);
         downloadFile(data.url, filename);
 
-        console.log('Скачивание завершено:', data);
-      } else if (data.status === 'picker') {
-        // Несколько вариантов качества
-        downloadResults = data;
-        showStatus(`✅ Найдено ${data.picker?.length || 0} вариантов. Выберите качество ниже.`, 'success');
+        console.log('✅ Скачивание завершено:', data);
+        return;
+      }
+
+      // Несколько вариантов
+      if (data.status === 'picker' && data.picker?.length > 0) {
+        showStatus(`✅ Найдено ${data.picker.length} вариантов. Выберите качество ниже.`, 'success');
         downloadBtn.innerHTML = '📥 Выбрать качество';
         downloadBtn.disabled = false;
-        
-        // Показать варианты
         showPickerOptions(data.picker);
-      } else {
-        throw new Error('Неизвестный статус ответа от сервера');
+        return;
       }
+
+      // Неизвестный статус
+      throw new Error('Неизвестный статус ответа от сервера');
 
     } catch (error) {
-      console.error('Download Error:', error);
-      
-      // Обработка разных типов ошибок
+      console.error('❌ Download Error:', error);
+
+      // Разные типы ошибок
       let errorMessage = 'Не удалось обработать видео';
-      
+
       if (error.name === 'AbortError') {
-        errorMessage = 'Превышено время ожидания (30 сек). Сервер перегружен или видео слишком длинное.';
+        errorMessage = '⏰ Превышено время ожидания (45 сек). Сервер перегружен или видео слишком длинное.';
       } else if (error.message.includes('429')) {
-        errorMessage = 'Слишком много запросов. Подождите минуту и попробуйте снова.';
-      } else if (error.message.includes('400')) {
-        errorMessage = 'Видео недоступно или ссылка некорректна.';
+        errorMessage = '🚫 Слишком много запросов. Подождите минуту и попробуйте снова.';
+      } else if (error.message.includes('400') || error.message.includes('BadRequest')) {
+        errorMessage = '❌ Видео недоступно или ссылка некорректна.';
+      } else if (error.message.includes('403')) {
+        errorMessage = '🔒 Видео защищено авторскими правами или приватное.';
+      } else if (error.message.includes('500') || error.message.includes('502') || error.message.includes('503')) {
+        errorMessage = '🔧 Сервер временно недоступен. Попробуйте позже.';
       } else if (error.message) {
-        errorMessage = `Ошибка: ${error.message}`;
+        errorMessage = `❌ Ошибка: ${error.message}`;
       }
-      
-      showStatus(`❌ ${errorMessage}`);
+
+      showStatus(errorMessage);
       downloadBtn.innerHTML = '📥 Повторить';
       downloadBtn.disabled = false;
-    }
-  });
-
-  // Закрыть пример при клике вне панели (опционально)
-  document.addEventListener('click', function(e) {
-    if (!examplePanel.contains(e.target) && e.target !== examplePanel) {
-      examplePanel.style.display = 'none';
     }
   });
 });
