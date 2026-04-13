@@ -16,7 +16,7 @@ const firebaseConfig = {
 try {
   const app = firebase.initializeApp(firebaseConfig);
   window.auth = firebase.auth();
-  window.db = firebase.firestore(); // ← добавь эту строку
+  window.db = firebase.firestore();
   console.log('✅ Firebase initialized:', app.name);
 } catch (e) {
   console.error('❌ Firebase init error:', e);
