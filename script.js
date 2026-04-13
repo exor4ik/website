@@ -694,27 +694,381 @@ async function loadComponent(id, file) {
   try {
     const response = await fetch(file, { cache: 'force-cache' });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    
+
     const html = await response.text();
     const container = document.getElementById(id);
     if (!container) return;
-    
-    // Сохраняем ссылку на старое содержимое для очистки слушателей (опционально)
+
     container.innerHTML = html;
 
-    // Инициализация после загрузки
     if (id === 'header-container') {
-      DOM.clear(); // сброс кэша после изменения DOM
+      DOM.clear();
       initNav();
       initSmartHeader();
+      loadAuthModal(); // Загружаем модальное окно авторизации
     }
     if (id === 'footer-container') {
       createBugs();
     }
   } catch (e) {
     console.error(`❌ Ошибка загрузки ${file}:`, e);
-    // Fallback: можно показать заглушку
   }
+}
+
+// ============================================================================
+// 👑 ROLE MANAGER (Система ролей)
+// ============================================================================
+
+const RoleManager = {
+  currentRole: 'guest',
+  // Иерархия прав (число определяет уровень доступа)
+  hierarchy: { admin: 4, moderator: 3, user: 2, guest: 1 },
+
+  // Инициализация роли пользователя
+  async init(user) {
+    if (!user) {
+      this.currentRole = 'guest';
+      this.applyUI();
+      return;
+    }
+
+    // Если Firestore еще не готов, ждем
+    if (!window.firebase || !window.firebase.firestore) {
+      console.warn('⏳ Firestore еще загружается...');
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    try {
+      const db = window.firebase.firestore();
+      const docRef = db.collection('users').doc(user.uid);
+      const doc = await docRef.get();
+
+      if (doc.exists) {
+        this.currentRole = doc.data().role || 'user';
+      } else {
+        // Новый пользователь — роль User
+        await docRef.set({
+          email: user.email,
+          name: user.displayName || 'User',
+          role: 'user',
+          createdAt: new Date()
+        });
+        this.currentRole = 'user';
+      }
+      
+      console.log(`👤 Роль пользователя: ${this.currentRole}`);
+      this.applyUI();
+    } catch (e) {
+      console.error('❌ Ошибка загрузки роли:', e);
+      this.currentRole = 'user'; // Фолбек
+      this.applyUI();
+    }
+  },
+
+  // Управляет видимостью элементов по классам
+  applyUI() {
+    const level = this.hierarchy[this.currentRole] || 0;
+
+    // Скрываем все элементы с классами ролей перед перерисовкой
+    document.querySelectorAll('.role-admin, .role-mod, .role-user, .role-guest-msg').forEach(el => {
+      el.style.display = 'none';
+    });
+
+    // Показываем элементы в зависимости от уровня доступа
+    // Админ (4): Видит всё
+    if (level >= 4) document.querySelectorAll('.role-admin').forEach(el => el.style.display = '');
+    
+    // Модер (3): Видит инструменты модерации + контент юзера
+    if (level >= 3) document.querySelectorAll('.role-mod').forEach(el => el.style.display = '');
+    
+    // Юзер (2): Видит контент для юзеров (комменты и т.д.)
+    if (level >= 2) document.querySelectorAll('.role-user').forEach(el => el.style.display = '');
+
+    // Гость (1): Видит сообщение "Войдите"
+    if (level < 2) {
+      document.querySelectorAll('.role-guest-msg').forEach(el => el.style.display = 'block');
+    }
+  },
+
+  // Проверка прав в JS коде
+  can(action) {
+    const roles = {
+      publish: 'admin',
+      deleteComment: 'moderator',
+      comment: 'user'
+    };
+    return (this.hierarchy[this.currentRole] || 0) >= (this.hierarchy[roles[action]] || 0);
+  }
+};
+
+// ============================================================================
+// 🔐 AUTHORIZATION
+// ============================================================================
+
+let firebaseReady = false;
+
+// Функция загрузки скриптов Firebase (если их нет в HTML)
+async function ensureFirebase() {
+  if (window.firebase) return; // Уже загружен
+  
+  console.log('⏳ Загрузка Firebase SDK...');
+  
+  // Список скриптов для загрузки
+  const scripts = [
+    'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
+    'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js',
+    'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js' // Добавлен Firestore
+  ];
+
+  // Загружаем последовательно
+  for (const src of scripts) {
+    if (!document.querySelector(`script[src="${src}"]`)) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+  }
+  
+  // Инициализируем конфиг
+  try {
+    await loadScript('components/firebase-config.js');
+    firebaseReady = true;
+    console.log('✅ Firebase SDK готов');
+  } catch (e) {
+    console.error('❌ Ошибка инициализации Firebase:', e);
+  }
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) {
+      resolve();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+// Загрузка модального окна авторизации
+async function loadAuthModal() {
+  try {
+    // 1. Убеждаемся, что Firebase загружен
+    await ensureFirebase();
+    
+    if (!window.auth) {
+      console.error('❌ Firebase Auth не инициализирован');
+      return;
+    }
+
+    // 2. Загружаем HTML модалки
+    const response = await fetch('components/auth.html');
+    if (!response.ok) throw new Error('Файл auth.html не найден');
+    
+    const html = await response.text();
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    document.body.appendChild(div.firstElementChild);
+    
+    console.log('✅ Auth UI загружен');
+
+    // 3. Инициализируем логику
+    initAuth();
+  } catch (e) {
+    console.error('❌ Ошибка настройки авторизации:', e);
+  }
+}
+
+// Инициализация авторизации (обновленная версия)
+function initAuth() {
+  console.log('🛡️ Настройка кнопок авторизации...');
+  
+  // Обработка результата редиректа (для Google SignIn)
+  window.auth.getRedirectResult().then((result) => {
+    if (result.user) {
+      console.log('✅ Вход через Google успешен');
+    }
+  }).catch((error) => {
+    console.error('❌ Ошибка редиректа:', error);
+  });
+  
+  // Элементы
+  const authBtn = document.getElementById('auth-btn');
+  const authLogout = document.getElementById('auth-logout');
+  const mobileAuthBtn = document.getElementById('mobile-auth-btn');
+  const mobileAuthLogout = document.getElementById('mobile-auth-logout');
+  const userMenu = document.getElementById('user-menu');
+  const userName = document.getElementById('user-name');
+  const authModal = document.getElementById('auth-modal');
+  const authClose = document.getElementById('auth-close');
+  const authBackdrop = document.getElementById('auth-backdrop');
+  const loginForm = document.getElementById('login-form');
+  const registerForm = document.getElementById('register-form');
+  const showRegister = document.getElementById('show-register');
+  const showLogin = document.getElementById('show-login');
+  const loginSubmit = document.getElementById('login-submit');
+  const registerSubmit = document.getElementById('register-submit');
+  const loginError = document.getElementById('login-error');
+  const registerError = document.getElementById('register-error');
+  
+  // Кнопка Google
+  const googleBtn = document.getElementById('google-btn');
+
+  if (!window.auth) return;
+
+  // =========================================
+  // 📡 СЛУШАТЕЛЬ СОСТОЯНИЯ АВТОРИЗАЦИИ
+  // =========================================
+  let authProcessing = false;
+  let lastAuthState = null;
+
+  window.auth.onAuthStateChanged(async (user) => {
+    // Дедупликация: не обрабатываем одинаковые состояния подряд
+    const currentState = user ? user.uid : null;
+    if (currentState === lastAuthState) return;
+    lastAuthState = currentState;
+
+    console.log('📡 onAuthStateChanged:', user ? `Вошёл: ${user.displayName || user.email}` : 'Не вошёл');
+
+    if (authProcessing) {
+      console.log('⏳ Предыдущий вызов ещё не завершился, пропускаем');
+      return;
+    }
+
+    if (user) {
+      authProcessing = true;
+      try {
+        showUser(user.displayName || user.email);
+        await RoleManager.init(user);
+      } finally {
+        authProcessing = false;
+      }
+    } else {
+      hideUser();
+      RoleManager.init(null);
+    }
+  });
+
+  // Открытие модалки
+  function openModal() {
+    if (authModal) authModal.classList.add('is-open');
+  }
+  if (authBtn) authBtn.addEventListener('click', openModal);
+  if (mobileAuthBtn) mobileAuthBtn.addEventListener('click', () => {
+    openModal();
+    const mobileMenu = document.getElementById('mobile-menu');
+    if (mobileMenu) mobileMenu.classList.remove('is-open');
+  });
+
+  // Закрытие модалки
+  function closeModal() {
+    if (authModal) authModal.classList.remove('is-open');
+    loginError.textContent = '';
+    registerError.textContent = '';
+  }
+  if (authClose) authClose.addEventListener('click', closeModal);
+  if (authBackdrop) authBackdrop.addEventListener('click', closeModal);
+
+  // Переключение форм
+  if (showRegister) showRegister.onclick = (e) => { e.preventDefault(); loginForm.style.display='none'; registerForm.style.display='block'; };
+  if (showLogin) showLogin.onclick = (e) => { e.preventDefault(); registerForm.style.display='none'; loginForm.style.display='block'; };
+
+  // ВХОД
+  if (loginSubmit) {
+    loginSubmit.onclick = async () => {
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (!email || !password) { loginError.textContent = 'Заполните все поля'; return; }
+      try {
+        await window.auth.signInWithEmailAndPassword(email, password);
+        closeModal();
+      } catch (e) { loginError.textContent = e.message; console.error(e); }
+    };
+  }
+
+  // РЕГИСТРАЦИЯ
+  if (registerSubmit) {
+    registerSubmit.onclick = async () => {
+      const name = document.getElementById('register-name').value.trim();
+      const email = document.getElementById('register-email').value.trim();
+      const password = document.getElementById('register-password').value;
+      if (!name || !email || !password) { registerError.textContent = 'Заполните все поля'; return; }
+      try {
+        const cred = await window.auth.createUserWithEmailAndPassword(email, password);
+        await cred.user.updateProfile({ displayName: name });
+        closeModal();
+      } catch (e) { registerError.textContent = e.message; console.error(e); }
+    };
+  }
+
+  // GOOGLE ВХОД (Popup — работает на локалхосте без спец. настроек сервера)
+  if (googleBtn) {
+    googleBtn.onclick = async () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try {
+        console.log('🔄 Google Auth: Открываем окно...');
+        const result = await window.auth.signInWithPopup(provider);
+        console.log('✅ Успешный вход:', result.user.displayName);
+        closeModal();
+      } catch (e) {
+        console.error("Google Auth Error:", e);
+        if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+           loginError.textContent = "Ошибка Google входа: " + e.message;
+        }
+      }
+    };
+  }
+
+  // ВЫХОД
+  function logout() { window.auth.signOut(); }
+  if (authLogout) authLogout.onclick = logout;
+  if (mobileAuthLogout) mobileAuthLogout.onclick = logout;
+
+  // Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && authModal && authModal.classList.contains('is-open')) closeModal();
+  });
+}
+
+// Показать пользователя
+function showUser(name) {
+  // Desktop
+  const authBtn = document.getElementById('auth-btn');
+  const userMenu = document.getElementById('user-menu');
+  const userName = document.getElementById('user-name');
+  if (authBtn) authBtn.style.display = 'none';
+  if (userMenu) userMenu.style.display = 'flex';
+  if (userName) userName.textContent = name;
+
+  // Mobile
+  const mobileAuthBtn = document.getElementById('mobile-auth-btn');
+  const mobileUserMenu = document.getElementById('mobile-user-menu');
+  const mobileUserName = document.getElementById('mobile-user-name');
+  if (mobileAuthBtn) mobileAuthBtn.style.display = 'none';
+  if (mobileUserMenu) mobileUserMenu.style.display = 'flex';
+  if (mobileUserName) mobileUserName.textContent = name;
+}
+
+// Скрыть пользователя
+function hideUser() {
+  // Desktop
+  const authBtn = document.getElementById('auth-btn');
+  const userMenu = document.getElementById('user-menu');
+  if (authBtn) authBtn.style.display = 'block';
+  if (userMenu) userMenu.style.display = 'none';
+
+  // Mobile
+  const mobileAuthBtn = document.getElementById('mobile-auth-btn');
+  const mobileUserMenu = document.getElementById('mobile-user-menu');
+  if (mobileAuthBtn) mobileAuthBtn.style.display = 'block';
+  if (mobileUserMenu) mobileUserMenu.style.display = 'none';
 }
 
 // ============================================================================
@@ -772,6 +1126,15 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
+}
+
+// Плавное сворачивание/разворачивание комментариев
+function toggleComments(btn) {
+  const commentsList = btn.nextElementSibling;
+  if (!commentsList) return;
+
+  btn.classList.toggle('open');
+  commentsList.classList.toggle('open');
 }
 
 // Экспорт для возможного использования в модулях

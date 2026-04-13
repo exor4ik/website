@@ -15,21 +15,68 @@
   <span></span><span></span><span></span><span></span><span></span>
 </div>
 <div id="header-container"></div>
+
+<!-- Панель управления (на весь экран) -->
+<div class="admin-panel" id="admin-panel">
+  <div class="admin-panel-header">
+    <h2>⚙️ Панель управления блогом</h2>
+    <button class="admin-close-btn" id="admin-close-btn" onclick="document.getElementById('admin-panel').classList.remove('active')">&times;</button>
+  </div>
+  <div class="admin-panel-body">
+    <!-- Кнопка публикации (Только Админ) -->
+    <div class="role-admin" style="display:none;">
+      <div class="admin-section">
+        <h3>📝 Публикация</h3>
+        <input id="post-title-input" type="text" placeholder="Заголовок поста" class="admin-input">
+        <textarea id="post-text-input" placeholder="Текст поста..." class="admin-textarea"></textarea>
+        <p id="publish-error" style="color:#ff6b6b;font-size:.85rem;min-height:20px;"></p>
+        <button id="publish-btn" class="btn admin-btn-publish">Опубликовать</button>
+      </div>
+    </div>
+
+    <!-- Кнопка удаления (Модер и Админ) -->
+    <div class="role-mod" style="display:none;">
+      <div class="admin-section">
+        <h3>🗑️ Модерация</h3>
+        <p style="color:#aaa;font-size:0.9rem;">Нажмите на кнопку "Удалить" рядом с комментарием в постах ниже.</p>
+      </div>
+    </div>
+
+    <!-- Поле ввода (Пользователь, Модер, Админ) -->
+    <div class="role-user" style="display:none;">
+      <div class="admin-section">
+        <h3>💬 Быстрый комментарий</h3>
+        <textarea placeholder="Напишите что-нибудь..." class="admin-input"></textarea>
+        <button class="btn">Отправить</button>
+      </div>
+    </div>
+
+    <!-- Сообщение для гостя -->
+    <div class="role-guest-msg" style="display:none;">
+      <div class="admin-section">
+        <h3>🔒 Доступ ограничен</h3>
+        <p style="color:#aaa;">Войдите в аккаунт, чтобы получить доступ к функциям блога.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <main class="container">
-  <section class="fade">
-    <h2>📝 Блог EgorNetwork</h2>
-    <p style="color:#aaa;margin-bottom:24px;">Блог, который легендарно вернулся.</p>
+  <section class="fade" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+    <div>
+      <h2>📝 Блог EgorNetwork</h2>
+      <p style="color:#aaa;margin-bottom:8px;">Блог, который легендарно вернулся.</p>
+    </div>
+    <button class="btn role-admin role-mod role-user" style="display:none;background:linear-gradient(135deg,rgba(109,213,255,.2),rgba(139,123,255,.2));" onclick="document.getElementById('admin-panel').classList.add('active')">
+      ⚙️ Панель управления
+    </button>
   </section>
 
-  <section class="fade card-2 card">
-    <h3>Блог жив!</h3>
-    <p style="color:#aaa;margin:12px 0;">Блог жив! Встречайте блог, который восстал из мёртвых))</p>
-    <p style="font-size:0.85rem;color:#666;">Дата публикации: 17.03.2026</p>
-  </section>
-
-  
+  <div id="posts-container"></div>
 </main>
 <div id="footer-container"></div>
 <script src="script.js" defer></script>
+<script src="comments.js" defer></script>
+<script src="posts.js" defer></script>
 </body>
 </html>

@@ -12,6 +12,7 @@
 
 /* ---------- 2. ПЕРЕМЕННЫЕ ---------- */
 :root {
+  
   /* Цвета */
   --bg-1: #070b14;
   --bg-2: #0c1424;
@@ -75,7 +76,7 @@ html {
 
 body {
   margin: 0;
-  font-family: 'Space Grotesk', 'Trebuchet MS', 'Verdana', sans-serif;
+  font-family: 'Manrope', 'Trebuchet MS', 'Verdana', sans-serif;
   background: transparent;
   color: var(--text);
   min-height: 100%;
@@ -274,6 +275,12 @@ main.container { padding-top: 100px; }
   border-bottom: 1px solid rgba(255,255,255,.08);
 }
 .mobile-menu a:last-child { border-bottom: none; }
+
+.mobile-auth {
+  padding: 12px 16px; border-top: 1px solid rgba(255,255,255,.08);
+  display: flex; align-items: center; gap: 12px;
+}
+.mobile-user-menu { display: flex; align-items: center; gap: 12px; }
 
 /* ---------- 8. HERO СЕКЦИЯ ---------- */
 .hero {
@@ -653,6 +660,290 @@ main.container { padding-top: 100px; }
 }
 @keyframes reveal-text { to { opacity: 1; transform: translateY(0); } }
 
+/* ---------- 14. АВТОРИЗАЦИЯ ---------- */
+.auth-buttons { display: flex; align-items: center; gap: 12px; }
+
+.auth-btn {
+  padding: 8px 18px; border-radius: 8px; border: 1px solid var(--line-bright);
+  background: var(--grad-btn); color: var(--text); font-size: .9rem;
+  cursor: pointer; transition: all .3s ease; transform: translateZ(0);
+}
+.auth-btn:hover {
+  transform: translateY(-2px) translateZ(8px);
+  box-shadow: 0 8px 20px rgba(84,123,255,.25);
+}
+.auth-btn-logout {
+  background: rgba(255,100,100,.15); border-color: rgba(255,100,100,.3);
+}
+.auth-btn-logout:hover {
+  background: rgba(255,100,100,.25);
+  box-shadow: 0 8px 20px rgba(255,100,100,.2);
+}
+
+.user-menu { display: flex; align-items: center; gap: 12px; }
+.user-name { color: var(--accent); font-weight: 500; letter-spacing: .2px; }
+
+/* Модальное окно авторизации */
+.auth-modal {
+  position: fixed; inset: 0; z-index: 10000;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity .3s ease, visibility 0s linear .3s;
+}
+.auth-modal.is-open {
+  opacity: 1; visibility: visible; pointer-events: auto;
+  transition: opacity .3s ease, visibility 0s linear 0s;
+}
+.auth-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.7); backdrop-filter: blur(8px);
+}
+.auth-container {
+  position: relative; z-index: 1;
+  width: min(420px, calc(100vw - 40px));
+  padding: 32px; border-radius: 18px;
+  background: var(--grad-glass-heavy);
+  border: 1px solid var(--line-bright);
+  backdrop-filter: blur(16px) saturate(130%);
+  box-shadow: 0 24px 60px rgba(0,0,0,.5), 0 0 40px rgba(109,213,255,.1);
+  transform: translateY(20px) scale(.95);
+  transition: transform .3s ease;
+}
+.auth-modal.is-open .auth-container {
+  transform: translateY(0) scale(1);
+}
+.auth-close {
+  position: absolute; top: 16px; right: 16px; width: 36px; height: 36px;
+  border-radius: 8px; border: 1px solid var(--line);
+  background: rgba(255,255,255,.05); color: var(--muted);
+  font-size: 1.5rem; cursor: pointer; transition: all .3s;
+  display: grid; place-items: center;
+}
+.auth-close:hover { background: rgba(255,255,255,.1); color: #fff; }
+
+.auth-title {
+  margin: 0 0 8px; font-size: 1.5rem; color: #fff;
+  text-shadow: 0 0 20px rgba(109,213,255,.3);
+}
+.auth-subtitle { margin: 0 0 24px; color: var(--muted); font-size: .9rem; }
+
+.auth-field { margin-bottom: 16px; }
+.auth-field label {
+  display: block; margin-bottom: 6px; color: var(--muted);
+  font-size: .85rem; letter-spacing: .2px;
+}
+.auth-field input {
+  width: 100%; padding: 12px 14px; border-radius: 10px;
+  border: 1px solid var(--line); background: rgba(0,0,0,.3);
+  color: var(--text); font-size: 1rem;
+  transition: border-color .3s, box-shadow .3s;
+}
+.auth-field input:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(109,213,255,.15);
+}
+.auth-field input::placeholder { color: rgba(168,179,204,.5); }
+
+.auth-error {
+  min-height: 20px; margin-bottom: 12px; color: #ff6b6b;
+  font-size: .85rem;
+}
+.auth-submit {
+  width: 100%; padding: 12px; border-radius: 10px; border: none;
+  background: var(--grad-primary); color: #041025;
+  font-size: 1rem; font-weight: 600; cursor: pointer;
+  transition: all .3s; transform: translateZ(0);
+}
+.auth-submit:hover {
+  transform: translateY(-2px) translateZ(8px);
+  box-shadow: 0 12px 24px rgba(109,213,255,.3);
+}
+.auth-submit:active { transform: translateY(0) translateZ(0); }
+
+/* Разделитель и Google кнопка */
+.auth-divider {
+  text-align: center; color: var(--muted); font-size: .85rem;
+  margin: 16px 0; position: relative;
+}
+.auth-divider::before, .auth-divider::after {
+  content: ''; position: absolute; top: 50%; width: 40%; height: 1px;
+  background: var(--line);
+}
+.auth-divider::before { left: 0; }
+.auth-divider::after { right: 0; }
+
+.auth-google {
+  width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--line);
+  background: rgba(255,255,255,.05); color: var(--text);
+  font-size: 1rem; cursor: pointer; transition: all .3s;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.auth-google:hover {
+  background: rgba(255,255,255,.1); transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,.2);
+}
+
+/* Переключатель форм */
+.auth-switch {
+  margin: 20px 0 0; text-align: center; color: var(--muted);
+  font-size: .9rem;
+}
+.auth-switch a {
+  color: var(--accent); text-decoration: none;
+  transition: color .3s;
+}
+.auth-switch a:hover { color: #fff; text-decoration: underline; }
+
+/* ---------- 14B. ПАНЕЛЬ УПРАВЛЕНИЯ (на весь экран) ---------- */
+.admin-panel {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(7,11,20,.92); backdrop-filter: blur(16px);
+  display: flex; flex-direction: column;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity .4s ease, visibility 0s linear .4s;
+}
+.admin-panel.active {
+  opacity: 1; visibility: visible; pointer-events: auto;
+  transition: opacity .4s ease, visibility 0s linear 0s;
+}
+.admin-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24px 32px; border-bottom: 1px solid var(--line);
+  background: rgba(14,22,38,.8);
+}
+.admin-panel-header h2 { margin: 0; font-size: 1.4rem; color: #fff; }
+.admin-close-btn {
+  width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line);
+  background: rgba(255,255,255,.05); color: var(--muted);
+  font-size: 1.6rem; cursor: pointer; transition: all .3s;
+  display: grid; place-items: center;
+}
+.admin-close-btn:hover { background: rgba(255,100,100,.2); color: #ff6b6b; }
+.admin-panel-body {
+  flex: 1; overflow-y: auto; padding: 32px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 24px;
+  align-content: start;
+}
+.admin-section {
+  padding: 24px; border-radius: 16px;
+  background: var(--grad-glass);
+  border: 1px solid var(--line);
+}
+.admin-section h3 { margin: 0 0 16px; color: #fff; }
+.admin-input {
+  width: 100%; padding: 12px 14px; border-radius: 10px;
+  border: 1px solid var(--line); background: rgba(0,0,0,.3);
+  color: var(--text); font-size: 1rem; margin-bottom: 12px;
+  transition: border-color .3s, box-shadow .3s;
+}
+.admin-input:focus, .admin-textarea:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(109,213,255,.15);
+}
+.admin-textarea {
+  width: 100%; min-height: 120px; padding: 12px 14px; border-radius: 10px;
+  border: 1px solid var(--line); background: rgba(0,0,0,.3);
+  color: var(--text); font-size: 1rem; margin-bottom: 12px;
+  font-family: inherit; resize: vertical;
+}
+.admin-btn-publish {
+  background: linear-gradient(135deg, #ff0055, #ff00aa);
+  color: #fff; border: none;
+}
+
+/* ---------- 14C. КОММЕНТАРИИ ---------- */
+.blog-post {
+  margin-bottom: 24px; padding: 24px;
+}
+.blog-post-header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px;
+}
+.blog-date {
+  color: var(--muted); font-size: .85rem;
+  background: rgba(255,255,255,.05); padding: 4px 12px; border-radius: 20px;
+}
+
+/* Секция комментариев */
+.comments-section {
+  margin-top: 20px; border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+/* Кнопка сворачивания */
+.comments-toggle {
+  width: 100%; padding: 12px 16px; border: none; border-radius: 10px;
+  background: rgba(255,255,255,.05); color: var(--muted);
+  font-size: .95rem; cursor: pointer; transition: all .3s;
+  display: flex; align-items: center; gap: 10px;
+  text-align: left;
+}
+.comments-toggle:hover { background: rgba(255,255,255,.1); color: #fff; }
+.comments-toggle-icon {
+  display: inline-block; transition: transform .3s ease;
+  font-size: .8rem; color: var(--accent);
+}
+.comments-toggle.open .comments-toggle-icon {
+  transform: rotate(90deg);
+}
+
+/* Список комментариев */
+.comments-list {
+  max-height: 0; overflow: hidden;
+  transition: max-height .5s cubic-bezier(.22,1,.36,1);
+}
+.comments-list.open {
+  max-height: 2000px; /* Достаточно для ~20 комментариев */
+}
+
+/* Отдельный комментарий */
+.comment {
+  display: flex; gap: 12px; padding: 14px 0;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  position: relative;
+  transition: opacity .3s ease, transform .3s ease;
+}
+.comment-avatar {
+  flex-shrink: 0; width: 40px; height: 40px; border-radius: 10px;
+  background: var(--grad-primary); color: #041025;
+  display: grid; place-items: center; font-weight: 700; font-size: 1.1rem;
+}
+.comment-body { flex: 1; min-width: 0; }
+.comment-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 6px;
+}
+.comment-author { font-weight: 600; color: #fff; font-size: .95rem; }
+.comment-time { color: var(--muted); font-size: .8rem; }
+.comment-text {
+  margin: 0; color: var(--muted); font-size: .92rem; line-height: 1.5;
+}
+.comment-delete {
+  position: absolute; top: 14px; right: 0;
+  width: 28px; height: 28px; border-radius: 6px;
+  border: 1px solid rgba(255,100,100,.3); background: rgba(255,100,100,.1);
+  color: #ff6b6b; font-size: 1.1rem; cursor: pointer;
+  transition: all .3s; display: grid; place-items: center;
+}
+.comment-delete:hover {
+  background: rgba(255,100,100,.3); border-color: rgba(255,100,100,.5);
+}
+
+/* Форма комментария */
+.comment-form {
+  display: flex; align-items: center; gap: 12px; padding: 16px 0;
+}
+.comment-input {
+  flex: 1; padding: 10px 14px; border-radius: 10px;
+  border: 1px solid var(--line); background: rgba(0,0,0,.3);
+  color: var(--text); font-size: .95rem;
+  transition: border-color .3s;
+}
+.comment-input:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(109,213,255,.1);
+}
+.comment-submit { flex-shrink: 0; padding: 10px 18px; font-size: .9rem; }
+
 /* ---------- 15. ФУТЕР ---------- */
 .footer {
   border-top: 1px solid rgba(255,255,255,.08); padding: 0 0 0; text-align: center;
@@ -882,3 +1173,63 @@ main.container { padding-top: 100px; }
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* ============================================
+   MOBILE OPTIMIZATION OVERRIDES (Добавление для лучшей адаптивности)
+   ============================================ */
+
+/* 1. Усиление сброса 3D-эффектов на маленьких экранах */
+@media (max-width: 768px) {
+    /* Отключаем сложные трансформации, которые могут вызывать проблемы на мобильных браузерах */
+    .card, .gallery-item {
+        transform: none !important; /* Сбрасываем все вращения и смещения */
+        box-shadow: var(--shadow-md) !important; /* Возвращаем стандартную тень */
+        border-color: rgba(160,195,255,.16) !important;
+    }
+
+    /* Галерея: делаем элементы более плоскими и читаемыми */
+    .gallery {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* Уменьшаем минимальную ширину */
+        gap: 15px;
+    }
+    .gallery-item img {
+        height: 200px !important; /* Фиксируем высоту для лучшего вида в сетке */
+    }
+
+    /* Карточки: убираем лишний отступ справа, так как изображение теперь не "выступает" */
+    .card:has(.card-image) { padding-right: 16px !important; }
+    .card .game-btns { transform: translateZ(24px) !important; } /* Уменьшаем глубину кнопки */
+
+    /* Hero Panel: делаем его более компактным и центрированным */
+    .hero-panel {
+        padding: 18px 16px !important;
+        max-width: calc(100vw - 32px) !important; /* Занимает почти всю ширину */
+    }
+
+    /* Улучшение навигации и меню (уже частично сделано, но усиливаем) */
+    .mobile-menu a { padding: 14px 16px; font-size: 1rem; }
+}
+
+
+/* 2. Специальная оптимизация для очень маленьких экранов (< 480px) */
+@media (max-width: 480px) {
+    .container { padding: 15px 12px !important; }
+
+    /* Уменьшаем размер шрифтов в заголовках, чтобы они не "вылезали" за экран */
+    .hero h1 { font-size: clamp(1.4rem, 7vw, 2.6rem) !important; }
+    .hero-panel p { font-size: 0.95rem !important; }
+
+    /* Уменьшаем размер кнопок */
+    .btn, .game-btn { padding: 10px 18px !important; font-size: 0.9rem !important; }
+
+    /* Галерея: делаем элементы еще компактнее */
+    .gallery { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .gallery-item img { height: 150px !important; }
+    /* Уменьшаем размер модального окна */
+    .auth-container { width: 90vw !important; padding: 24px !important; }
+  }
+
+/* ---------- 22. QUICK LINKS (быстрый доступ) ---------- */
+.quick-links { margin-top: 32px; text-align: center; }
+.quick-links.fade { transform: translateZ(0); transition: opacity .8s ease, translate .8s var(--ease-smooth), filter .8s ease; }
+.quick-links.fade.visible { opacity: 1; transform: translateZ(0); filter: blur(0); }
