@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         try {
-          const res = await fetch(`${BACKEND_URL}/health`, {
+          const res = await fetch(`${BACKEND_URL}/api/health`, {
             signal: AbortSignal.timeout(PING_TIMEOUT),
           });
           if (res.ok) { resolve(); return; }
