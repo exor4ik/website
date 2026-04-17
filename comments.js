@@ -41,11 +41,18 @@ function renderComment(doc, postId) {
   const div = document.createElement('div');
   div.className = 'comment';
   div.dataset.commentId = doc.id;
+  const avatarContent = data.avatar
+    ? `<img src="${data.avatar}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`
+    : (data.avatar || data.author?.[0]?.toUpperCase() || '?');
+
   div.innerHTML = `
-    <div class="comment-avatar">${data.avatar || '?'}</div>
+    <div class="comment-avatar" style="overflow:hidden;">${avatarContent}</div>
     <div class="comment-body">
       <div class="comment-header">
-        <span class="comment-author">${escapeHtml(data.author)}</span>
+        <a class="comment-author" href="profile.html?uid=${encodeURIComponent(data.uid || '')}"
+           style="color:#fff;text-decoration:none;transition:color .2s;"
+           onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='#fff'"
+        >${escapeHtml(data.author)}</a>
         <span class="comment-time">${formatTime(data.createdAt)}</span>
       </div>
       <p class="comment-text">${escapeHtml(data.text)}</p>
@@ -109,10 +116,19 @@ async function submitComment(postEl) {
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
 
   try {
+    // Подтягиваем актуальный аватар из профиля
+    let avatarData = (user.displayName || user.email)[0].toUpperCase();
+    try {
+      const profileDoc = await window.db.collection('users').doc(user.uid).get();
+      if (profileDoc.exists && profileDoc.data().avatar) {
+        avatarData = profileDoc.data().avatar;
+      }
+    } catch (_) { /* фолбэк на букву */ }
+
     await window.db.collection('comments').doc(postId).collection('items').add({
       uid:       user.uid,
       author:    user.displayName || user.email.split('@')[0],
-      avatar:    (user.displayName || user.email)[0].toUpperCase(),
+      avatar:    avatarData,
       text,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });

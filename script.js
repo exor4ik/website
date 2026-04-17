@@ -419,36 +419,42 @@ function initMobileMenu() {
 function initNavHighlight() {
   const highlight = DOM.get('.nav-highlight');
   const nav = DOM.get('.nav');
-  const links = DOM.getAll('.nav a');
+  // Выбираем все ссылки и кнопку "Ещё" внутри навигации
+  const navItems = DOM.getAll('.nav a, .nav .nav-dropdown-toggle');
   
-  if (!highlight || links.length === 0) return;
+  if (!highlight || !nav || navItems.length === 0) return;
 
-  // Подсветка активной ссылки
+  // Подсветка активной ссылки (если URL совпадает)
   const currentURL = window.location.href;
-  links.forEach(link => {
-    const href = link.getAttribute('href');
+  navItems.forEach(item => {
+    const href = item.getAttribute('href');
     if (href && currentURL.includes(href)) {
-      link.classList.add('active');
+      item.classList.add('active');
     }
   });
 
-  // Анимация ховера
+  // Функция для получения актуальных координат nav (на случай ресайза)
+  const getNavRect = () => nav.getBoundingClientRect();
+
   const onEnter = (e) => {
-    const link = e.currentTarget;
-    const r = link.getBoundingClientRect();
-    const n = link.parentElement.getBoundingClientRect();
+    const item = e.currentTarget;
+    const itemRect = item.getBoundingClientRect();
+    const navRect = getNavRect();
     
-    highlight.style.width = `${r.width}px`;
-    highlight.style.height = `${r.height}px`;
-    highlight.style.transform = `translate(${r.left - n.left}px, ${r.top - n.top}px)`;
+    // Устанавливаем размеры и позицию подсветки относительно nav
+    highlight.style.width = `${itemRect.width}px`;
+    highlight.style.height = `${itemRect.height}px`;
+    highlight.style.transform = `translate(${itemRect.left - navRect.left}px, ${itemRect.top - navRect.top}px)`;
     highlight.style.opacity = '1';
   };
 
-  links.forEach(link => {
-    link.addEventListener('mouseenter', onEnter, { passive: true });
+  // Навешиваем обработчики на все элементы навигации
+  navItems.forEach(item => {
+    item.addEventListener('mouseenter', onEnter, { passive: true });
   });
   
-  nav?.addEventListener('mouseleave', () => {
+  // При уходе курсора с навигации — прячем подсветку
+  nav.addEventListener('mouseleave', () => {
     highlight.style.opacity = '0';
   }, { passive: true });
 }
@@ -947,6 +953,10 @@ function initAuth() {
       try {
         showUser(user.displayName || user.email);
         await RoleManager.init(user);
+        const profileLink = document.getElementById('profile-link');
+        if (profileLink && window.auth?.currentUser) {
+          profileLink.href = `profile.html?uid=${window.auth.currentUser.uid}`;
+        }
       } finally {
         authProcessing = false;
       }
@@ -1141,3 +1151,29 @@ function toggleComments(btn) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { init, loadComponent, initCardTilt, initHeroDepth };
 }
+
+// Dropdown
+function initDropdownClick() {
+  document.querySelectorAll('.nav-dropdown-toggle').forEach(toggle => {
+    toggle.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const parent = this.closest('.nav-dropdown');
+      parent.classList.toggle('open');
+      this.setAttribute('aria-expanded', parent.classList.contains('open'));
+    });
+  });
+
+  // Закрытие при клике вне
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.nav-dropdown')) {
+      document.querySelectorAll('.nav-dropdown.open').forEach(d => {
+        d.classList.remove('open');
+        d.querySelector('.nav-dropdown-toggle')?.setAttribute('aria-expanded', 'false');
+      });
+    }
+  });
+}
+
+// В конце init() добавь:
+initDropdownClick();

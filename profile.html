@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Профиль — EgorNetwork</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="images/icon.png" type="image/png">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* ── PROFILE PAGE ── */
+    .profile-wrap {
+      max-width: 680px;
+      margin: 0 auto;
+      padding-top: 110px;
+      padding-bottom: 60px;
+      padding-left: 24px;
+      padding-right: 24px;
+    }
+
+    /* Карточка профиля */
+    .profile-card {
+      background: var(--grad-glass);
+      border: 1px solid rgba(160,195,255,.18);
+      border-radius: 22px;
+      padding: 36px 32px 28px;
+      box-shadow: var(--shadow-md), 0 0 40px rgba(109,213,255,.06);
+      position: relative;
+      overflow: hidden;
+    }
+    .profile-card::before {
+      content: '';
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 220px; height: 220px;
+      background: radial-gradient(circle, rgba(109,213,255,.08), transparent 70%);
+      pointer-events: none;
+    }
+
+    /* Шапка профиля */
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+
+    /* Аватарка */
+    .profile-avatar-wrap { position: relative; flex-shrink: 0; }
+    .profile-avatar {
+      width: 128px; height: 128px;
+      border-radius: 18px;
+      border: 2px solid rgba(109,213,255,.35);
+      display: grid; place-items: center;
+      font-size: 2rem; font-weight: 700;
+      color: #041025;
+      background: var(--grad-primary);
+      box-shadow: 0 8px 24px rgba(109,213,255,.2);
+      overflow: hidden; /* сохраняем чёткость 32x32 */
+      cursor: default;
+      position: relative;
+    }
+    .profile-avatar img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
+
+    /* Кнопка смены аватара (только свой профиль) */
+    .avatar-edit-btn {
+      position: absolute; bottom: -6px; right: -6px;
+      width: 26px; height: 26px; border-radius: 8px;
+      background: var(--grad-primary);
+      border: 2px solid var(--bg-2);
+      color: #041025; font-size: .75rem;
+      cursor: pointer; display: none;
+      place-items: center;
+      transition: transform .25s ease;
+    }
+    .avatar-edit-btn:hover { transform: scale(1.15); }
+    .avatar-edit-btn.visible { display: grid; }
+
+    #avatar-file-input { display: none; }
+
+    /* Инфо */
+    .profile-info { flex: 1; min-width: 0; }
+    .profile-name {
+      font-size: 1.5rem; font-weight: 700;
+      color: #fff; margin: 0 0 6px;
+    }
+    .profile-name-edit {
+      width: 100%; padding: 8px 12px; border-radius: 10px;
+      border: 1px solid var(--accent); background: rgba(0,0,0,.35);
+      color: var(--text); font-size: 1.2rem; font-weight: 700;
+      display: none; margin-bottom: 6px;
+    }
+    .profile-name-edit:focus { outline: none; box-shadow: 0 0 0 3px rgba(109,213,255,.15); }
+
+    /* Роль */
+    .profile-role {
+      display: inline-block;
+      padding: 3px 12px; border-radius: 20px;
+      font-size: .78rem; font-weight: 600; letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+    .role-badge-admin    { background: rgba(255,80,80,.15);  color: #ff6b6b; border: 1px solid rgba(255,80,80,.3); }
+    .role-badge-moderator{ background: rgba(139,123,255,.15); color: #a89bff; border: 1px solid rgba(139,123,255,.3); }
+    .role-badge-user     { background: rgba(109,213,255,.12); color: #6cd5ff; border: 1px solid rgba(109,213,255,.25); }
+    .role-badge-guest    { background: rgba(255,255,255,.06); color: #aaa;    border: 1px solid rgba(255,255,255,.1); }
+
+    /* Bio */
+    .profile-bio-section { margin-top: 20px; }
+    .profile-bio-label {
+      font-size: .78rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .5px;
+      margin-bottom: 8px;
+    }
+    .profile-bio {
+      color: #c8d0e8; line-height: 1.6; font-size: .95rem;
+      min-height: 24px;
+    }
+    .profile-bio-edit {
+      width: 100%; min-height: 80px;
+      padding: 10px 12px; border-radius: 10px;
+      border: 1px solid var(--line); background: rgba(0,0,0,.3);
+      color: var(--text); font-size: .95rem; font-family: inherit;
+      resize: vertical; display: none;
+      transition: border-color .3s;
+    }
+    .profile-bio-edit:focus {
+      outline: none; border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(109,213,255,.12);
+    }
+
+    /* Метаданные */
+    .profile-meta {
+      display: flex; gap: 20px; flex-wrap: wrap;
+      margin-top: 24px; padding-top: 20px;
+      border-top: 1px solid var(--line);
+    }
+    .profile-meta-item {
+      display: flex; align-items: center; gap: 8px;
+      color: var(--muted); font-size: .85rem;
+    }
+    .profile-meta-item span:first-child { font-size: 1rem; }
+
+    /* Кнопки редактирования */
+    .profile-actions {
+      display: flex; gap: 10px; margin-top: 24px;
+      flex-wrap: wrap;
+    }
+    .profile-edit-btn {
+      padding: 9px 20px; border-radius: 10px;
+      border: 1px solid var(--line-bright);
+      background: var(--grad-btn); color: var(--text);
+      font-size: .9rem; cursor: pointer;
+      transition: all .3s; display: none;
+    }
+    .profile-edit-btn:hover {
+      background: var(--grad-btn-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(84,123,255,.2);
+    }
+    .profile-edit-btn.visible { display: inline-block; }
+    .profile-save-btn {
+      background: var(--grad-primary); color: #041025;
+      border: none; font-weight: 600;
+    }
+    .profile-save-btn:hover {
+      box-shadow: 0 8px 24px rgba(109,213,255,.3);
+    }
+    .profile-cancel-btn {
+      background: rgba(255,255,255,.06);
+    }
+    .profile-error {
+      color: #ff6b6b; font-size: .85rem;
+      min-height: 18px; margin-top: 6px;
+    }
+
+    /* Скелетон-лоадер */
+    .profile-skeleton {
+      animation: skeleton-pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes skeleton-pulse {
+      0%,100% { opacity: .5; }
+      50%      { opacity: 1; }
+    }
+    .skel-block {
+      background: rgba(255,255,255,.07);
+      border-radius: 8px;
+    }
+
+    /* Not found */
+    .profile-not-found {
+      text-align: center; padding: 60px 20px; color: var(--muted);
+    }
+    .profile-not-found h3 { color: #fff; margin-bottom: 12px; }
+
+    @media (max-width: 480px) {
+      .profile-card { padding: 24px 18px; }
+      .profile-header { gap: 16px; }
+      .profile-avatar { width: 64px; height: 64px; font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="page-blur"></div>
+<div class="dust">
+  <span></span><span></span><span></span><span></span><span></span>
+  <span></span><span></span><span></span><span></span><span></span>
+  <span></span><span></span><span></span><span></span><span></span>
+</div>
+<div id="header-container"></div>
+
+<main class="profile-wrap">
+  <div id="profile-root">
+    <!-- Скелетон пока загружается -->
+    <div class="profile-card profile-skeleton">
+      <div class="profile-header">
+        <div class="skel-block" style="width:80px;height:80px;border-radius:18px;"></div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:10px;">
+          <div class="skel-block" style="width:180px;height:24px;border-radius:8px;"></div>
+          <div class="skel-block" style="width:80px;height:18px;border-radius:20px;"></div>
+        </div>
+      </div>
+      <div class="skel-block" style="width:60px;height:12px;margin-bottom:10px;border-radius:4px;"></div>
+      <div class="skel-block" style="width:100%;height:60px;border-radius:10px;"></div>
+    </div>
+  </div>
+</main>
+
+<div id="footer-container"></div>
+<input type="file" id="avatar-file-input" accept="image/*">
+<script src="script.js" defer></script>
+<script src="comments.js" defer></script>
+<script src="profile.js" defer></script>
+</body>
+</html>
