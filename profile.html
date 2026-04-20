@@ -7,199 +7,379 @@
   <link rel="icon" href="images/icon.png" type="image/png">
   <link rel="stylesheet" href="styles.css">
   <style>
-    /* ── PROFILE PAGE ── */
-    .profile-wrap {
-      max-width: 680px;
-      margin: 0 auto;
-      padding-top: 110px;
-      padding-bottom: 60px;
-      padding-left: 24px;
-      padding-right: 24px;
-    }
+/* ══════════════════════════════════════════════
+   PROFILE — CSS VARIABLES & THEMING
+══════════════════════════════════════════════ */
+:root {
+  --p-accent:   #6cd5ff;
+  --p-accent-2: #8b7bff;
+  --p-glow:     rgba(109,213,255,.18);
+}
 
-    /* Карточка профиля */
-    .profile-card {
-      background: var(--grad-glass);
-      border: 1px solid rgba(160,195,255,.18);
-      border-radius: 22px;
-      padding: 36px 32px 28px;
-      box-shadow: var(--shadow-md), 0 0 40px rgba(109,213,255,.06);
-      position: relative;
-      overflow: hidden;
-    }
-    .profile-card::before {
-      content: '';
-      position: absolute;
-      top: -60px; right: -60px;
-      width: 220px; height: 220px;
-      background: radial-gradient(circle, rgba(109,213,255,.08), transparent 70%);
-      pointer-events: none;
-    }
+/* Пресеты */
+body.theme-cyberpunk { --p-accent:#ff2d78; --p-accent-2:#ff9a00; --p-glow:rgba(255,45,120,.18); }
+body.theme-retro     { --p-accent:#39ff14; --p-accent-2:#ffe600; --p-glow:rgba(57,255,20,.18); }
+body.theme-minimal   { --p-accent:#e8ecff; --p-accent-2:#a8b3cc; --p-glow:rgba(232,236,255,.1); }
+body.theme-sakura    { --p-accent:#ff85b3; --p-accent-2:#ffb3d1; --p-glow:rgba(255,133,179,.18); }
+body.theme-ocean     { --p-accent:#00d4ff; --p-accent-2:#0057ff; --p-glow:rgba(0,212,255,.18); }
 
-    /* Шапка профиля */
-    .profile-header {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-      margin-bottom: 28px;
-      flex-wrap: wrap;
-    }
+/* ── CRT ЭФФЕКТ ── */
+body.crt-mode::after {
+  content:'';
+  position:fixed; inset:0; z-index:99999; pointer-events:none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0,0,0,.13) 0px,
+    rgba(0,0,0,.13) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  animation: crt-flicker 8s infinite;
+}
+body.crt-mode::before {
+  content:'';
+  position:fixed; inset:0; z-index:99998; pointer-events:none;
+  background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,.55) 100%);
+}
+body.crt-mode { filter: contrast(1.08) brightness(0.96); }
+@keyframes crt-flicker {
+  0%,95%,100%{opacity:1} 96%{opacity:.94} 97%{opacity:1} 98%{opacity:.97}
+}
 
-    /* Аватарка */
-    .profile-avatar-wrap { position: relative; flex-shrink: 0; }
-    .profile-avatar {
-      width: 128px; height: 128px;
-      border-radius: 18px;
-      border: 2px solid rgba(109,213,255,.35);
-      display: grid; place-items: center;
-      font-size: 2rem; font-weight: 700;
-      color: #041025;
-      background: var(--grad-primary);
-      box-shadow: 0 8px 24px rgba(109,213,255,.2);
-      overflow: hidden; /* сохраняем чёткость 32x32 */
-      cursor: default;
-      position: relative;
-    }
-    .profile-avatar img {
-      width: 100%; height: 100%;
-      object-fit: cover;
-    }
+/* ── LAYOUT ── */
+.profile-wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 110px 24px 60px;
+}
 
-    /* Кнопка смены аватара (только свой профиль) */
-    .avatar-edit-btn {
-      position: absolute; bottom: -6px; right: -6px;
-      width: 26px; height: 26px; border-radius: 8px;
-      background: var(--grad-primary);
-      border: 2px solid var(--bg-2);
-      color: #041025; font-size: .75rem;
-      cursor: pointer; display: none;
-      place-items: center;
-      transition: transform .25s ease;
-    }
-    .avatar-edit-btn:hover { transform: scale(1.15); }
-    .avatar-edit-btn.visible { display: grid; }
+/* ── VIEW SWITCHER ── */
+.view-switcher {
+  display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap;
+}
+.view-btn {
+  padding:6px 14px; border-radius:8px; font-size:.8rem;
+  border:1px solid var(--line); background:rgba(255,255,255,.04);
+  color:var(--muted); cursor:pointer; transition:all .25s;
+  font-family: inherit;
+}
+.view-btn:hover  { background:rgba(255,255,255,.08); color:#fff; }
+.view-btn.active { background:rgba(255,255,255,.1); color:var(--p-accent); border-color:var(--p-accent); }
 
-    #avatar-file-input { display: none; }
+/* ══ VIEW: DEFAULT ══ */
+.profile-card {
+  background: var(--grad-glass);
+  border:1px solid rgba(160,195,255,.18);
+  border-radius:22px; padding:36px 32px 28px;
+  box-shadow: var(--shadow-md), 0 0 60px var(--p-glow);
+  position:relative; overflow:hidden;
+  transition: box-shadow .4s ease;
+}
+.profile-card::before {
+  content:''; position:absolute; top:-80px; right:-80px;
+  width:280px; height:280px;
+  background: radial-gradient(circle, var(--p-glow), transparent 70%);
+  pointer-events:none; transition: background .4s;
+}
 
-    /* Инфо */
-    .profile-info { flex: 1; min-width: 0; }
-    .profile-name {
-      font-size: 1.5rem; font-weight: 700;
-      color: #fff; margin: 0 0 6px;
-    }
-    .profile-name-edit {
-      width: 100%; padding: 8px 12px; border-radius: 10px;
-      border: 1px solid var(--accent); background: rgba(0,0,0,.35);
-      color: var(--text); font-size: 1.2rem; font-weight: 700;
-      display: none; margin-bottom: 6px;
-    }
-    .profile-name-edit:focus { outline: none; box-shadow: 0 0 0 3px rgba(109,213,255,.15); }
+/* HEADER */
+.profile-header {
+  display:flex; align-items:flex-start; gap:24px; margin-bottom:24px; flex-wrap:wrap;
+}
 
-    /* Роль */
-    .profile-role {
-      display: inline-block;
-      padding: 3px 12px; border-radius: 20px;
-      font-size: .78rem; font-weight: 600; letter-spacing: .5px;
-      text-transform: uppercase;
-    }
-    .role-badge-admin    { background: rgba(255,80,80,.15);  color: #ff6b6b; border: 1px solid rgba(255,80,80,.3); }
-    .role-badge-moderator{ background: rgba(139,123,255,.15); color: #a89bff; border: 1px solid rgba(139,123,255,.3); }
-    .role-badge-user     { background: rgba(109,213,255,.12); color: #6cd5ff; border: 1px solid rgba(109,213,255,.25); }
-    .role-badge-guest    { background: rgba(255,255,255,.06); color: #aaa;    border: 1px solid rgba(255,255,255,.1); }
+/* AVATAR */
+.profile-avatar-wrap { position:relative; flex-shrink:0; }
+.profile-avatar {
+  width:96px; height:96px; border-radius:20px;
+  border:2px solid color-mix(in srgb, var(--p-accent) 40%, transparent);
+  display:grid; place-items:center;
+  font-size:2.4rem; font-weight:700; color:#041025;
+  background: linear-gradient(135deg, var(--p-accent), var(--p-accent-2));
+  box-shadow: 0 8px 28px var(--p-glow);
+  overflow:hidden; cursor:default; position:relative;
+  transition: box-shadow .35s ease, border-color .35s ease, transform .35s ease;
+}
+.profile-avatar img {
+  width:100%; height:100%; object-fit:cover; border-radius:18px;
+}
+.profile-avatar:hover { transform: scale(1.04); }
 
-    /* Bio */
-    .profile-bio-section { margin-top: 20px; }
-    .profile-bio-label {
-      font-size: .78rem; color: var(--muted);
-      text-transform: uppercase; letter-spacing: .5px;
-      margin-bottom: 8px;
-    }
-    .profile-bio {
-      color: #c8d0e8; line-height: 1.6; font-size: .95rem;
-      min-height: 24px;
-    }
-    .profile-bio-edit {
-      width: 100%; min-height: 80px;
-      padding: 10px 12px; border-radius: 10px;
-      border: 1px solid var(--line); background: rgba(0,0,0,.3);
-      color: var(--text); font-size: .95rem; font-family: inherit;
-      resize: vertical; display: none;
-      transition: border-color .3s;
-    }
-    .profile-bio-edit:focus {
-      outline: none; border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(109,213,255,.12);
-    }
+/* Частицы вокруг аватара */
+.avatar-particles {
+  position:absolute; inset:-16px; pointer-events:none; overflow:visible;
+}
+.avatar-particle {
+  position:absolute; width:4px; height:4px; border-radius:50%;
+  background:var(--p-accent); opacity:0;
+  animation: particle-orbit var(--dur, 3s) linear var(--delay, 0s) infinite;
+}
+@keyframes particle-orbit {
+  0%   { opacity:0; transform:translate(var(--x0), var(--y0)) scale(0); }
+  15%  { opacity:.9; }
+  85%  { opacity:.7; }
+  100% { opacity:0; transform:translate(var(--x1), var(--y1)) scale(1.4); }
+}
 
-    /* Метаданные */
-    .profile-meta {
-      display: flex; gap: 20px; flex-wrap: wrap;
-      margin-top: 24px; padding-top: 20px;
-      border-top: 1px solid var(--line);
-    }
-    .profile-meta-item {
-      display: flex; align-items: center; gap: 8px;
-      color: var(--muted); font-size: .85rem;
-    }
-    .profile-meta-item span:first-child { font-size: 1rem; }
+/* Кнопка редактирования аватара */
+.avatar-edit-btn {
+  position:absolute; bottom:-6px; right:-6px;
+  width:28px; height:28px; border-radius:8px;
+  background: linear-gradient(135deg, var(--p-accent), var(--p-accent-2));
+  border:2px solid var(--bg-2); color:#041025; font-size:.75rem;
+  cursor:pointer; display:none; place-items:center;
+  transition:transform .25s;
+}
+.avatar-edit-btn:hover { transform:scale(1.15); }
+.avatar-edit-btn.visible { display:grid; }
+#avatar-file-input { display:none; }
 
-    /* Кнопки редактирования */
-    .profile-actions {
-      display: flex; gap: 10px; margin-top: 24px;
-      flex-wrap: wrap;
-    }
-    .profile-edit-btn {
-      padding: 9px 20px; border-radius: 10px;
-      border: 1px solid var(--line-bright);
-      background: var(--grad-btn); color: var(--text);
-      font-size: .9rem; cursor: pointer;
-      transition: all .3s; display: none;
-    }
-    .profile-edit-btn:hover {
-      background: var(--grad-btn-hover);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(84,123,255,.2);
-    }
-    .profile-edit-btn.visible { display: inline-block; }
-    .profile-save-btn {
-      background: var(--grad-primary); color: #041025;
-      border: none; font-weight: 600;
-    }
-    .profile-save-btn:hover {
-      box-shadow: 0 8px 24px rgba(109,213,255,.3);
-    }
-    .profile-cancel-btn {
-      background: rgba(255,255,255,.06);
-    }
-    .profile-error {
-      color: #ff6b6b; font-size: .85rem;
-      min-height: 18px; margin-top: 6px;
-    }
+/* ИНФО */
+.profile-info { flex:1; min-width:0; }
+.profile-name {
+  font-size:1.55rem; font-weight:700; color:#fff; margin:0 0 6px;
+  transition: color .3s;
+}
+.profile-name-edit {
+  width:100%; padding:8px 12px; border-radius:10px;
+  border:1px solid var(--p-accent); background:rgba(0,0,0,.35);
+  color:var(--text); font-size:1.2rem; font-weight:700;
+  display:none; margin-bottom:6px;
+}
+.profile-name-edit:focus { outline:none; box-shadow:0 0 0 3px var(--p-glow); }
 
-    /* Скелетон-лоадер */
-    .profile-skeleton {
-      animation: skeleton-pulse 1.4s ease-in-out infinite;
-    }
-    @keyframes skeleton-pulse {
-      0%,100% { opacity: .5; }
-      50%      { opacity: 1; }
-    }
-    .skel-block {
-      background: rgba(255,255,255,.07);
-      border-radius: 8px;
-    }
+/* Статус онлайн */
+.profile-status-row {
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;
+}
+.online-badge {
+  display:flex; align-items:center; gap:5px;
+  font-size:.78rem; color:var(--muted);
+}
+.online-dot {
+  width:8px; height:8px; border-radius:50%;
+  background:#aaa; flex-shrink:0;
+  transition: background .4s;
+}
+.online-dot.online {
+  background:#39ff14;
+  box-shadow:0 0 6px #39ff14;
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+@keyframes dot-pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
 
-    /* Not found */
-    .profile-not-found {
-      text-align: center; padding: 60px 20px; color: var(--muted);
-    }
-    .profile-not-found h3 { color: #fff; margin-bottom: 12px; }
+.custom-status-text {
+  font-size:.82rem; color:var(--muted); font-style:italic;
+}
+.custom-status-edit {
+  padding:5px 10px; border-radius:8px; width:100%; max-width:260px;
+  border:1px solid var(--line); background:rgba(0,0,0,.3);
+  color:var(--text); font-size:.85rem; display:none;
+  transition:border-color .3s;
+}
+.custom-status-edit:focus { outline:none; border-color:var(--p-accent); }
 
-    @media (max-width: 480px) {
-      .profile-card { padding: 24px 18px; }
-      .profile-header { gap: 16px; }
-      .profile-avatar { width: 64px; height: 64px; font-size: 1.6rem; }
-    }
+/* Роль */
+.profile-role {
+  display:inline-block; padding:3px 12px; border-radius:20px;
+  font-size:.75rem; font-weight:600; letter-spacing:.5px; text-transform:uppercase;
+}
+.role-badge-admin     { background:rgba(255,80,80,.15);   color:#ff6b6b; border:1px solid rgba(255,80,80,.3); }
+.role-badge-moderator { background:rgba(139,123,255,.15); color:#a89bff; border:1px solid rgba(139,123,255,.3); }
+.role-badge-user      { background:rgba(109,213,255,.12); color:var(--p-accent); border:1px solid color-mix(in srgb, var(--p-accent) 30%, transparent); }
+.role-badge-guest     { background:rgba(255,255,255,.06); color:#aaa;    border:1px solid rgba(255,255,255,.1); }
+
+/* BIO */
+.profile-section { margin-top:20px; }
+.profile-section-label {
+  font-size:.75rem; color:var(--muted); text-transform:uppercase;
+  letter-spacing:.6px; margin-bottom:8px;
+}
+.profile-bio { color:#c8d0e8; line-height:1.65; font-size:.95rem; min-height:22px; }
+.profile-bio-edit {
+  width:100%; min-height:80px; padding:10px 12px; border-radius:10px;
+  border:1px solid var(--line); background:rgba(0,0,0,.3);
+  color:var(--text); font-size:.95rem; font-family:inherit;
+  resize:vertical; display:none; transition:border-color .3s;
+}
+.profile-bio-edit:focus { outline:none; border-color:var(--p-accent); box-shadow:0 0 0 3px var(--p-glow); }
+
+/* СОЦССЫЛКИ */
+.social-links { display:flex; gap:10px; flex-wrap:wrap; }
+.social-link {
+  display:flex; align-items:center; gap:7px;
+  padding:7px 14px; border-radius:10px;
+  border:1px solid var(--line); background:rgba(255,255,255,.04);
+  color:var(--muted); text-decoration:none; font-size:.85rem;
+  transition:all .25s; position:relative; overflow:hidden;
+}
+.social-link::before {
+  content:''; position:absolute; inset:0;
+  background: linear-gradient(135deg, var(--p-accent), var(--p-accent-2));
+  opacity:0; transition:opacity .25s;
+}
+.social-link:hover { color:#fff; border-color:var(--p-accent); transform:translateY(-2px); box-shadow:0 6px 18px var(--p-glow); }
+.social-link:hover::before { opacity:.12; }
+.social-link span { position:relative; z-index:1; }
+.social-icon { font-size:1rem; position:relative; z-index:1; }
+.social-inputs { display:flex; flex-direction:column; gap:8px; }
+.social-input-row { display:flex; align-items:center; gap:10px; }
+.social-input-label { width:80px; font-size:.82rem; color:var(--muted); flex-shrink:0; }
+.social-input-field {
+  flex:1; padding:7px 10px; border-radius:8px;
+  border:1px solid var(--line); background:rgba(0,0,0,.3);
+  color:var(--text); font-size:.85rem; display:none;
+  transition:border-color .3s;
+}
+.social-input-field:focus { outline:none; border-color:var(--p-accent); }
+
+/* ТЕГИ ТЕХНОЛОГИЙ */
+.tech-tags { display:flex; flex-wrap:wrap; gap:8px; }
+.tech-tag {
+  padding:5px 12px; border-radius:20px; font-size:.8rem;
+  border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.05);
+  color:var(--muted); cursor:default; display:flex; align-items:center; gap:6px;
+  transition:all .25s;
+}
+.tech-tag:hover { border-color:var(--p-accent); color:var(--p-accent); background:var(--p-glow); }
+.tech-tag-remove {
+  width:14px; height:14px; border-radius:50%; background:rgba(255,100,100,.3);
+  border:none; color:#ff6b6b; font-size:.7rem; cursor:pointer;
+  display:none; place-items:center; line-height:1;
+  transition:background .2s;
+}
+.tech-tag-remove:hover { background:rgba(255,100,100,.5); }
+.tech-tag-add-row { display:flex; gap:8px; align-items:center; display:none; margin-top:6px; }
+.tech-tag-input {
+  padding:6px 10px; border-radius:8px;
+  border:1px solid var(--line); background:rgba(0,0,0,.3);
+  color:var(--text); font-size:.85rem; width:160px;
+}
+.tech-tag-input:focus { outline:none; border-color:var(--p-accent); }
+
+/* ТЕМА */
+.theme-picker { display:flex; gap:8px; flex-wrap:wrap; display:none; }
+.theme-swatch {
+  width:28px; height:28px; border-radius:8px; cursor:pointer; border:2px solid transparent;
+  transition:transform .2s, border-color .2s;
+}
+.theme-swatch:hover { transform:scale(1.15); }
+.theme-swatch.active { border-color:#fff; transform:scale(1.1); }
+.crt-toggle-btn {
+  padding:6px 14px; border-radius:8px; font-size:.8rem; cursor:pointer;
+  border:1px solid var(--line); background:rgba(255,255,255,.04);
+  color:var(--muted); transition:all .25s; font-family:inherit; display:none;
+}
+.crt-toggle-btn:hover { color:#fff; border-color:var(--p-accent); }
+.crt-toggle-btn.on { color:var(--p-accent); border-color:var(--p-accent); background:var(--p-glow); }
+
+/* МЕТА */
+.profile-meta {
+  display:flex; gap:18px; flex-wrap:wrap; margin-top:24px;
+  padding-top:20px; border-top:1px solid var(--line);
+}
+.profile-meta-item { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:.84rem; }
+
+/* КНОПКИ */
+.profile-actions { display:flex; gap:10px; margin-top:22px; flex-wrap:wrap; }
+.profile-edit-btn {
+  padding:9px 20px; border-radius:10px; border:1px solid var(--line-bright);
+  background:var(--grad-btn); color:var(--text); font-size:.9rem;
+  cursor:pointer; transition:all .3s; display:none; font-family:inherit;
+}
+.profile-edit-btn:hover { background:var(--grad-btn-hover); transform:translateY(-2px); }
+.profile-edit-btn.visible { display:inline-block; }
+.profile-save-btn {
+  background: linear-gradient(135deg, var(--p-accent), var(--p-accent-2));
+  color:#041025; border:none; font-weight:600;
+}
+.profile-save-btn:hover { box-shadow:0 8px 24px var(--p-glow); }
+.profile-cancel-btn { background:rgba(255,255,255,.06); }
+.profile-error { color:#ff6b6b; font-size:.85rem; min-height:18px; margin-top:6px; }
+
+/* ══ VIEW: TERMINAL ══ */
+.profile-terminal {
+  display:none;
+  background:#0a0a0a; border:1px solid #333; border-radius:10px;
+  font-family:'JetBrains Mono',monospace; color:#39ff14; padding:0;
+  box-shadow:0 0 30px rgba(57,255,20,.1);
+}
+.terminal-bar {
+  background:#1a1a1a; padding:10px 16px; border-radius:10px 10px 0 0;
+  display:flex; align-items:center; gap:8px; border-bottom:1px solid #333;
+}
+.terminal-dot { width:12px; height:12px; border-radius:50%; }
+.terminal-body { padding:20px 24px; }
+.terminal-line { margin:4px 0; line-height:1.7; }
+.terminal-prompt { color:#888; }
+.terminal-key { color:#6cd5ff; }
+.terminal-val { color:#39ff14; }
+.terminal-cursor {
+  display:inline-block; width:9px; height:1.1em; background:#39ff14;
+  vertical-align:middle; animation:term-blink .9s step-end infinite;
+}
+@keyframes term-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.terminal-tag-chip {
+  display:inline-block; padding:2px 8px; margin:2px;
+  border:1px solid #39ff14; border-radius:4px; font-size:.78rem; color:#39ff14;
+}
+
+/* ══ VIEW: WIN95 ══ */
+.profile-win95 {
+  display:none;
+  background:#c0c0c0; border:2px solid #fff; border-right-color:#808080; border-bottom-color:#808080;
+  font-family:'Courier New',monospace; color:#000; border-radius:0; padding:0;
+}
+.win95-titlebar {
+  background: linear-gradient(90deg,#000080,#1084d0);
+  padding:3px 6px; display:flex; align-items:center; justify-content:space-between;
+}
+.win95-title { color:#fff; font-size:.8rem; font-weight:bold; display:flex; align-items:center; gap:6px; }
+.win95-controls { display:flex; gap:2px; }
+.win95-btn {
+  width:16px; height:14px; background:#c0c0c0;
+  border:1px solid #fff; border-right-color:#808080; border-bottom-color:#808080;
+  font-size:.6rem; display:grid; place-items:center; cursor:pointer;
+}
+.win95-body { padding:12px; }
+.win95-row { display:flex; margin:6px 0; font-size:.82rem; }
+.win95-label { width:130px; flex-shrink:0; font-weight:bold; }
+.win95-val { flex:1; }
+.win95-avatar {
+  width:64px; height:64px; border:2px solid #808080; border-right-color:#fff; border-bottom-color:#fff;
+  overflow:hidden; margin-bottom:10px; float:left; margin-right:12px;
+  image-rendering:pixelated;
+}
+.win95-avatar img { width:100%; height:100%; object-fit:cover; image-rendering:pixelated; }
+.win95-status { padding:2px 6px; background:#000080; color:#fff; font-size:.75rem; display:inline-block; margin-top:4px; }
+.win95-section {
+  border:1px solid #808080; border-right-color:#fff; border-bottom-color:#fff;
+  padding:8px 10px; margin-top:10px;
+}
+.win95-section-title {
+  background:#c0c0c0; font-size:.75rem; font-weight:bold;
+  margin:-8px -10px 8px; padding:2px 6px;
+  border-bottom:1px solid #808080;
+}
+.win95-tag {
+  display:inline-block; padding:1px 6px; margin:2px;
+  border:1px solid #808080; background:#fff; font-size:.75rem;
+}
+.win95-clearfix::after { content:''; display:table; clear:both; }
+
+/* СКЕЛЕТОН */
+.profile-skeleton { animation:skeleton-pulse 1.4s ease-in-out infinite; }
+@keyframes skeleton-pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+.skel-block { background:rgba(255,255,255,.07); border-radius:8px; }
+
+/* NOT FOUND */
+.profile-not-found { text-align:center; padding:60px 20px; color:var(--muted); }
+.profile-not-found h3 { color:#fff; margin-bottom:12px; }
+
+@media(max-width:480px){
+  .profile-card{padding:22px 16px;}
+  .profile-avatar{width:72px;height:72px;font-size:1.8rem;}
+  .profile-header{gap:14px;}
+}
   </style>
 </head>
 <body>
@@ -207,19 +387,25 @@
 <div class="dust">
   <span></span><span></span><span></span><span></span><span></span>
   <span></span><span></span><span></span><span></span><span></span>
-  <span></span><span></span><span></span><span></span><span></span>
 </div>
 <div id="header-container"></div>
 
 <main class="profile-wrap">
+  <!-- Переключатель вида -->
+  <div class="view-switcher" id="view-switcher" style="display:none;">
+    <button class="view-btn active" data-view="default">🌐 Обычный</button>
+    <button class="view-btn" data-view="terminal">💻 Терминал</button>
+    <button class="view-btn" data-view="win95">🪟 Win95</button>
+  </div>
+
+  <!-- Скелетон -->
   <div id="profile-root">
-    <!-- Скелетон пока загружается -->
     <div class="profile-card profile-skeleton">
       <div class="profile-header">
-        <div class="skel-block" style="width:80px;height:80px;border-radius:18px;"></div>
-        <div style="flex:1;display:flex;flex-direction:column;gap:10px;">
-          <div class="skel-block" style="width:180px;height:24px;border-radius:8px;"></div>
-          <div class="skel-block" style="width:80px;height:18px;border-radius:20px;"></div>
+        <div class="skel-block" style="width:96px;height:96px;border-radius:20px;"></div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:10px;padding-top:4px;">
+          <div class="skel-block" style="width:200px;height:26px;border-radius:8px;"></div>
+          <div class="skel-block" style="width:90px;height:18px;border-radius:20px;"></div>
         </div>
       </div>
       <div class="skel-block" style="width:60px;height:12px;margin-bottom:10px;border-radius:4px;"></div>
