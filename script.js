@@ -953,10 +953,13 @@ function initAuth() {
       try {
         showUser(user.displayName || user.email);
         await RoleManager.init(user);
+        const msgLink = document.getElementById('msg-link');
+        if (msgLink) msgLink.style.display = 'inline-block';
         const profileLink = document.getElementById('profile-link');
         if (profileLink && window.auth?.currentUser) {
           profileLink.href = `profile.html?uid=${window.auth.currentUser.uid}`;
         }
+        
       } finally {
         authProcessing = false;
       }

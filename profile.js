@@ -82,7 +82,7 @@ function showError(msg) {
 
 // ─── AVATAR ───────────────────────────────────────────────────────────────────
 
-function resizeToBase64(file, size=96) {
+function resizeToBase64(file, size=96) { 
   return new Promise((resolve,reject)=>{
     const reader=new FileReader();
     reader.onload=e=>{
@@ -288,7 +288,6 @@ function renderDefault(data, uid, isOwn) {
     : esc((data.name||'U')[0].toUpperCase());
 
   // socialLinks удалён — строки всегда рендерятся в renderDefault
-
   // Теги
   const techTagsHtml = (data.techTags||[]).map(t=>`
     <div class="tech-tag" data-tag="${esc(t)}">
@@ -310,6 +309,7 @@ function renderDefault(data, uid, isOwn) {
       <div class="profile-avatar-wrap" id="avatar-wrap">
         <div class="profile-avatar" id="profile-avatar-display">${avatarHtml}</div>
         ${isOwn?`<button class="avatar-edit-btn visible" id="avatar-edit-btn" title="Сменить аватар">✏️</button>`:''}
+        ${!isOwn ? `<a href="messages.html?with=${uid}" class="profile-edit-btn visible" style="text-decoration:none;display:inline-block;">💬 Написать</a>` : ''}
       </div>
 
       <div class="profile-info">
