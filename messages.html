@@ -15,16 +15,19 @@
   box-sizing: border-box;
 }
 
-.messages-layout {
-  flex: 1; display: flex; gap: 16px;
-  min-height: 0; /* важно для flex overflow */
+#messages-root {
+  flex: 1; display: flex; flex-direction: column; min-height: 0;
 }
 
-/* ── SIDEBAR (список диалогов) ── */
+.messages-layout {
+  flex: 1; display: flex; gap: 16px; min-height: 0;
+}
+
+/* ── SIDEBAR ── */
 .conv-sidebar {
   width: 280px; flex-shrink: 0;
   display: flex; flex-direction: column; gap: 8px;
-  overflow-y: auto; overflow-x: hidden;
+  overflow-y: auto; overflow-x: hidden; min-height: 0;
 }
 .conv-sidebar-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -77,7 +80,8 @@
 
 /* ── CHAT AREA ── */
 .chat-area {
-  flex: 1; display: flex; flex-direction: column; min-width: 0;
+  flex: 1; display: flex; flex-direction: column;
+  min-width: 0; min-height: 0;
   background: var(--grad-glass);
   border: 1px solid rgba(160,195,255,.16);
   border-radius: 18px; overflow: hidden;
@@ -115,6 +119,7 @@
   flex: 1; overflow-y: auto; padding: 16px 18px;
   display: flex; flex-direction: column; gap: 8px;
   scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.15) transparent;
+  min-height: 0;
 }
 
 .msg-group { display: flex; flex-direction: column; gap: 2px; }
@@ -138,26 +143,46 @@
 }
 .msg-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
 
-.msg-bubble {
-  max-width: 68%; padding: 9px 13px; border-radius: 14px;
-  font-size: .9rem; line-height: 1.5; word-break: break-word;
-  position: relative;
+/* === ИСПРАВЛЕННЫЕ СТИЛИ ПУЗЫРЯ === */
+.msg-content {
+  display: flex;
+  flex-direction: column;
+  max-width: 68%;
+  min-width: 0;
 }
+
+.msg-bubble {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  padding: 9px 13px;
+  border-radius: 14px;
+  font-size: .9rem;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
 .msg:not(.own) .msg-bubble {
   background: rgba(255,255,255,.07);
   border: 1px solid rgba(255,255,255,.08);
   border-bottom-left-radius: 4px;
   color: var(--text);
 }
+
 .msg.own .msg-bubble {
   background: linear-gradient(135deg, rgba(109,213,255,.2), rgba(139,123,255,.18));
   border: 1px solid rgba(109,213,255,.2);
   border-bottom-right-radius: 4px;
   color: #fff;
 }
+
 .msg-time {
-  font-size: .68rem; color: rgba(168,179,204,.5);
-  margin-top: 3px; text-align: right;
+  font-size: .68rem;
+  color: rgba(168,179,204,.5);
+  margin-top: 3px;
+  text-align: right;
 }
 .msg:not(.own) .msg-time { text-align: left; }
 
@@ -263,6 +288,12 @@
   .chat-area.mobile-show { display: flex; }
   .messages-wrap { padding-top: 90px; }
 }
+
+/* Переопределяем глобальный body */
+body {
+  overflow: hidden !important;
+  height: 100vh !important;
+}
   </style>
 </head>
 <body>
@@ -274,7 +305,7 @@
 <div id="header-container"></div>
 
 <main class="messages-wrap">
-  <div id="messages-root" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+  <div id="messages-root">
     <div class="messages-guest">
       <div>
         <div style="font-size:3rem;margin-bottom:12px;">💬</div>

@@ -235,7 +235,7 @@ function subscribeMessages(cId, myUid) {
         msgEl.className = `msg ${isOwn ? 'own' : ''}`;
         msgEl.innerHTML = `
           <div class="msg-avatar">${avatarHtml(senderAva, senderName, 28)}</div>
-          <div>
+          <div class="msg-content">
             <div class="msg-bubble">${esc(msg.text)}</div>
             <div class="msg-time">${formatMsgTime(msg.createdAt)}</div>
           </div>
@@ -243,8 +243,12 @@ function subscribeMessages(cId, myUid) {
         container.appendChild(msgEl);
       });
 
-      // Скролл вниз
-      container.scrollTop = container.scrollHeight;
+      // Двойной rAF — гарантирует отрисовку перед скроллом
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          container.scrollTop = container.scrollHeight;
+        });
+      });
     }, err => {
       console.error('❌ Messages:', err);
     });
