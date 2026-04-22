@@ -309,6 +309,46 @@ html, body {
 .page-blur {
   pointer-events: none !important;
 }
+
+/* Переключатель режима */
+.chat-mode-switch {
+  display: flex; align-items: center; gap: 8px;
+  margin-left: auto; margin-right: 12px;
+}
+.chat-mode-label {
+  font-size: .75rem; color: var(--muted);
+  transition: color .3s;
+}
+.chat-mode-label.secret {
+  color: #ff6b6b; font-weight: 600;
+}
+.chat-mode-btn {
+  padding: 4px 10px; border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.05);
+  cursor: pointer; font-size: 1rem;
+  transition: all .25s;
+}
+.chat-mode-btn:hover { background: rgba(255,255,255,.12); transform: scale(1.1); }
+
+/* Кнопка удаления сообщения */
+.msg-content { position: relative; }
+.msg-delete {
+  position: absolute; top: -10px; right: -10px;
+  width: 22px; height: 22px; border-radius: 50%;
+  border: none; background: rgba(255,80,80,.85);
+  color: #fff; font-size: .7rem; cursor: pointer;
+  display: grid; place-items: center;
+  opacity: 0; transition: opacity .2s, transform .2s;
+  box-shadow: 0 4px 10px rgba(255,80,80,.3);
+}
+.msg.own:hover .msg-delete { opacity: 1; }
+.msg-delete:hover { transform: scale(1.15); background: #ff4444; }
+
+/* Иконка секретного чата в сайдбаре */
+.conv-secret-icon {
+  font-size: .75rem; margin-right: 4px; opacity: .8;
+}
   </style>
 </head>
 <body>

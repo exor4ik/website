@@ -1,20 +1,5 @@
 /**
  * 💬 Direct Messages — EgorNetwork
- *
- * Firestore:
- *   conversations/{convId}          — мета-документ
- *     participants: [uid1, uid2]
- *     participantNames: {uid: name}
- *     participantAvatars: {uid: base64|letter}
- *     lastMessage: string
- *     lastMessageAt: Timestamp
- *     unread: {uid: number}
- *
- *   conversations/{convId}/messages/{msgId}
- *     senderUid: string
- *     text: string
- *     createdAt: Timestamp
- *     read: boolean
  */
 
 'use strict';
@@ -66,11 +51,211 @@ function waitForFirebase(cb, max = 25) {
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 
+let activeConvIsSecret = false;
+let activeConvDocUnsub = null;
 let currentUser    = null;
 let activeConvId   = null;
 let messagesUnsub  = null;
 let convsUnsub     = null;
-let userCache      = {};  // uid → {name, avatar}
+let userCache      = {};
+
+// ═══════════════════════════════════════════════════════════
+// 🔐 END-TO-END ENCRYPTION (Web Crypto API)
+// ═══════════════════════════════════════════════════════════
+
+const KEY_ALGO = { name: 'RSA-OAEP', modulusLength: 2048, publicExponent: new Uint8Array([1,0,1]), hash: 'SHA-256' };
+const AES_ALGO = { name: 'AES-GCM', length: 256 };
+
+async function generateKeyPair() {
+  return crypto.subtle.generateKey(KEY_ALGO, true, ['encrypt', 'decrypt']);
+}
+
+async function exportPublicKey(key) {
+  const exported = await crypto.subtle.exportKey('spki', key);
+  return btoa(String.fromCharCode(...new Uint8Array(exported)));
+}
+
+async function importPublicKey(base64) {
+  const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  return crypto.subtle.importKey('spki', binary, KEY_ALGO, false, ['encrypt']);
+}
+
+async function importPrivateKey(base64) {
+  const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  return crypto.subtle.importKey('pkcs8', binary, KEY_ALGO, false, ['decrypt']);
+}
+
+async function getOrCreateKeys() {
+  const stored = localStorage.getItem('e2ee_keys');
+  if (stored) {
+    const { publicKey, privateKey } = JSON.parse(stored);
+    return {
+      publicKey: await importPublicKey(publicKey),
+      privateKey: await importPrivateKey(privateKey)
+    };
+  }
+  
+  const pair = await generateKeyPair();
+  const pubB64 = await exportPublicKey(pair.publicKey);
+  const privExported = await crypto.subtle.exportKey('pkcs8', pair.privateKey);
+  const privB64 = btoa(String.fromCharCode(...new Uint8Array(privExported)));
+  
+  localStorage.setItem('e2ee_keys', JSON.stringify({ publicKey: pubB64, privateKey: privB64 }));
+  
+  const me = window.auth.currentUser;
+  if (me) {
+    await window.db.collection('users').doc(me.uid).update({ 
+      publicKey: pubB64,
+      _hasE2EE: true 
+    }).catch(() => {});
+  }
+  
+  return pair;
+}
+
+async function getPublicKey(uid) {
+  if (userCache[uid]?.publicKey) return userCache[uid].publicKey;
+  
+  const doc = await window.db.collection('users').doc(uid).get();
+  if (!doc.exists || !doc.data().publicKey) return null;
+  
+  const key = await importPublicKey(doc.data().publicKey);
+  if (userCache[uid]) userCache[uid].publicKey = key;
+  return key;
+}
+
+async function encryptE2EE(text, recipientPublicKey) {
+  const aesKey = await crypto.subtle.generateKey(AES_ALGO, true, ['encrypt', 'decrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  
+  const enc = new TextEncoder();
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    aesKey,
+    enc.encode(text)
+  );
+  
+  const aesRaw = await crypto.subtle.exportKey('raw', aesKey);
+  const encryptedKey = await crypto.subtle.encrypt(
+    { name: 'RSA-OAEP' },
+    recipientPublicKey,
+    aesRaw
+  );
+  
+  return [
+    btoa(String.fromCharCode(...new Uint8Array(encryptedKey))),
+    btoa(String.fromCharCode(...iv)),
+    btoa(String.fromCharCode(...new Uint8Array(ciphertext)))
+  ].join(':');
+}
+
+async function decryptE2EE(encrypted, privateKey) {
+  try {
+    const [keyB64, ivB64, cipherB64] = encrypted.split(':');
+    if (!keyB64 || !ivB64 || !cipherB64) return encrypted;
+    
+    const encryptedKey = Uint8Array.from(atob(keyB64), c => c.charCodeAt(0));
+    const aesRaw = await crypto.subtle.decrypt(
+      { name: 'RSA-OAEP' },
+      privateKey,
+      encryptedKey
+    );
+    
+    const aesKey = await crypto.subtle.importKey('raw', aesRaw, AES_ALGO, false, ['decrypt']);
+    const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
+    const ciphertext = Uint8Array.from(atob(cipherB64), c => c.charCodeAt(0));
+    
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      aesKey,
+      ciphertext
+    );
+    
+    return new TextDecoder().decode(decrypted);
+  } catch (e) {
+    console.error('❌ E2EE decrypt failed:', e);
+    return '[Ошибка расшифровки — возможно, ключи устарели]';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// 🔑 BACKUP / RESTORE KEYS
+// ═══════════════════════════════════════════════════════════
+
+async function exportKeysBackup(password) {
+  const stored = localStorage.getItem('e2ee_keys');
+  if (!stored) throw new Error('Ключи не найдены. Откройте сообщения для генерации.');
+  
+  const { privateKey } = JSON.parse(stored);
+  
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', enc.encode(password),
+    'PBKDF2', false, ['deriveKey']
+  );
+  const aesKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: enc.encode('EgorNetwork_backup_salt'), iterations: 200000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false, ['encrypt']
+  );
+  
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    aesKey,
+    enc.encode(privateKey)
+  );
+  
+  const backup = {
+    version: 1,
+    publicKey: JSON.parse(stored).publicKey,
+    iv: btoa(String.fromCharCode(...iv)),
+    encryptedPrivateKey: btoa(String.fromCharCode(...new Uint8Array(encrypted)))
+  };
+  
+  return btoa(JSON.stringify(backup));
+}
+
+async function importKeysBackup(backupBase64, password) {
+  const backup = JSON.parse(atob(backupBase64));
+  if (backup.version !== 1) throw new Error('Неподдерживаемая версия бэкапа');
+  
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', enc.encode(password),
+    'PBKDF2', false, ['deriveKey']
+  );
+  const aesKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: enc.encode('EgorNetwork_backup_salt'), iterations: 200000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false, ['decrypt']
+  );
+  
+  const iv = Uint8Array.from(atob(backup.iv), c => c.charCodeAt(0));
+  const encryptedPriv = Uint8Array.from(atob(backup.encryptedPrivateKey), c => c.charCodeAt(0));
+  
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    aesKey,
+    encryptedPriv
+  );
+  
+  const privateKey = new TextDecoder().decode(decrypted);
+  const keys = { publicKey: backup.publicKey, privateKey };
+  localStorage.setItem('e2ee_keys', JSON.stringify(keys));
+  
+  const me = window.auth.currentUser;
+  if (me) {
+    await window.db.collection('users').doc(me.uid).update({ 
+      publicKey: backup.publicKey,
+      _hasE2EE: true 
+    }).catch(() => {});
+  }
+  
+  return true;
+}
 
 // ─── USER CACHE ───────────────────────────────────────────────────────────────
 
@@ -91,11 +276,15 @@ async function getUser(uid) {
 function renderConvItem(conv, convIdStr, myUid) {
   const otherId   = conv.participants.find(u => u !== myUid);
   const otherName = conv.participantNames?.[otherId] || 'Пользователь';
+  const isSecret  = conv.isSecret || false;
+  const lockIcon  = isSecret ? '<span class="conv-secret-icon">🔒</span>' : '';
   const otherAva  = conv.participantAvatars?.[otherId] || null;
   const unread    = conv.unread?.[myUid] || 0;
+  const isEncrypted = conv._encrypted || conv._e2ee;
   const preview   = conv.lastMessage
-    ? (conv.lastMessage.length > 35 ? conv.lastMessage.slice(0, 35) + '…' : conv.lastMessage)
-    : 'Диалог начат';
+      ? (isEncrypted ? '🔐 Зашифрованное сообщение' : 
+         (conv.lastMessage.length > 35 ? conv.lastMessage.slice(0, 35) + '…' : conv.lastMessage))
+      : 'Диалог начат';
 
   const li = document.createElement('div');
   li.className = 'conv-item';
@@ -105,7 +294,7 @@ function renderConvItem(conv, convIdStr, myUid) {
   li.innerHTML = `
     <div class="conv-avatar">${avatarHtml(otherAva, otherName, 38)}</div>
     <div class="conv-info">
-      <div class="conv-name">${esc(otherName)}</div>
+      <div class="conv-name">${lockIcon}${esc(otherName)}</div>
       <div class="conv-preview">${esc(preview)}</div>
     </div>
     ${unread > 0 ? `<div class="conv-unread">${unread}</div>` : ''}
@@ -135,7 +324,6 @@ function initConvList(myUid) {
       snap.forEach(doc => {
         list.appendChild(renderConvItem(doc.data(), doc.id, myUid));
       });
-      // Обновляем badge в хедере
       updateMsgBadge(myUid);
     }, err => {
       console.error('❌ Conversations:', err);
@@ -144,8 +332,17 @@ function initConvList(myUid) {
 
 // ─── OPEN CONVERSATION ────────────────────────────────────────────────────────
 
-function openConversation(cId, otherId, otherName, otherAvatar) {
+async function openConversation(cId, otherId, otherName, otherAvatar) {
   activeConvId = cId;
+  
+  // ── E2EE: убеждаемся что свои ключи есть ──
+  await getOrCreateKeys();
+  
+  // ── E2EE: проверяем что у собеседника есть ключ ──
+  const otherPublicKey = await getPublicKey(otherId);
+  if (!otherPublicKey) {
+    console.warn('⚠️ Собеседник не имеет E2EE ключей');
+  }
 
   // Подсветка в сайдбаре
   document.querySelectorAll('.conv-item').forEach(el => {
@@ -162,6 +359,10 @@ function openConversation(cId, otherId, otherName, otherAvatar) {
       <div>
         <div class="chat-header-name">${esc(otherName)}</div>
       </div>
+      <div class="chat-mode-switch">
+        <span class="chat-mode-label" id="chat-mode-label">Обычный</span>
+        <button class="chat-mode-btn" id="chat-mode-toggle" title="Переключить режим чата">🔓</button>
+      </div>
       <a class="chat-header-link" href="profile.html?uid=${encodeURIComponent(otherId)}">👤 Профиль</a>
     </div>
     <div class="chat-messages" id="chat-messages"></div>
@@ -171,6 +372,61 @@ function openConversation(cId, otherId, otherName, otherAvatar) {
       <button class="chat-send-btn" id="chat-send-btn">↑</button>
     </div>
   `;
+
+  // ── РЕЖИМ ЧАТА (секретный / обычный) ──
+  const modeBtn   = document.getElementById('chat-mode-toggle');
+  const modeLabel = document.getElementById('chat-mode-label');
+
+  function updateModeUI(secret) {
+    activeConvIsSecret = secret;
+    if (secret) {
+      modeBtn.textContent = '🔒';
+      modeLabel.textContent = 'Секретный';
+      modeLabel.classList.add('secret');
+    } else {
+      modeBtn.textContent = '🔓';
+      modeLabel.textContent = 'Обычный';
+      modeLabel.classList.remove('secret');
+    }
+  }
+
+  // Загружаем текущий режим
+  const convRef = window.db.collection('conversations').doc(cId);
+  const convSnap = await convRef.get();
+  updateModeUI(convSnap.exists ? (convSnap.data().isSecret || false) : false);
+
+  // Слушаем изменения режима
+  activeConvDocUnsub?.();
+  activeConvDocUnsub = convRef.onSnapshot(doc => {
+    if (doc.exists) updateModeUI(doc.data().isSecret || false);
+  });
+
+  // Переключение по клику
+  modeBtn.addEventListener('click', async () => {
+    const newMode = !activeConvIsSecret;
+    try {
+      await convRef.set({ isSecret: newMode }, { merge: true });
+      updateModeUI(newMode);
+    } catch (e) {
+      console.error('❌ Ошибка смены режима:', e);
+    }
+  });
+
+  // ── ДЕЛЕГИРОВАНИЕ УДАЛЕНИЯ СООБЩЕНИЙ (только для секретного чата) ──
+  const msgContainer = document.getElementById('chat-messages');
+  msgContainer.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.msg-delete');
+    if (!btn) return;
+    
+    const msgId = btn.dataset.msgId;
+    if (!msgId || !confirm('Удалить сообщение? Это действие нельзя отменить.')) return;
+    
+    try {
+      await window.db.collection('conversations').doc(cId).collection('messages').doc(msgId).delete();
+    } catch (err) {
+      console.error('❌ Удаление:', err);
+    }
+  });
 
   // Отправка
   const inputEl = document.getElementById('chat-input');
@@ -208,13 +464,23 @@ function subscribeMessages(cId, myUid) {
   messagesUnsub = window.db
     .collection('conversations').doc(cId).collection('messages')
     .orderBy('createdAt', 'asc')
-    .onSnapshot(snap => {
+    .onSnapshot(async snap => {
       container.innerHTML = '';
       lastDate = null;
 
-      snap.forEach(doc => {
-        const msg  = doc.data();
-        const isOwn = msg.senderUid === myUid;
+      // Используем for...of вместо forEach, чтобы await работал
+      for (const doc of snap.docs) {
+        const rawMsg = doc.data();
+        const isOwn = rawMsg.senderUid === myUid;
+
+        // ── E2EE: расшифровка ──
+        let msgText = rawMsg.text;
+        if ((rawMsg._encrypted || rawMsg._e2ee) && !isOwn) {
+          const myKeys = await getOrCreateKeys();
+          msgText = await decryptE2EE(rawMsg.text, myKeys.privateKey);
+        }
+
+        const msg = { ...rawMsg, text: msgText };
 
         // Разделитель по дате
         const dateStr = formatMsgDate(msg.createdAt);
@@ -238,12 +504,13 @@ function subscribeMessages(cId, myUid) {
           <div class="msg-content">
             <div class="msg-bubble">${esc(msg.text)}</div>
             <div class="msg-time">${formatMsgTime(msg.createdAt)}</div>
+            ${(isOwn && activeConvIsSecret) ? `<button class="msg-delete" data-msg-id="${doc.id}" title="Удалить навсегда">🗑️</button>` : ''}
           </div>
         `;
         container.appendChild(msgEl);
-      });
+      }
 
-      // Двойной rAF — гарантирует отрисовку перед скроллом
+      // Скролл вниз
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           container.scrollTop = container.scrollHeight;
@@ -264,6 +531,22 @@ async function sendMessage(cId, otherId, otherName, otherAvatar) {
   const text = inputEl.value.trim();
   if (!text) return;
 
+  // Шифруем только в секретном режиме
+  let encryptedText = text;
+  let isEncrypted   = false;
+
+  if (activeConvIsSecret) {
+    const otherPublicKey = await getPublicKey(otherId);
+    if (otherPublicKey) {
+      try {
+        encryptedText = await encryptE2EE(text, otherPublicKey);
+        isEncrypted = true;
+      } catch (e) {
+        console.error('❌ Encrypt failed:', e);
+      }
+    }
+  }
+
   sendBtn.disabled = true;
   inputEl.value = '';
   inputEl.style.height = 'auto';
@@ -271,23 +554,22 @@ async function sendMessage(cId, otherId, otherName, otherAvatar) {
   try {
     const me = currentUser;
 
-    // Обновляем кэш своего пользователя
     if (!userCache[me.uid]) await getUser(me.uid);
 
     const batch = window.db.batch();
 
-    // Само сообщение
     const msgRef = window.db
       .collection('conversations').doc(cId)
       .collection('messages').doc();
     batch.set(msgRef, {
       senderUid: me.uid,
-      text,
+      text: encryptedText,
+      _encrypted: isEncrypted,
+      _e2ee: isEncrypted,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       read: false,
     });
 
-    // Мета-документ диалога
     const convRef = window.db.collection('conversations').doc(cId);
     batch.set(convRef, {
       participants:       [me.uid, otherId],
@@ -360,7 +642,6 @@ function initNewConvModal() {
   backdrop?.addEventListener('click', close);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
 
-  // Поиск пользователей по имени
   let searchTimeout;
   search.addEventListener('input', () => {
     clearTimeout(searchTimeout);
@@ -370,7 +651,6 @@ function initNewConvModal() {
     searchTimeout = setTimeout(async () => {
       if (errEl) errEl.textContent = '';
       try {
-        // Простой поиск по prefixу имени
         const snap = await window.db.collection('users')
           .where('name', '>=', q)
           .where('name', '<=', q + '\uf8ff')
@@ -385,7 +665,7 @@ function initNewConvModal() {
         }
 
         snap.forEach(doc => {
-          if (doc.id === currentUser.uid) return; // не показываем себя
+          if (doc.id === currentUser.uid) return;
           const data = doc.data();
           const el   = document.createElement('div');
           el.className = 'new-conv-user';
@@ -400,7 +680,7 @@ function initNewConvModal() {
             close();
             const cId = convId(currentUser.uid, doc.id);
             userCache[doc.id] = { name: data.name, avatar: data.avatar || null };
-            await getUser(currentUser.uid); // кэшируем себя
+            await getUser(currentUser.uid);
             openConversation(cId, doc.id, data.name, data.avatar || null);
           });
           results.appendChild(el);
@@ -441,7 +721,6 @@ function renderMessagesUI(myUid) {
     </div>
   `;
 
-  // Открываем диалог из URL (?with=uid)
   const params = new URLSearchParams(window.location.search);
   const withUid = params.get('with');
   if (withUid && withUid !== myUid) {
@@ -454,7 +733,7 @@ function renderMessagesUI(myUid) {
 
   initConvList(myUid);
   initNewConvModal();
-  getUser(myUid); // кэшируем себя сразу
+  getUser(myUid);
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
@@ -493,49 +772,35 @@ if (document.readyState === 'loading') {
 function blockChatScrollPropagation() {
   const chatSelectors = ['.chat-messages', '#chat-messages', '.conv-sidebar', '#conv-list'];
 
-  // Находим или ждём появления элементов
   const setup = () => {
     chatSelectors.forEach(selector => {
       const el = document.querySelector(selector);
       if (!el || el.dataset.scrollBlocked === '1') return;
       el.dataset.scrollBlocked = '1';
 
-      // Блокируем wheel — не даём всплыть на window, где initSmoothScroll ловит его
       el.addEventListener('wheel', (e) => {
         const isAtTop = el.scrollTop <= 0;
         const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
 
-        // Если скроллим ВНУТРИ чата (не на краю) — блокируем всплытие
         if (!isAtTop && !isAtBottom) {
           e.stopPropagation();
           return;
         }
+        if (isAtTop && e.deltaY < 0) e.stopPropagation();
+        if (isAtBottom && e.deltaY > 0) e.stopPropagation();
+      }, { passive: true });
 
-        // На краю: если направление скролла ВНУТРЬ чата — тоже блокируем
-        if (isAtTop && e.deltaY < 0) {
-          // Вверх, но уже вверху — можно всплыть (или нет, смотри ниже)
-          e.stopPropagation();
-        }
-        if (isAtBottom && e.deltaY > 0) {
-          // Вниз, но уже внизу — можно всплыть (или нет)
-          e.stopPropagation();
-        }
-      }, { passive: true, capture: false });
-
-      // Блокируем touchmove для мобильных
       el.addEventListener('touchmove', (e) => {
         e.stopPropagation();
       }, { passive: true });
     });
   };
 
-  // Запускаем сразу и наблюдаем за появлением чата
   setup();
   const observer = new MutationObserver(setup);
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
-// Запускаем блокировку после инициализации
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', blockChatScrollPropagation);
 } else {

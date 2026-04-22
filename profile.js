@@ -391,6 +391,47 @@ function renderDefault(data, uid, isOwn) {
       <button class="profile-edit-btn visible" id="edit-btn">✏️ Редактировать</button>
       <button class="profile-edit-btn profile-save-btn" id="save-btn">💾 Сохранить</button>
       <button class="profile-edit-btn profile-cancel-btn" id="cancel-btn">Отмена</button>
+
+      <div class="profile-section" style="margin-top:20px;">
+        <div class="profile-section-label">🔐 Шифрование сообщений</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="profile-edit-btn visible" id="export-keys-btn">📥 Экспорт ключей</button>
+          <button class="profile-edit-btn visible" id="import-keys-btn">📤 Импорт ключей</button>
+        </div>
+        <p style="color:var(--muted);font-size:.8rem;margin-top:8px;">
+          Ключи хранятся только на ваших устройствах. Для переноса на другое устройство — экспортируйте и импортируйте.
+        </p>
+
+        <!-- Модалка экспорта -->
+        <div id="keys-modal" style="display:none;position:fixed;inset:0;z-index:10000;align-items:center;justify-content:center;">
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);" onclick="closeKeysModal()"></div>
+          <div style="position:relative;z-index:1;width:min(420px,90vw);padding:24px;border-radius:16px;background:var(--grad-glass-heavy);border:1px solid var(--line-bright);">
+            <h3 style="margin:0 0 16px;color:#fff;">🔑 Экспорт ключей шифрования</h3>
+            <p style="color:var(--muted);font-size:.85rem;margin-bottom:12px;">
+              Придумайте сильный пароль для шифрования бэкапа. Без него ключи не восстановить.
+            </p>
+            <input type="password" id="backup-password" placeholder="Пароль для бэкапа..." style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--text);margin-bottom:10px;">
+            <input type="password" id="backup-password-confirm" placeholder="Повторите пароль..." style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--text);margin-bottom:12px;">
+            <button class="profile-edit-btn profile-save-btn" id="do-export-btn" style="width:100%;">📥 Создать бэкап</button>
+            <textarea id="backup-result" readonly style="width:100%;min-height:80px;margin-top:12px;padding:10px;border-radius:8px;background:rgba(0,0,0,.4);border:1px solid var(--line);color:var(--accent);font-family:monospace;font-size:.8rem;display:none;"></textarea>
+            <p class="profile-error" id="backup-error"></p>
+            <button class="profile-edit-btn profile-cancel-btn" onclick="closeKeysModal()" style="margin-top:10px;">Закрыть</button>
+          </div>
+        </div>
+
+        <!-- Модалка импорта -->
+        <div id="import-modal" style="display:none;position:fixed;inset:0;z-index:10000;align-items:center;justify-content:center;">
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);" onclick="closeImportModal()"></div>
+          <div style="position:relative;z-index:1;width:min(420px,90vw);padding:24px;border-radius:16px;background:var(--grad-glass-heavy);border:1px solid var(--line-bright);">
+            <h3 style="margin:0 0 16px;color:#fff;">📤 Импорт ключей</h3>
+            <textarea id="import-backup-text" placeholder="Вставьте сюда бэкап-ключ..." style="width:100%;min-height:80px;padding:10px;border-radius:8px;background:rgba(0,0,0,.4);border:1px solid var(--line);color:var(--text);font-family:monospace;font-size:.8rem;margin-bottom:10px;"></textarea>
+            <input type="password" id="import-password" placeholder="Пароль от бэкапа..." style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--text);margin-bottom:12px;">
+            <button class="profile-edit-btn profile-save-btn" id="do-import-btn" style="width:100%;">📤 Восстановить</button>
+            <p class="profile-error" id="import-error"></p>
+            <button class="profile-edit-btn profile-cancel-btn" onclick="closeImportModal()" style="margin-top:10px;">Закрыть</button>
+          </div>
+        </div>
+      </div>
     </div>
     <p class="profile-error" id="profile-error"></p>
     ` : ''}
@@ -482,6 +523,58 @@ function bindEditHandlers(data, uid) {
     if (d) d.innerHTML = data.avatar?`<img src="${data.avatar}" alt="">`:esc((data.name||'U')[0].toUpperCase());
     // Откат тегов
     rebuildTagsUI(localTags, false);
+    // ── E2EE Keys Backup ──
+    const exportBtn = document.getElementById('export-keys-btn');
+    const importBtn = document.getElementById('import-keys-btn');
+
+    exportBtn?.addEventListener('click', () => {
+      document.getElementById('keys-modal').style.display = 'flex';
+      document.getElementById('backup-result').style.display = 'none';
+      document.getElementById('backup-error').textContent = '';
+    });
+
+    importBtn?.addEventListener('click', () => {
+      document.getElementById('import-modal').style.display = 'flex';
+      document.getElementById('import-error').textContent = '';
+    });
+
+    document.getElementById('do-export-btn')?.addEventListener('click', async () => {
+      const pass = document.getElementById('backup-password').value;
+      const confirm = document.getElementById('backup-password-confirm').value;
+      const errEl = document.getElementById('backup-error');
+
+      if (!pass || pass.length < 8) { errEl.textContent = 'Пароль минимум 8 символов'; return; }
+      if (pass !== confirm) { errEl.textContent = 'Пароли не совпадают'; return; }
+
+      try {
+        const backup = await exportKeysBackup(pass);
+        const resultEl = document.getElementById('backup-result');
+        resultEl.value = backup;
+        resultEl.style.display = 'block';
+        resultEl.select();
+        errEl.textContent = '✅ Скопируйте эту строку и сохраните в надёжном месте';
+      } catch (e) {
+        errEl.textContent = 'Ошибка: ' + e.message;
+      }
+    });
+
+    document.getElementById('do-import-btn')?.addEventListener('click', async () => {
+      const backup = document.getElementById('import-backup-text').value.trim();
+      const pass = document.getElementById('import-password').value;
+      const errEl = document.getElementById('import-error');
+
+      if (!backup || !pass) { errEl.textContent = 'Заполните все поля'; return; }
+
+      try {
+        await importKeysBackup(backup, pass);
+        errEl.style.color = '#4caf50';
+        errEl.textContent = '✅ Ключи восстановлены! Перезагрузите страницу.';
+        setTimeout(() => location.reload(), 2000);
+      } catch (e) {
+        errEl.style.color = '#ff6b6b';
+        errEl.textContent = 'Ошибка: ' + (e.message || 'Неверный пароль или бэкап');
+      }
+    });
     setEditing(false);
   });
 
@@ -618,6 +711,15 @@ async function loadProfile(uid, currentUser) {
     console.error('❌ Загрузка:', err);
     showError('Не удалось загрузить профиль: '+err.message);
   }
+
+  if (isOwn && currentUser) {
+    const keys = await getOrCreateKeys();
+    const pubB64 = await exportPublicKey(keys.publicKey);
+    await window.db.collection('users').doc(uid).update({ 
+      publicKey: pubB64,
+      _hasE2EE: true 
+    }).catch(() => {});
+  }
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
@@ -641,3 +743,10 @@ function init() {
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded', init);
 } else { init(); }
+
+function closeKeysModal() {
+  document.getElementById('keys-modal').style.display = 'none';
+}
+function closeImportModal() {
+  document.getElementById('import-modal').style.display = 'none';
+}
