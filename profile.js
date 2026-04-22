@@ -36,7 +36,8 @@ const SOCIAL_DEFS = [
   { key:'telegram', label:'Telegram', icon:'✈️', placeholder:'@username' },
 ];
 
-const ONLINE_THRESHOLD_MS = 2 * 60 * 1000; // 2 минуты
+// Было: 2 минуты. Стало: 3 минуты — запас на задержки сети
+const ONLINE_THRESHOLD_MS = 3 * 60 * 1000;
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
 
@@ -140,21 +141,6 @@ function applyTheme(id) {
   document.querySelectorAll('.theme-swatch').forEach(s=>{
     s.classList.toggle('active', s.dataset.theme===id);
   });
-}
-
-// ─── ONLINE PRESENCE ──────────────────────────────────────────────────────────
-
-let presenceInterval = null;
-
-function startPresenceHeartbeat(uid) {
-  const update = () => {
-    window.db.collection('users').doc(uid).update({
-      lastSeen: firebase.firestore.FieldValue.serverTimestamp()
-    }).catch(()=>{});
-  };
-  update();
-  presenceInterval = setInterval(update, 60000);
-  window.addEventListener('beforeunload', ()=> clearInterval(presenceInterval));
 }
 
 // ─── VIEW SWITCHER ────────────────────────────────────────────────────────────
@@ -309,7 +295,6 @@ function renderDefault(data, uid, isOwn) {
       <div class="profile-avatar-wrap" id="avatar-wrap">
         <div class="profile-avatar" id="profile-avatar-display">${avatarHtml}</div>
         ${isOwn?`<button class="avatar-edit-btn visible" id="avatar-edit-btn" title="Сменить аватар">✏️</button>`:''}
-        ${!isOwn ? `<a href="messages.html?with=${uid}" class="profile-edit-btn visible" style="text-decoration:none;display:inline-block;">💬 Написать</a>` : ''}
       </div>
 
       <div class="profile-info">
@@ -399,6 +384,8 @@ function renderDefault(data, uid, isOwn) {
       </div>
     </div>
 
+    ${!isOwn ? `<a href="messages.html?with=${uid}" class="profile-edit-btn visible" style="text-decoration:none;display:inline-block;">💬 Написать</a>` : ''}
+    
     ${isOwn ? `
     <div class="profile-actions">
       <button class="profile-edit-btn visible" id="edit-btn">✏️ Редактировать</button>

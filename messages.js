@@ -485,3 +485,59 @@ function init() {
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else { init(); }
+
+// ═══════════════════════════════════════════════════════════
+// БЛОКИРУЕМ глобальный плавный скролл script.js внутри чата
+// ═══════════════════════════════════════════════════════════
+
+function blockChatScrollPropagation() {
+  const chatSelectors = ['.chat-messages', '#chat-messages', '.conv-sidebar', '#conv-list'];
+
+  // Находим или ждём появления элементов
+  const setup = () => {
+    chatSelectors.forEach(selector => {
+      const el = document.querySelector(selector);
+      if (!el || el.dataset.scrollBlocked === '1') return;
+      el.dataset.scrollBlocked = '1';
+
+      // Блокируем wheel — не даём всплыть на window, где initSmoothScroll ловит его
+      el.addEventListener('wheel', (e) => {
+        const isAtTop = el.scrollTop <= 0;
+        const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+
+        // Если скроллим ВНУТРИ чата (не на краю) — блокируем всплытие
+        if (!isAtTop && !isAtBottom) {
+          e.stopPropagation();
+          return;
+        }
+
+        // На краю: если направление скролла ВНУТРЬ чата — тоже блокируем
+        if (isAtTop && e.deltaY < 0) {
+          // Вверх, но уже вверху — можно всплыть (или нет, смотри ниже)
+          e.stopPropagation();
+        }
+        if (isAtBottom && e.deltaY > 0) {
+          // Вниз, но уже внизу — можно всплыть (или нет)
+          e.stopPropagation();
+        }
+      }, { passive: true, capture: false });
+
+      // Блокируем touchmove для мобильных
+      el.addEventListener('touchmove', (e) => {
+        e.stopPropagation();
+      }, { passive: true });
+    });
+  };
+
+  // Запускаем сразу и наблюдаем за появлением чата
+  setup();
+  const observer = new MutationObserver(setup);
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
+// Запускаем блокировку после инициализации
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', blockChatScrollPropagation);
+} else {
+  blockChatScrollPropagation();
+}

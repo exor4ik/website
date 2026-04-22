@@ -495,6 +495,12 @@ function initSmartHeader() {
 // ============================================================================
 
 function initSmoothScroll() {
+  // Не запускаем на странице сообщений — там свой скролл
+  if (document.body.classList.contains('no-smooth-scroll') || 
+      document.querySelector('.messages-wrap')) {
+    return;
+  }
+
   if (Preferences.reducedMotion) return;
 
   const config = {
@@ -953,6 +959,8 @@ function initAuth() {
       try {
         showUser(user.displayName || user.email);
         await RoleManager.init(user);
+        // Обновляем онлайн-статус на всех страницах
+        startPresenceHeartbeat(user.uid);
         const msgLink = document.getElementById('msg-link');
         if (msgLink) msgLink.style.display = 'inline-block';
         const profileLink = document.getElementById('profile-link');
@@ -1180,3 +1188,28 @@ function initDropdownClick() {
 
 // В конце init() добавь:
 initDropdownClick();
+
+// ============================================================================
+// 🟢 ONLINE PRESENCE — глобальный heartbeat для всех страниц
+// ============================================================================
+
+let globalPresenceInterval = null;
+
+function startPresenceHeartbeat(uid) {
+  // Чистим старый интервал, если был
+  if (globalPresenceInterval) {
+    clearInterval(globalPresenceInterval);
+    globalPresenceInterval = null;
+  }
+
+  const update = () => {
+    if (!window.db) return;
+    window.db.collection('users').doc(uid).update({
+      lastSeen: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(() => {});
+  };
+
+  // Сразу при входе + каждые 30 секунд
+  update();
+  globalPresenceInterval = setInterval(update, 30000);
+}

@@ -289,10 +289,25 @@
   .messages-wrap { padding-top: 90px; }
 }
 
-/* Переопределяем глобальный body */
-body {
+/* ═══════════════════════════════════════════════════════════
+   ОТКЛЮЧАЕМ глобальный плавный скролл script.js на этой странице
+   ═══════════════════════════════════════════════════════════ */
+html, body {
   overflow: hidden !important;
-  height: 100vh !important;
+  height: 100% !important;
+}
+
+/* Разрешаем скролл ТОЛЬКО внутри чата и сайдбара */
+.chat-messages,
+.conv-sidebar,
+#chat-messages {
+  overscroll-behavior-y: contain !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Отключаем pointer-events на page-blur, чтобы он не блокировал скролл */
+.page-blur {
+  pointer-events: none !important;
 }
   </style>
 </head>
