@@ -1,11 +1,19 @@
 /**
  * 🎬 video-compressor.js
  * GitHub Pages Compatible | Inline Worker + Patched FFmpeg.wasm 0.11.x
+ *
+ * Исправления:
+ *  – Worker terminate() + revokeObjectURL (нет утечек)
+ *  – Лимит файла 400 МБ
+ *  – Кнопка «Отмена»
+ *  – Сравнение размеров в статусе
+ *  – Человеческие сообщения об ошибках
  */
 document.addEventListener('DOMContentLoaded', async () => {
   const els = {
     input: document.getElementById('vc-input'),
     btn: document.getElementById('vc-btn'),
+    cancelBtn: document.getElementById('vc-cancel'),
     bar: document.getElementById('vc-bar'),
     status: document.getElementById('vc-status'),
     link: document.getElementById('vc-download'),
@@ -15,15 +23,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (!els.input || !els.btn) return;
 
+  const MAX_SIZE_MB = 400;
+  let worker = null;
+  let blobUrls = [];
+
+  // ── Утилита: безопасное освобождение Blob URL ──
+  function revokeAll() {
+    blobUrls.forEach(u => {
+      try { URL.revokeObjectURL(u); } catch (_) { /* ignore */ }
+    });
+    blobUrls = [];
+  }
+
+  // ── Утилита: остановка текущего Worker ──
+  function killWorker() {
+    if (worker) {
+      try { worker.terminate(); } catch (_) { /* ignore */ }
+      worker = null;
+    }
+  }
+
   // ── Загружаем ffmpeg.min.js, убираем document.baseURI для Worker ──
   let ffmpegBlobUrl;
   try {
     const res = await fetch('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js');
     let text = await res.text();
-    // Патч: document.baseURI вызывает ReferenceError в Worker (нет проверки typeof)
     text = text.replace(/document\.baseURI/g, 'self.location.href');
     const blob = new Blob([text], { type: 'application/javascript' });
     ffmpegBlobUrl = URL.createObjectURL(blob);
+    blobUrls.push(ffmpegBlobUrl);
   } catch (err) {
     els.status.textContent = '❌ Не удалось загрузить FFmpeg wrapper: ' + err.message;
     return;
@@ -89,79 +117,127 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, [result.buffer]);
 
       } catch (err) {
-        self.postMessage({ type: 'error', message: err.message || String(err) });
+        let msg = err.message || String(err);
+        // Упрощаем типичные ошибки FFmpeg
+        if (msg.includes('Invalid data found')) msg = 'Формат файла не поддерживается или файл повреждён.';
+        else if (msg.includes('ENOMEM') || msg.includes('memory')) msg = 'Не хватает памяти. Попробуйте файл меньше.';
+        else if (msg.includes('abort')) msg = 'Операция прервана.';
+        self.postMessage({ type: 'error', message: msg });
       }
     };
   `;
 
   const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
-  const worker = new Worker(URL.createObjectURL(workerBlob));
+  const workerUrl = URL.createObjectURL(workerBlob);
+  blobUrls.push(workerUrl);
 
-  worker.onmessage = (e) => {
-    const { type, ratio, text, arrayBuffer, fileName, message } = e.data;
+  function createWorker() {
+    killWorker();
+    revokeAll();
+    // Пересоздаём URL, т.к. revoke их снес
+    const wb = new Blob([workerCode], { type: 'application/javascript' });
+    const wu = URL.createObjectURL(wb);
+    blobUrls.push(wu);
+    worker = new Worker(wu);
 
-    switch (type) {
-      case 'progress': {
-        const pct = Math.min(Math.round(ratio * 100), 100);
-        els.bar.style.width = pct + '%';
-        els.status.textContent = '⚙️ Кодирование: ' + pct + '%';
-        break;
-      }
-      case 'status': {
-        els.status.textContent = text;
-        break;
-      }
-      case 'done': {
-        const blob = new Blob([arrayBuffer], { type: 'video/mp4' });
-        const url = URL.createObjectURL(blob);
-        els.link.href = url;
-        els.link.download = 'compressed_' + fileName.replace(/\.[^/.]+$/, '') + '.mp4';
-        els.link.style.display = 'inline-block';
-        els.link.textContent = '✅ Готово! Скачать (' + (blob.size / 1024 / 1024).toFixed(1) + ' МБ)';
-        els.status.textContent = '✨ Сжатие завершено. Файл остался в браузере.';
-        els.bar.style.width = '100%';
-        els.btn.disabled = false;
-        break;
-      }
-      case 'error': {
-        console.error('[Compressor] Ошибка:', message);
-        els.status.textContent = '❌ Ошибка: ' + message;
-        els.bar.style.width = '0%';
-        els.btn.disabled = false;
-        break;
-      }
-    }
-  };
+    worker.onmessage = (e) => {
+      const { type, ratio, text, arrayBuffer, fileName, message } = e.data;
 
-  worker.onerror = (err) => {
-    console.error('[Worker] Ошибка:', err);
-    els.status.textContent = '❌ Ошибка Worker: ' + (err.message || 'неизвестная ошибка');
-    els.bar.style.width = '0%';
-    els.btn.disabled = false;
-  };
+      switch (type) {
+        case 'progress': {
+          const pct = Math.min(Math.round(ratio * 100), 100);
+          els.bar.style.width = pct + '%';
+          els.status.textContent = '⚙️ Кодирование: ' + pct + '%';
+          break;
+        }
+        case 'status': {
+          els.status.textContent = text;
+          break;
+        }
+        case 'done': {
+          const blob = new Blob([arrayBuffer], { type: 'video/mp4' });
+          const url = URL.createObjectURL(blob);
+          const originalSizeMB = (els.input.files[0]?.size || 0) / (1024 * 1024);
+          const compressedSizeMB = blob.size / (1024 / 1024);
 
+          els.link.href = url;
+          els.link.download = 'compressed_' + fileName.replace(/\.[^/.]+$/, '') + '.mp4';
+          els.link.style.display = 'inline-block';
+          els.link.textContent = '✅ Готово! Скачать (' + compressedSizeMB.toFixed(1) + ' МБ)';
+          els.status.textContent = '✨ Сжатие завершено. ' + originalSizeMB.toFixed(1) + ' МБ → ' + compressedSizeMB.toFixed(1) + ' МБ';
+          els.bar.style.width = '100%';
+          els.btn.disabled = false;
+          els.cancelBtn.style.display = 'none';
+          break;
+        }
+        case 'error': {
+          console.error('[Compressor] Ошибка:', message);
+          els.status.textContent = '❌ Ошибка: ' + message;
+          els.bar.style.width = '0%';
+          els.btn.disabled = false;
+          els.cancelBtn.style.display = 'none';
+          break;
+        }
+      }
+    };
+
+    worker.onerror = (err) => {
+      console.error('[Worker] Ошибка:', err);
+      els.status.textContent = '❌ Ошибка Worker: ' + (err.message || 'неизвестная ошибка');
+      els.bar.style.width = '0%';
+      els.btn.disabled = false;
+      els.cancelBtn.style.display = 'none';
+    };
+  }
+
+  // ── Слайдер CRF ──
   els.crfSlider.addEventListener('input', () => {
     els.crfVal.textContent = els.crfSlider.value;
   });
 
+  // ── Выбор файла ──
   els.input.addEventListener('change', () => {
     const hasFile = els.input.files.length > 0;
     els.btn.disabled = !hasFile;
     els.link.style.display = 'none';
-    els.status.textContent = hasFile ? '📁 Выбрано: ' + els.input.files[0].name : 'Выберите видео для начала';
+    els.bar.style.width = '0%';
+    if (hasFile) {
+      const sizeMB = els.input.files[0].size / (1024 * 1024);
+      if (sizeMB > MAX_SIZE_MB) {
+        els.status.textContent = '⚠️ Файл слишком большой (' + sizeMB.toFixed(1) + ' МБ). Максимум: ' + MAX_SIZE_MB + ' МБ.';
+        els.btn.disabled = true;
+      } else {
+        els.status.textContent = '📁 Выбрано: ' + els.input.files[0].name + ' (' + sizeMB.toFixed(1) + ' МБ)';
+      }
+    } else {
+      els.status.textContent = 'Выберите видео для начала';
+    }
   });
 
+  // ── Отмена ──
+  els.cancelBtn.addEventListener('click', () => {
+    killWorker();
+    els.status.textContent = '⛔ Операция отменена.';
+    els.bar.style.width = '0%';
+    els.btn.disabled = false;
+    els.cancelBtn.style.display = 'none';
+  });
+
+  // ── Запуск сжатия ──
   els.btn.addEventListener('click', async () => {
     const file = els.input.files[0];
     if (!file) return;
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) return;
 
     els.btn.disabled = true;
+    els.cancelBtn.style.display = 'inline-block';
     els.link.style.display = 'none';
     els.bar.style.width = '0%';
     els.status.textContent = '📥 Подготовка файла...';
 
     try {
       const arrayBuffer = await file.arrayBuffer();
+      createWorker();
       worker.postMessage({
         type: 'compress',
         arrayBuffer,
@@ -171,6 +247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       els.status.textContent = '❌ Ошибка чтения файла: ' + err.message;
       els.btn.disabled = false;
+      els.cancelBtn.style.display = 'none';
     }
   });
 });

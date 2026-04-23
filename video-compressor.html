@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Сжатие видео — EgorNetwork</title>
   <link rel="stylesheet" href="styles.css">
+<base target="_blank">
 </head>
 <body>
   <div id="header-container"></div>
@@ -14,7 +15,7 @@
       <h2>🎬 Локальное сжатие видео</h2>
       <p style="color: var(--muted); margin-bottom: 1rem;">
         Файл обрабатывается прямо в вашем браузере. Никуда не загружается.<br>
-        Для цели <b>100 МБ → 15 МБ</b> используйте CRF 26–28.
+        Максимальный размер: <b>400 МБ</b>. Для цели <b>100 МБ → 15 МБ</b> используйте CRF 26–28.
       </p>
 
       <input type="file" id="vc-input" class="vc-input" accept="video/*">
@@ -25,7 +26,11 @@
         <div class="vc-hint">18 = максимум качества, 24 = баланс, 26-28 = сильное сжатие, 30+ = заметные артефакты.</div>
       </div>
 
-      <button id="vc-btn" class="vc-btn" disabled>🔹 Сжать видео</button>
+      <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+        <button id="vc-btn" class="vc-btn" disabled>🔹 Сжать видео</button>
+        <button id="vc-cancel" class="vc-btn" style="display:none; background:#c0392b;">⛔ Отмена</button>
+      </div>
+
       <div class="vc-progress-wrap"><div class="vc-progress-bar" id="vc-bar"></div></div>
       <div class="vc-status" id="vc-status">Выберите видео для начала</div>
       <a id="vc-download" class="vc-download" style="display:none">⬇️ Скачать результат</a>
@@ -34,9 +39,7 @@
 
   <div id="footer-container"></div>
 
-  <!-- Основные скрипты сайта (хедер, футер, анимации) -->
   <script src="script.js"></script>
-  <!-- Модуль компрессора -->
   <script type="module" src="video-compressor.js"></script>
 </body>
 </html>
