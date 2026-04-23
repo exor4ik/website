@@ -15,7 +15,7 @@
       <h2>🎬 Локальное сжатие видео</h2>
       <p style="color: var(--muted); margin-bottom: 1rem;">
         Файл обрабатывается прямо в вашем браузере. Никуда не загружается.<br>
-        Максимальный размер: <b>400 МБ</b>. Для цели <b>100 МБ → 15 МБ</b> используйте CRF 26–28.
+        Рекомендуемый максимум: <b>400 МБ</b>. Для цели <b>100 МБ → 15 МБ</b> используйте CRF 26–28.
       </p>
 
       <input type="file" id="vc-input" class="vc-input" accept="video/*">
@@ -26,8 +26,9 @@
         <div class="vc-hint">18 = максимум качества, 24 = баланс, 26-28 = сильное сжатие, 30+ = заметные артефакты.</div>
       </div>
 
-      <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+      <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
         <button id="vc-btn" class="vc-btn" disabled>🔹 Сжать видео</button>
+        <button id="vc-force" class="vc-btn" style="display:none; background:#e67e22;">⚠️ Сжать всё равно</button>
         <button id="vc-cancel" class="vc-btn" style="display:none; background:#c0392b;">⛔ Отмена</button>
       </div>
 

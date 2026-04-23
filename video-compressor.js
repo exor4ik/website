@@ -3,8 +3,8 @@
  * GitHub Pages Compatible | Inline Worker + Patched FFmpeg.wasm 0.11.x
  *
  * Исправления:
- *  – Worker terminate() + revokeObjectURL (нет утечек)
- *  – Лимит файла 400 МБ
+ *  – Worker terminate() + правильный revokeObjectURL (нет утечек, нет NetworkError)
+ *  – Лимит файла 400 МБ с кнопкой «Сжать всё равно»
  *  – Кнопка «Отмена»
  *  – Сравнение размеров в статусе
  *  – Человеческие сообщения об ошибках
@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const els = {
     input: document.getElementById('vc-input'),
     btn: document.getElementById('vc-btn'),
+    forceBtn: document.getElementById('vc-force'),
     cancelBtn: document.getElementById('vc-cancel'),
     bar: document.getElementById('vc-bar'),
     status: document.getElementById('vc-status'),
@@ -24,121 +25,120 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!els.input || !els.btn) return;
 
   const MAX_SIZE_MB = 400;
+  let ffmpegText = null;          // кэшированный текст ffmpeg.min.js
   let worker = null;
-  let blobUrls = [];
+  let currentFfmpegBlobUrl = null;
+  let currentWorkerBlobUrl = null;
 
-  // ── Утилита: безопасное освобождение Blob URL ──
-  function revokeAll() {
-    blobUrls.forEach(u => {
-      try { URL.revokeObjectURL(u); } catch (_) { /* ignore */ }
-    });
-    blobUrls = [];
+  // ── Утилита: безопасно отозвать один URL ──
+  function safeRevoke(url) {
+    if (!url) return;
+    try { URL.revokeObjectURL(url); } catch (_) { /* ignore */ }
   }
 
-  // ── Утилита: остановка текущего Worker ──
+  // ── Утилита: убить Worker и отозвать его Blob URL ──
   function killWorker() {
     if (worker) {
       try { worker.terminate(); } catch (_) { /* ignore */ }
       worker = null;
     }
+    safeRevoke(currentWorkerBlobUrl);
+    currentWorkerBlobUrl = null;
+    safeRevoke(currentFfmpegBlobUrl);
+    currentFfmpegBlobUrl = null;
   }
 
-  // ── Загружаем ffmpeg.min.js, убираем document.baseURI для Worker ──
-  let ffmpegBlobUrl;
+  // ── Загружаем ffmpeg.min.js один раз, патчим document.baseURI ──
   try {
     const res = await fetch('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js');
-    let text = await res.text();
-    text = text.replace(/document\.baseURI/g, 'self.location.href');
-    const blob = new Blob([text], { type: 'application/javascript' });
-    ffmpegBlobUrl = URL.createObjectURL(blob);
-    blobUrls.push(ffmpegBlobUrl);
+    ffmpegText = await res.text();
+    ffmpegText = ffmpegText.replace(/document\.baseURI/g, 'self.location.href');
   } catch (err) {
     els.status.textContent = '❌ Не удалось загрузить FFmpeg wrapper: ' + err.message;
     return;
   }
 
-  // ── Inline Worker (classic, blob URL) ──
-  const workerCode = `
-    importScripts('${ffmpegBlobUrl}');
-    const { createFFmpeg } = self.FFmpeg;
-
-    const ffmpeg = createFFmpeg({
-      log: false,
-      corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js',
-      mainName: 'main'
-    });
-
-    let loaded = false;
-
-    ffmpeg.setProgress(({ ratio }) => {
-      self.postMessage({ type: 'progress', ratio });
-    });
-
-    self.onmessage = async (e) => {
-      const { type, arrayBuffer, fileName, crf } = e.data;
-      if (type !== 'compress') return;
-
-      try {
-        if (!loaded) {
-          self.postMessage({ type: 'status', text: '⏳ Загрузка ядра FFmpeg.wasm (~25 МБ)...' });
-          await ffmpeg.load();
-          loaded = true;
-        }
-
-        const inName = 'input.mp4';
-        const outName = 'output.mp4';
-
-        self.postMessage({ type: 'status', text: '📥 Чтение файла в виртуальную ФС...' });
-        ffmpeg.FS('writeFile', inName, new Uint8Array(arrayBuffer));
-
-        self.postMessage({ type: 'status', text: '🔧 Кодирование...' });
-        await ffmpeg.run(
-          '-i', inName,
-          '-c:v', 'libx264',
-          '-crf', String(crf),
-          '-preset', 'medium',
-          '-pix_fmt', 'yuv420p',
-          '-c:a', 'aac',
-          '-b:a', '128k',
-          '-movflags', '+faststart',
-          outName
-        );
-
-        const data = ffmpeg.FS('readFile', outName);
-        const result = new Uint8Array(data.slice());
-
-        ffmpeg.FS('unlink', inName);
-        ffmpeg.FS('unlink', outName);
-
-        self.postMessage({
-          type: 'done',
-          arrayBuffer: result.buffer,
-          fileName
-        }, [result.buffer]);
-
-      } catch (err) {
-        let msg = err.message || String(err);
-        // Упрощаем типичные ошибки FFmpeg
-        if (msg.includes('Invalid data found')) msg = 'Формат файла не поддерживается или файл повреждён.';
-        else if (msg.includes('ENOMEM') || msg.includes('memory')) msg = 'Не хватает памяти. Попробуйте файл меньше.';
-        else if (msg.includes('abort')) msg = 'Операция прервана.';
-        self.postMessage({ type: 'error', message: msg });
-      }
-    };
-  `;
-
-  const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
-  const workerUrl = URL.createObjectURL(workerBlob);
-  blobUrls.push(workerUrl);
-
+  // ── Создаём Worker с актуальным Blob URL ffmpeg ──
   function createWorker() {
-    killWorker();
-    revokeAll();
-    // Пересоздаём URL, т.к. revoke их снес
-    const wb = new Blob([workerCode], { type: 'application/javascript' });
-    const wu = URL.createObjectURL(wb);
-    blobUrls.push(wu);
-    worker = new Worker(wu);
+    killWorker(); // гарантированно чистим старого
+
+    currentFfmpegBlobUrl = URL.createObjectURL(
+      new Blob([ffmpegText], { type: 'application/javascript' })
+    );
+
+    const workerCode = `
+      importScripts('${currentFfmpegBlobUrl}');
+      const { createFFmpeg } = self.FFmpeg;
+
+      const ffmpeg = createFFmpeg({
+        log: false,
+        corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js',
+        mainName: 'main'
+      });
+
+      let loaded = false;
+
+      ffmpeg.setProgress(({ ratio }) => {
+        self.postMessage({ type: 'progress', ratio });
+      });
+
+      self.onmessage = async (e) => {
+        const { type, arrayBuffer, fileName, crf } = e.data;
+        if (type !== 'compress') return;
+
+        try {
+          if (!loaded) {
+            self.postMessage({ type: 'status', text: '⏳ Загрузка ядра FFmpeg.wasm (~25 МБ)...' });
+            await ffmpeg.load();
+            loaded = true;
+          }
+
+          const inName = 'input.mp4';
+          const outName = 'output.mp4';
+
+          self.postMessage({ type: 'status', text: '\uD83D\uDCE5 Чтение файла в виртуальную ФС...' });
+          ffmpeg.FS('writeFile', inName, new Uint8Array(arrayBuffer));
+
+          self.postMessage({ type: 'status', text: '\uD83D\uDD27 Кодирование...' });
+          await ffmpeg.run(
+            '-i', inName,
+            '-c:v', 'libx264',
+            '-crf', String(crf),
+            '-preset', 'medium',
+            '-pix_fmt', 'yuv420p',
+            '-c:a', 'aac',
+            '-b:a', '128k',
+            '-movflags', '+faststart',
+            outName
+          );
+
+          const data = ffmpeg.FS('readFile', outName);
+          const result = new Uint8Array(data.slice());
+
+          ffmpeg.FS('unlink', inName);
+          ffmpeg.FS('unlink', outName);
+
+          self.postMessage({
+            type: 'done',
+            arrayBuffer: result.buffer,
+            fileName
+          }, [result.buffer]);
+
+        } catch (err) {
+          let msg = err.message || String(err);
+          if (msg.includes('Invalid data found')) msg = 'Формат файла не поддерживается или файл повреждён.';
+          else if (msg.includes('ENOMEM') || msg.includes('memory') || msg.includes('out of memory')) msg = 'Не хватает памяти. Попробуйте файл меньше или закройте лишние вкладки.';
+          else if (msg.includes('abort') || msg.includes('terminated')) msg = 'Операция прервана.';
+          self.postMessage({ type: 'error', message: msg });
+        }
+      };
+    `;
+
+    currentWorkerBlobUrl = URL.createObjectURL(
+      new Blob([workerCode], { type: 'application/javascript' })
+    );
+
+    worker = new Worker(currentWorkerBlobUrl);
 
     worker.onmessage = (e) => {
       const { type, ratio, text, arrayBuffer, fileName, message } = e.data;
@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const blob = new Blob([arrayBuffer], { type: 'video/mp4' });
           const url = URL.createObjectURL(blob);
           const originalSizeMB = (els.input.files[0]?.size || 0) / (1024 * 1024);
-          const compressedSizeMB = blob.size / (1024 / 1024);
+          const compressedSizeMB = blob.size / (1024 * 1024);
 
           els.link.href = url;
           els.link.download = 'compressed_' + fileName.replace(/\.[^/.]+$/, '') + '.mp4';
@@ -183,7 +183,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     worker.onerror = (err) => {
       console.error('[Worker] Ошибка:', err);
-      els.status.textContent = '❌ Ошибка Worker: ' + (err.message || 'неизвестная ошибка');
+      const msg = err.message || 'неизвестная ошибка';
+      // Скрываем технические детали blob URL от пользователя
+      const cleanMsg = msg.includes('blob:') ? 'Не удалось загрузить FFmpeg в Worker. Попробуйте обновить страницу.' : msg;
+      els.status.textContent = '❌ Ошибка Worker: ' + cleanMsg;
       els.bar.style.width = '0%';
       els.btn.disabled = false;
       els.cancelBtn.style.display = 'none';
@@ -198,19 +201,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Выбор файла ──
   els.input.addEventListener('change', () => {
     const hasFile = els.input.files.length > 0;
-    els.btn.disabled = !hasFile;
     els.link.style.display = 'none';
     els.bar.style.width = '0%';
+    els.cancelBtn.style.display = 'none';
+
     if (hasFile) {
       const sizeMB = els.input.files[0].size / (1024 * 1024);
       if (sizeMB > MAX_SIZE_MB) {
-        els.status.textContent = '⚠️ Файл слишком большой (' + sizeMB.toFixed(1) + ' МБ). Максимум: ' + MAX_SIZE_MB + ' МБ.';
+        els.status.textContent = '⚠️ Файл слишком большой (' + sizeMB.toFixed(1) + ' МБ). Рекомендуется до ' + MAX_SIZE_MB + ' МБ.';
         els.btn.disabled = true;
+        els.forceBtn.style.display = 'inline-block';
       } else {
         els.status.textContent = '📁 Выбрано: ' + els.input.files[0].name + ' (' + sizeMB.toFixed(1) + ' МБ)';
+        els.btn.disabled = false;
+        els.forceBtn.style.display = 'none';
       }
     } else {
       els.status.textContent = 'Выберите видео для начала';
+      els.btn.disabled = true;
+      els.forceBtn.style.display = 'none';
     }
   });
 
@@ -220,16 +229,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.status.textContent = '⛔ Операция отменена.';
     els.bar.style.width = '0%';
     els.btn.disabled = false;
+    els.forceBtn.disabled = false;
     els.cancelBtn.style.display = 'none';
   });
 
-  // ── Запуск сжатия ──
-  els.btn.addEventListener('click', async () => {
+  // ── Запуск сжатия (основная кнопка) ──
+  els.btn.addEventListener('click', () => startCompress(false));
+
+  // ── Запуск сжатия (принудительно) ──
+  els.forceBtn.addEventListener('click', () => startCompress(true));
+
+  async function startCompress(force) {
     const file = els.input.files[0];
     if (!file) return;
-    if (file.size > MAX_SIZE_MB * 1024 * 1024) return;
+    if (!force && file.size > MAX_SIZE_MB * 1024 * 1024) return;
 
     els.btn.disabled = true;
+    els.forceBtn.disabled = true;
     els.cancelBtn.style.display = 'inline-block';
     els.link.style.display = 'none';
     els.bar.style.width = '0%';
@@ -247,7 +263,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       els.status.textContent = '❌ Ошибка чтения файла: ' + err.message;
       els.btn.disabled = false;
+      els.forceBtn.disabled = false;
       els.cancelBtn.style.display = 'none';
     }
-  });
+  }
 });

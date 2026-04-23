@@ -6,9 +6,12 @@
  *   - author: string
  *   - authorUid: string
  *   - createdAt: Timestamp
+ *   - reactions: { '👍': [uid, ...], '👎': [uid, ...], '❤️': [uid, ...], '🔥': [uid, ...], '😂': [uid, ...], '😮': [uid, ...] }
  */
 
 'use strict';
+
+const REACTIONS = ['👍', '👎', '❤️', '🔥', '😂', '😮'];
 
 function waitForPostsFirebase(callback, maxAttempts = 20) {
   let attempts = 0;
@@ -35,6 +38,52 @@ function formatPostDate(timestamp) {
 // 🎨 РЕНДЕР ПОСТА
 // ============================================================================
 
+// ============================================================================
+// ⚡ РЕАКЦИИ
+// ============================================================================
+
+function renderReactions(postId, reactions, myUid) {
+  return REACTIONS.map(emoji => {
+    const users = reactions?.[emoji] || [];
+    const count = users.length;
+    const active = myUid && users.includes(myUid);
+    return `<button class="reaction-btn ${active ? 'active' : ''}"
+      data-emoji="${emoji}" data-post="${postId}"
+      title="${emoji}">
+      ${emoji}${count > 0 ? `<span class="reaction-count">${count}</span>` : ''}
+    </button>`;
+  }).join('');
+}
+
+async function toggleReaction(postId, emoji) {
+  const user = window.auth?.currentUser;
+  if (!user) {
+    alert('Войдите, чтобы поставить реакцию.');
+    return;
+  }
+  const ref = window.db.collection('posts').doc(postId);
+  const field = `reactions.${emoji}`;
+  try {
+    const doc = await ref.get();
+    const users = doc.data()?.reactions?.[emoji] || [];
+    if (users.includes(user.uid)) {
+      await ref.update({ [field]: firebase.firestore.FieldValue.arrayRemove(user.uid) });
+    } else {
+      await ref.update({ [field]: firebase.firestore.FieldValue.arrayUnion(user.uid) });
+    }
+  } catch (err) {
+    console.error('❌ Реакция:', err);
+  }
+}
+
+function bindReactions(article) {
+  article.querySelectorAll('.reaction-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      toggleReaction(btn.dataset.post, btn.dataset.emoji);
+    });
+  });
+}
+
 function renderPost(doc) {
   const data   = doc.data();
   const postId = doc.id;
@@ -57,6 +106,11 @@ function renderPost(doc) {
       </div>
     </div>
     <p style="color:#aaa;margin:12px 0;white-space:pre-wrap;">${escapeHtml(data.text)}</p>
+
+    <!-- Реакции -->
+    <div class="reactions-row" id="reactions-${postId}">
+      ${renderReactions(postId, data.reactions, window.auth?.currentUser?.uid)}
+    </div>
 
     <!-- Секция комментариев -->
     <div class="comments-section">
@@ -89,6 +143,9 @@ function renderPost(doc) {
       e.target.style.background = 'rgba(255,100,100,.1)';
     });
   }
+
+  // Реакции
+  bindReactions(article);
 
   return article;
 }
@@ -142,10 +199,40 @@ function initPostsStream() {
 
   container.innerHTML = '<p style="color:var(--muted);padding:20px 0;">Загрузка постов...</p>';
 
+  let postsRendered = false; // флаг первого рендера
+
   window.db.collection('posts')
     .orderBy('createdAt', 'desc')
     .onSnapshot(
       (snapshot) => {
+
+        // ── После первого рендера обрабатываем только изменения ──
+        if (postsRendered) {
+          snapshot.docChanges().forEach(change => {
+            const myUid = window.auth?.currentUser?.uid;
+
+            if (change.type === 'modified') {
+              // Обновляем реакции без перерисовки поста
+              const row = document.getElementById(`reactions-${change.doc.id}`);
+              if (row) {
+                row.innerHTML = renderReactions(change.doc.id, change.doc.data().reactions, myUid);
+                bindReactions(row.closest('article'));
+              }
+            } else if (change.type === 'added') {
+              // Новый пост — добавляем в начало
+              const articleEl = renderPost(change.doc);
+              container.prepend(articleEl);
+              setupPost(articleEl);
+              requestAnimationFrame(() => requestAnimationFrame(() => articleEl.classList.add('visible')));
+            } else if (change.type === 'removed') {
+              document.querySelector(`[data-post-id="${change.doc.id}"]`)?.remove();
+            }
+          });
+          return;
+        }
+
+        // ── Первый рендер ──
+        postsRendered = true;
         container.innerHTML = '';
 
         if (snapshot.empty) {
