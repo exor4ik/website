@@ -372,6 +372,7 @@ function setHeroVars(hero, rx, ry, shiftX, shiftY) {
 function initNav() {
   initMobileMenu();
   initNavHighlight();
+  initDropdownHover();
 }
 
 function initMobileMenu() {
@@ -457,6 +458,48 @@ function initNavHighlight() {
   nav.addEventListener('mouseleave', () => {
     highlight.style.opacity = '0';
   }, { passive: true });
+}
+
+function initDropdownHover() {
+  document.querySelectorAll('.nav-dropdown').forEach(drop => {
+    let closeTimer = null;
+    const CLOSE_DELAY = 180; // мс — задержка перед закрытием
+
+    drop.addEventListener('mouseenter', () => {
+      clearTimeout(closeTimer);
+      drop.classList.add('is-hover');
+      
+      // Скрываем подсветку навигации (fallback для старых браузеров)
+      const nav = drop.closest('.nav');
+      if (nav) nav.classList.add('nav-dropdown-active');
+    });
+
+    drop.addEventListener('mouseleave', () => {
+      closeTimer = setTimeout(() => {
+        drop.classList.remove('is-hover');
+        
+        const nav = drop.closest('.nav');
+        if (nav && !drop.classList.contains('open')) {
+          nav.classList.remove('nav-dropdown-active');
+        }
+      }, CLOSE_DELAY);
+    });
+  });
+
+  // Закрыть при клике вне (только если открыто по клику)
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.nav-dropdown')) {
+      document.querySelectorAll('.nav-dropdown.open').forEach(d => {
+        d.classList.remove('open');
+        d.querySelector('.nav-dropdown-toggle')?.setAttribute('aria-expanded', 'false');
+      });
+      document.querySelectorAll('.nav-dropdown-active').forEach(nav => {
+        if (!nav.querySelector('.nav-dropdown.is-hover')) {
+          nav.classList.remove('nav-dropdown-active');
+        }
+      });
+    }
+  });
 }
 
 // ============================================================================
@@ -1163,28 +1206,14 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = { init, loadComponent, initCardTilt, initHeroDepth };
 }
 
-// Dropdown
-function initDropdownClick() {
-  document.querySelectorAll('.nav-dropdown-toggle').forEach(toggle => {
-    toggle.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      const parent = this.closest('.nav-dropdown');
-      parent.classList.toggle('open');
-      this.setAttribute('aria-expanded', parent.classList.contains('open'));
+// При закрытии кликом вне — убрать класс
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.nav-dropdown')) {
+    document.querySelectorAll('.nav-dropdown-active').forEach(nav => {
+      nav.classList.remove('nav-dropdown-active');
     });
-  });
-
-  // Закрытие при клике вне
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.nav-dropdown')) {
-      document.querySelectorAll('.nav-dropdown.open').forEach(d => {
-        d.classList.remove('open');
-        d.querySelector('.nav-dropdown-toggle')?.setAttribute('aria-expanded', 'false');
-      });
-    }
-  });
-}
+  }
+});
 
 // В конце init() добавь:
 initDropdownClick();

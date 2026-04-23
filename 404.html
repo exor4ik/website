@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>404 — EgorNetwork</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="images/icon.png" type="image/png">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+
+  </style>
+</head>
+<body>
+<div class="page-blur"></div>
+<div class="dust">
+  <span></span><span></span><span></span>
+  <span></span><span></span><span></span>
+</div>
+<div id="header-container"></div>
+
+<!-- Орбы -->
+<div class="orb-404"></div>
+<div class="orb-404"></div>
+
+<main class="page-404">
+
+  <!-- Большой глитч-код -->
+  <div class="err-code" id="err-code">
+    <span>404</span>
+    <div class="glitch-scanline"></div>
+  </div>
+
+  <h1 class="err-title">Страница не найдена</h1>
+  <p class="err-sub">Похоже, эта страница была удалена, перемещена<br>или никогда не существовала в этом измерении.</p>
+
+  <!-- Терминал -->
+  <div class="terminal-block">
+    <div class="t-line"><span class="t-prompt">user@egnt:~$ </span>GET <span style="color:var(--accent)">{{ path }}</span></div>
+    <div class="t-line t-err">→ Error 404: Not Found</div>
+    <div class="t-line t-dim">──────────────────────────────</div>
+    <div class="t-line t-warn">⚠ route not registered in router</div>
+    <div class="t-line t-dim">  stack: [GitHub Pages → app → 404]</div>
+    <div class="t-line" style="margin-top:8px;"><span class="t-prompt">user@egnt:~$ </span>suggest --fix<span class="t-cursor"></span></div>
+    <div class="t-line t-ok" id="suggest-line" style="opacity:0;transition:opacity .4s;">→ cd /home &amp;&amp; ./start_over.sh ✓</div>
+  </div>
+
+  <!-- Кнопки -->
+  <div class="err-btns">
+    <a href="index.html" class="btn">🏠 На главную</a>
+    <button class="btn" onclick="history.back()" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.04);">← Назад</button>
+    <a href="blog.html" class="btn" style="border-color:rgba(139,123,255,.3);background:rgba(139,123,255,.08);">📝 Блог</a>
+  </div>
+
+</main>
+
+<div class="easter-hint" id="easter-hint">// try clicking 404</div>
+
+<div id="footer-container"></div>
+<script src="script.js" defer></script>
+<script>
+// Подставляем текущий путь в терминал
+document.addEventListener('DOMContentLoaded', () => {
+  const pathEl = document.querySelector('.terminal-block .t-line:first-child');
+  if (pathEl) {
+    pathEl.innerHTML = pathEl.innerHTML.replace(
+      '{{ path }}',
+      `<span style="color:var(--accent)">${location.pathname}</span>`
+    );
+  }
+
+  // Показываем suggest через 1.2с
+  setTimeout(() => {
+    const sl = document.getElementById('suggest-line');
+    if (sl) sl.style.opacity = '1';
+  }, 1200);
+
+  // Easter egg — кликай на 404
+  const code = document.getElementById('err-code');
+  const hint = document.getElementById('easter-hint');
+  let clicks = 0;
+  const messages = [
+    '// try clicking 404',
+    '// [1/5] keep going...',
+    '// [2/5] you sure?',
+    '// [3/5] almost...',
+    '// [4/5] one more!',
+  ];
+  const secrets = [
+    { num: '404', color: null },
+    { num: '403', color: '#ff6b6b' },
+    { num: '418', color: '#ffb347' },
+    { num: '500', color: '#ff2d78' },
+    { num: '200', color: '#39ff14' },
+  ];
+
+  code.style.cursor = 'pointer';
+  code.addEventListener('click', () => {
+    clicks++;
+    const s = secrets[Math.min(clicks, secrets.length - 1)];
+
+    // Меняем цифры
+    const span = code.querySelector('span');
+    if (span) {
+      span.style.transition = 'filter .15s';
+      span.style.filter = 'blur(4px)';
+      setTimeout(() => {
+        span.textContent = s.num;
+        if (s.color) {
+          span.style.background = `linear-gradient(135deg, ${s.color}, #fff)`;
+          span.style.backgroundClip = 'text';
+          span.style.webkitBackgroundClip = 'text';
+        }
+        span.style.filter = 'blur(0)';
+      }, 150);
+    }
+
+    if (clicks < messages.length) {
+      hint.textContent = messages[clicks];
+      hint.classList.add('glow');
+      setTimeout(() => hint.classList.remove('glow'), 600);
+    }
+
+    // Финал — 200 OK
+    if (clicks >= 5) {
+      hint.textContent = '// status: 200 OK 🎉';
+      hint.classList.add('glow');
+      code.style.cursor = 'default';
+
+      // Конфетти из пылинок
+      document.querySelectorAll('.dust span').forEach(s => {
+        s.style.animationDuration = (2 + Math.random() * 3) + 's';
+      });
+    }
+  });
+});
+</script>
+</body>
+</html>
