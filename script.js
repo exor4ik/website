@@ -771,7 +771,32 @@ async function loadComponent(id, file) {
 }
 
 // ============================================================================
-// 👑 ROLE MANAGER (Система ролей)
+// � ONLINE PRESENCE — глобальный heartbeat для всех страниц
+// ============================================================================
+
+let globalPresenceInterval = null;
+
+function startPresenceHeartbeat(uid) {
+  // Чистим старый интервал, если был
+  if (globalPresenceInterval) {
+    clearInterval(globalPresenceInterval);
+    globalPresenceInterval = null;
+  }
+
+  const update = () => {
+    if (!window.db) return;
+    window.db.collection('users').doc(uid).update({
+      lastSeen: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(() => {});
+  };
+
+  // Сразу при входе + каждые 30 секунд
+  update();
+  globalPresenceInterval = setInterval(update, 30000);
+}
+
+// ============================================================================
+// �👑 ROLE MANAGER (Система ролей)
 // ============================================================================
 
 const RoleManager = {
@@ -1215,30 +1240,3 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// В конце init() добавь:
-initDropdownClick();
-
-// ============================================================================
-// 🟢 ONLINE PRESENCE — глобальный heartbeat для всех страниц
-// ============================================================================
-
-let globalPresenceInterval = null;
-
-function startPresenceHeartbeat(uid) {
-  // Чистим старый интервал, если был
-  if (globalPresenceInterval) {
-    clearInterval(globalPresenceInterval);
-    globalPresenceInterval = null;
-  }
-
-  const update = () => {
-    if (!window.db) return;
-    window.db.collection('users').doc(uid).update({
-      lastSeen: firebase.firestore.FieldValue.serverTimestamp()
-    }).catch(() => {});
-  };
-
-  // Сразу при входе + каждые 30 секунд
-  update();
-  globalPresenceInterval = setInterval(update, 30000);
-}
