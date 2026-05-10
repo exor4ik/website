@@ -1,5 +1,5 @@
-# 📜 EgorNetwork A.I.O.T. License v1.0
-### (Artificial Intelligence & Original Technology Proprietary License)
+# 📜 EgorNetwork A.I.O.T. License v1.1
+### (Artistic Intelligence & Original Technology Proprietary License)
 
 ## 1. ОПРЕДЕЛЕНИЯ
 
