@@ -94,5 +94,5 @@
 💬 Официальный Discord-сервер EgorNetwork (только через тикет-систему)
 
 © 2024–2026 EgorNetwork. Все права защищены.
-EgorNetwork A.I.O.T. License v1.0 — Proprietary & Confidential.
+EgorNetwork A.I.O.T. License v1.1 — Proprietary & Confidential.
 «Не спрашивай разрешения. Создавай своё.»
