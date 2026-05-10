@@ -13,6 +13,33 @@
 
 const REACTIONS = ['👍', '👎', '❤️', '🔥', '😂', '😮'];
 
+const REACTIONS_SVG = {
+  '👍': `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-0.125em">
+    <path d="M7 10v12"/>
+    <path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88z"/>
+  </svg>`,
+
+  '👎': `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-0.125em">
+    <path d="M17 14V2"/>
+    <path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88z"/>
+  </svg>`,
+
+  '❤️': `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true" style="vertical-align:-0.125em"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`,
+
+  '🔥': `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-0.125em"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>`,
+
+  '😂': `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-0.125em">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M7.5 15.5s1.5 2.5 4.5 2.5 4.5-2.5 4.5-2.5"/>
+    <path d="M8.5 9.5c.4-.8 1.6-.8 2 0"/>
+    <path d="M13.5 9.5c.4-.8 1.6-.8 2 0"/>
+    <path d="M6 8.5 4.5 11.5"/>
+    <path d="M18 8.5 19.5 11.5"/>
+  </svg>`,
+
+  '😮': `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-0.125em"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="16" r="2" fill="currentColor"/><line x1="8" y1="10" x2="8.01" y2="10" stroke-width="3" stroke-linecap="round"/><line x1="16" y1="10" x2="16.01" y2="10" stroke-width="3" stroke-linecap="round"/></svg>`
+};
+
 function waitForPostsFirebase(callback, maxAttempts = 20) {
   let attempts = 0;
   const check = () => {
@@ -46,7 +73,7 @@ function renderReactions(postId, reactions, myUid) {
     return `<button class="reaction-btn ${active ? 'active' : ''}"
       data-emoji="${emoji}" data-post="${postId}"
       title="${emoji}">
-      ${emoji}${count > 0 ? `<span class="reaction-count">${count}</span>` : ''}
+      ${REACTIONS_SVG[emoji] ?? emoji}${count > 0 ? `<span class="reaction-count">${count}</span>` : ''}
     </button>`;
   }).join('');
 }
@@ -98,7 +125,7 @@ function renderPost(doc) {
           padding:4px 10px;border-radius:6px;border:1px solid rgba(255,100,100,.3);
           background:rgba(255,100,100,.1);color:#ff6b6b;font-size:.85rem;
           cursor:pointer;transition:all .3s;
-        ">🗑️ Удалить</button>` : ''}
+        "><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg> Удалить</button>` : ''}
       </div>
     </div>
     <p style="color:#aaa;margin:12px 0;white-space:pre-wrap;">${escapeHtml(data.text)}</p>
