@@ -5,11 +5,136 @@
   <title>Главная — EgorNetwork</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="images/icon.jpg" type="image/png">
-  <!-- Подключение шрифтов: Manrope (новый) и Space Grotesk (fallback) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .oc-wrap { display:flex; flex-direction:column; align-items:center; gap:0; padding:0; width:100%; }
+
+    .oc-window {
+      width:min(760px,100%);
+      background:rgba(6,10,20,.88);
+      border:1px solid rgba(109,213,255,.18);
+      border-radius:14px; overflow:hidden;
+      backdrop-filter:blur(14px) saturate(120%);
+      box-shadow:0 40px 90px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.03),0 0 50px rgba(109,213,255,.05);
+      font-family:'JetBrains Mono','Courier New',monospace;
+    }
+
+    .oc-titlebar {
+      display:flex; align-items:center; padding:11px 16px;
+      background:rgba(10,16,30,.95);
+      border-bottom:1px solid rgba(109,213,255,.1);
+      position:relative; user-select:none;
+    }
+    .oc-dots { display:flex; gap:7px; }
+    .oc-dot { width:12px; height:12px; border-radius:50%; }
+    .oc-dot-r { background:#ff5f57; cursor:pointer; transition:transform .15s ease; }
+    .oc-dot-r:hover { transform:scale(1.3); }
+    .oc-dot-y { background:#febc2e; }
+    .oc-dot-g { background:#28c840; }
+    .oc-bar-title { position:absolute; left:50%; transform:translateX(-50%); font-size:.72rem; color:rgba(168,179,204,.35); letter-spacing:.04em; white-space:nowrap; }
+    .oc-badge {
+      margin-left:auto; font-size:.67rem; color:rgba(109,213,255,.65);
+      background:rgba(109,213,255,.07); border:1px solid rgba(109,213,255,.14);
+      border-radius:5px; padding:2px 8px; letter-spacing:.03em;
+      cursor:pointer; transition:color .2s,border-color .2s,background .2s;
+    }
+    .oc-badge:hover { color:rgba(139,123,255,.9); border-color:rgba(139,123,255,.3); }
+    .oc-badge.unlocked { color:#ff6b6b; border-color:rgba(255,107,107,.35); background:rgba(255,107,107,.07); }
+
+    .oc-messages { padding:18px 0 8px; display:flex; flex-direction:column; }
+
+    .oc-user-row { display:flex; justify-content:flex-end; padding:6px 16px; }
+    .oc-user-bubble {
+      max-width:72%; background:rgba(109,213,255,.055);
+      border:1px solid rgba(109,213,255,.14);
+      border-radius:12px 12px 3px 12px; padding:10px 14px;
+    }
+    .oc-role-label { font-size:.62rem; color:rgba(109,213,255,.45); text-transform:uppercase; letter-spacing:.07em; margin-bottom:5px; }
+    .oc-user-text { font-size:.82rem; color:var(--text); line-height:1.5; }
+
+    .oc-asst-row { padding:8px 16px 4px; }
+    .oc-asst-head { display:flex; align-items:center; gap:7px; margin-bottom:9px; font-size:.68rem; }
+    .oc-diamond { color:var(--accent-2); font-size:.75rem; }
+    .oc-asst-name { color:rgba(139,123,255,.75); }
+    .oc-dot-sep { color:rgba(168,179,204,.2); }
+    .oc-asst-time { color:rgba(168,179,204,.28); }
+    .oc-asst-body { font-size:.82rem; color:var(--text); line-height:1.7; }
+
+    .oc-block {
+      background:rgba(0,0,0,.45);
+      border:1px solid rgba(109,213,255,.1);
+      border-left:2px solid rgba(109,213,255,.3);
+      border-radius:0 8px 8px 0; padding:12px 14px; margin:6px 0 10px;
+    }
+    .oc-block-head {
+      font-size:.62rem; color:rgba(168,179,204,.3); text-transform:uppercase;
+      letter-spacing:.1em; padding-bottom:8px; margin-bottom:8px;
+      border-bottom:1px solid rgba(255,255,255,.04);
+      display:flex; align-items:center; gap:6px;
+    }
+    .oc-block-icon { width:7px; height:7px; background:rgba(109,213,255,.4); border-radius:50%; animation:pulse-dot 2s ease-in-out infinite; }
+    @keyframes pulse-dot { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+    .oc-cd-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px; }
+    .oc-cd-cell { background:rgba(109,213,255,.04); border:1px solid rgba(109,213,255,.09); border-radius:7px; padding:8px 6px; text-align:center; }
+    .oc-cd-num { display:block; font-size:1.65rem; font-weight:600; color:var(--accent); line-height:1; letter-spacing:-.03em; font-variant-numeric:tabular-nums; }
+    .oc-cd-lbl { display:block; font-size:.57rem; color:rgba(168,179,204,.38); text-transform:uppercase; letter-spacing:.08em; margin-top:5px; }
+
+    .oc-prog-row { display:flex; align-items:center; gap:8px; font-size:.67rem; color:rgba(168,179,204,.35); margin-bottom:6px; }
+    .oc-prog-track { flex:1; height:3px; background:rgba(255,255,255,.05); border-radius:2px; overflow:hidden; }
+    .oc-prog-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent-2)); border-radius:2px; transition:width 1s ease; }
+    .oc-prog-accent { color:rgba(109,213,255,.6); }
+    .oc-meta { font-size:.62rem; color:rgba(168,179,204,.2); margin-top:2px; }
+
+    .oc-summer-msg { text-align:center; padding:18px 0 10px; font-size:1.1rem; color:#ffb347; text-shadow:0 0 20px rgba(255,179,71,.45); }
+
+    .oc-resp { margin-top:8px; font-size:.82rem; }
+    .oc-resp-arrow { color:var(--accent); }
+
+    .oc-divider { display:flex; align-items:center; gap:10px; padding:10px 16px; font-size:.62rem; color:rgba(168,179,204,.2); letter-spacing:.06em; }
+    .oc-divider::before,.oc-divider::after { content:''; flex:1; height:1px; background:rgba(255,255,255,.04); }
+
+    .oc-inputbar { border-top:1px solid rgba(109,213,255,.08); padding:10px 14px; display:flex; align-items:center; gap:8px; background:rgba(0,0,0,.35); }
+    .oc-inputbox { flex:1; display:flex; align-items:center; background:rgba(255,255,255,.025); border:1px solid rgba(109,213,255,.07); border-radius:7px; padding:7px 11px; font-size:.77rem; color:rgba(168,179,204,.28); font-family:'JetBrains Mono',monospace; gap:6px; }
+    .oc-inputbox-prefix { color:rgba(109,213,255,.3); }
+    .oc-real-input { flex:1; background:transparent; border:none; outline:none; color:var(--text); font-family:'JetBrains Mono',monospace; font-size:.77rem; caret-color:var(--accent); min-width:0; }
+    .oc-real-input::placeholder { color:rgba(168,179,204,.28); }
+    .oc-real-input:disabled { opacity:.5; cursor:not-allowed; }
+    .oc-caret { display:inline-block; width:7px; height:13px; background:rgba(109,213,255,.45); animation:cur-blink .9s step-end infinite; vertical-align:middle; border-radius:1px; flex-shrink:0; }
+    .oc-key { font-size:.62rem; color:rgba(168,179,204,.25); background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); border-radius:4px; padding:3px 7px; font-family:inherit; white-space:nowrap; }
+
+    .oc-statusbar { display:flex; align-items:center; justify-content:space-between; padding:5px 14px; font-size:.6rem; color:rgba(168,179,204,.2); background:rgba(0,0,0,.2); border-top:1px solid rgba(255,255,255,.025); font-family:'JetBrains Mono',monospace; letter-spacing:.03em; }
+    .oc-sb-dot { width:6px; height:6px; background:#28c840; border-radius:50%; display:inline-block; margin-right:5px; box-shadow:0 0 6px rgba(40,200,64,.5); }
+
+    /* injected messages animation */
+    .oc-injected { animation:oc-fadein .22s ease forwards; }
+    @keyframes oc-fadein { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+
+    /* toast */
+    .oc-toast {
+      position:fixed; bottom:32px; left:50%;
+      transform:translateX(-50%) translateY(16px);
+      background:rgba(10,16,30,.95);
+      border:1px solid rgba(109,213,255,.2); border-radius:10px;
+      padding:10px 18px; font-family:'JetBrains Mono',monospace;
+      font-size:.78rem; color:var(--text);
+      box-shadow:0 16px 40px rgba(0,0,0,.5),0 0 20px rgba(109,213,255,.08);
+      opacity:0; pointer-events:none;
+      transition:opacity .25s ease,transform .25s ease;
+      white-space:nowrap; z-index:9999;
+    }
+    .oc-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    .oc-toast-icon { color:var(--accent); margin-right:8px; }
+
+    @media (max-width:540px) {
+      .oc-cd-num { font-size:1.25rem; }
+      .oc-cd-cell { padding:7px 4px; }
+      .oc-user-bubble { max-width:88%; }
+    }
+  </style>
 </head>
 <body class="font-manrope">
 <div class="page-blur"></div>
@@ -19,16 +144,496 @@
   <span></span><span></span><span></span><span></span><span></span>
   <span></span><span></span><span></span><span></span><span></span>
 </div>
+
 <main class="container">
-  <section class="hero fade" id="hero">
-    <div class="hero-panel">
-      <h1>EgorNetwork</h1>
-      <p style="font-size:1.2rem;margin:16px 0;">Мы делаем игры.</p>
-      <p style="color:#ccc;margin-bottom:24px;">Вы можете скачать игры на странице скачивания. Архив сайта — это архив разделов и игр, которые были выпущены и закрыты.</p>
-      <p style="color:#ccc;margin-bottom:24px;"></p>(А ещё там игры которые злючный Егорчик убил из-за того что ему лень их делать дальше)</p>
+  <div class="oc-wrap fade" id="hero">
+    <div class="oc-window">
+
+      <!-- Title bar -->
+      <div class="oc-titlebar">
+        <div class="oc-dots">
+          <span class="oc-dot oc-dot-r" id="oc-dot-close" title="закрыть"></span>
+          <span class="oc-dot oc-dot-y"></span>
+          <span class="oc-dot oc-dot-g"></span>
+        </div>
+        <span class="oc-bar-title">opencode · /projects/EgorNetwork</span>
+        <span class="oc-badge" id="oc-model-badge" title="нажми 5 раз...">Exor4ik_16.4.24-1400b</span>
+      </div>
+
+      <!-- Messages -->
+      <div class="oc-messages" id="oc-messages-list">
+
+        <div class="oc-user-row">
+          <div class="oc-user-bubble">
+            <div class="oc-role-label">user</div>
+            <div class="oc-user-text">Эй, когда уже лето?</div>
+          </div>
+        </div>
+
+        <div class="oc-asst-row">
+          <div class="oc-asst-head">
+            <span class="oc-diamond">◆</span>
+            <span class="oc-asst-name">Exor4ik</span>
+            <span class="oc-dot-sep">·</span>
+            <span class="oc-asst-time" id="oc-ts">сейчас</span>
+          </div>
+          <div class="oc-asst-body">
+            <div class="oc-block">
+              <div class="oc-block-head">
+                <span class="oc-block-icon"></span>
+                running · countdown_to_summer()
+              </div>
+              <div id="oc-countdown"></div>
+            </div>
+            <div class="oc-resp" id="oc-resp-text"></div>
+          </div>
+        </div>
+
+        <div class="oc-divider">сегодня</div>
+
+        <div class="oc-user-row">
+          <div class="oc-user-bubble">
+            <div class="oc-role-label">user</div>
+            <div class="oc-user-text">Кстати, что такое EgorNetwork?</div>
+          </div>
+        </div>
+
+        <div class="oc-asst-row" style="padding-bottom:10px;">
+          <div class="oc-asst-head">
+            <span class="oc-diamond">◆</span>
+            <span class="oc-asst-name">Exor4ik</span>
+          </div>
+          <div class="oc-asst-body">
+            EgorNetwork — блог и форум, где мы делаем игры.<br>
+            <span style="color:var(--muted)">Скачать их можно на странице загрузок. В архиве хранится история разделов и проектов — в том числе тех, что злючный Егорчик закрыл, потому что делать их дальше было лень.</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Input -->
+      <div class="oc-inputbar">
+        <div class="oc-inputbox">
+          <span class="oc-inputbox-prefix">›</span>
+          <input class="oc-real-input" id="oc-cmd-input" type="text"
+            placeholder="Введите команду... (попробуйте help)"
+            autocomplete="off" spellcheck="false">
+        </div>
+        <span class="oc-key">⏎ enter</span>
+        <span class="oc-key">⌘K</span>
+      </div>
+
+      <!-- Status bar -->
+      <div class="oc-statusbar">
+        <span><span class="oc-sb-dot"></span>connected</span>
+        <span id="oc-sb-date">—</span>
+        <span>tokens used: 0</span>
+      </div>
+
     </div>
+  </div>
 </main>
+
+<div class="oc-toast" id="oc-toast">
+  <span class="oc-toast-icon">◆</span><span id="oc-toast-msg"></span>
+</div>
+
 <div id="footer-container"></div>
 <script src="script.js" defer></script>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ── helpers ── */
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function getDaysLabel(n) {
+    if (n % 100 >= 11 && n % 100 <= 14) return 'дней';
+    var r = n % 10;
+    if (r === 1) return 'день';
+    if (r >= 2 && r <= 4) return 'дня';
+    return 'дней';
+  }
+
+  /* ── countdown ── */
+  var cdInit = false;
+
+  function tick() {
+    var now = new Date();
+    var year = now.getFullYear();
+    var summerStart = new Date(year, 5, 1);
+    var summerEnd   = new Date(year, 8, 1);
+    var isSummer = now >= summerStart && now < summerEnd;
+
+    if (isSummer) {
+      if (!cdInit) { renderSummer(); cdInit = true; }
+      return;
+    }
+    if (now >= summerEnd) summerStart = new Date(year + 1, 5, 1);
+
+    var diff    = summerStart - now;
+    var days    = Math.floor(diff / 86400000);
+    var hours   = Math.floor((diff % 86400000) / 3600000);
+    var minutes = Math.floor((diff % 3600000) / 60000);
+    var seconds = Math.floor((diff % 60000) / 1000);
+    var springStart = new Date(now >= summerEnd ? year + 1 : year, 2, 1);
+    var progress = Math.min(100, Math.max(0, (now - springStart) / (summerStart - springStart) * 100)).toFixed(1);
+
+    if (!cdInit) {
+      renderCountdown(days, hours, minutes, seconds, progress, summerStart.getFullYear());
+      renderResponse(days);
+      renderMeta(now);
+      cdInit = true;
+    } else {
+      var el = ['cd-d','cd-h','cd-m','cd-s'];
+      var vals = [days, hours, minutes, seconds];
+      el.forEach(function(id, i) {
+        var e = document.getElementById(id);
+        if (e) e.textContent = pad(vals[i]);
+      });
+      var fill = document.getElementById('cd-fill');
+      if (fill) fill.style.width = progress + '%';
+      var meta = document.getElementById('cd-meta');
+      if (meta) meta.textContent = 'до 1 июня ' + summerStart.getFullYear() + ' · весна ' + parseFloat(progress).toFixed(0) + '% позади';
+    }
+  }
+
+  function cell(id, val, lbl) {
+    return '<div class="oc-cd-cell"><span class="oc-cd-num" id="' + id + '">' + val + '</span><span class="oc-cd-lbl">' + lbl + '</span></div>';
+  }
+
+  function renderCountdown(d, h, m, s, progress, yr) {
+    document.getElementById('oc-countdown').innerHTML =
+      '<div class="oc-cd-grid">' + cell('cd-d',pad(d),'дней') + cell('cd-h',pad(h),'часов') + cell('cd-m',pad(m),'минут') + cell('cd-s',pad(s),'секунд') + '</div>' +
+      '<div class="oc-prog-row"><span>март</span><div class="oc-prog-track"><div class="oc-prog-fill" id="cd-fill" style="width:' + progress + '%"></div></div><span class="oc-prog-accent">лето</span></div>' +
+      '<div class="oc-meta" id="cd-meta">до 1 июня ' + yr + ' · весна ' + parseFloat(progress).toFixed(0) + '% позади</div>';
+  }
+
+  function renderResponse(days) {
+    var msg;
+    if (days === 0)      msg = 'Завтра уже лето! Осталось меньше суток — держитесь!';
+    else if (days <= 3)  msg = 'Почти! До лета <strong style="color:var(--accent)">' + days + '</strong> ' + getDaysLabel(days) + '.';
+    else if (days <= 14) msg = 'Совсем скоро. Осталось <strong style="color:var(--accent)">' + days + '</strong> ' + getDaysLabel(days) + '.';
+    else                 msg = 'До лета <strong style="color:var(--text)">' + days + '</strong> ' + getDaysLabel(days) + '. Терпение — добродетель программиста.';
+    document.getElementById('oc-resp-text').innerHTML = '<span class="oc-resp-arrow">›</span>&nbsp;' + msg;
+  }
+
+  function renderSummer() {
+    document.getElementById('oc-countdown').innerHTML = '<div class="oc-summer-msg">&#9728; Лето уже здесь!</div>';
+    document.getElementById('oc-resp-text').innerHTML = '<span class="oc-resp-arrow">›</span>&nbsp;Оно наступило. Наслаждайтесь ☀';
+  }
+
+  function renderMeta(now) {
+    var ts = document.getElementById('oc-ts');
+    if (ts) ts.textContent = pad(now.getHours()) + ':' + pad(now.getMinutes());
+    updateSbDate();
+  }
+
+  function updateSbDate() {
+    var sb = document.getElementById('oc-sb-date');
+    if (!sb) return;
+    var d = new Date();
+    sb.textContent = pad(d.getDate()) + '.' + pad(d.getMonth()+1) + '.' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  tick();
+  setInterval(tick, 1000);
+  setInterval(updateSbDate, 60000);
+
+  /* ── terminal easter egg ── */
+  var input = document.getElementById('oc-cmd-input');
+  var msgs  = document.getElementById('oc-messages-list');
+  var injected = [];
+
+  var CMDS = {
+    'help': { out: [
+      '<span style="color:var(--accent)">available commands:</span>',
+      '&nbsp;&nbsp;ping &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— проверить соединение',
+      '&nbsp;&nbsp;whoami &nbsp;&nbsp;&nbsp;&nbsp;— кто ты такой',
+      '&nbsp;&nbsp;ls &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— список файлов',
+      '&nbsp;&nbsp;лето &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— справка по лету',
+      '&nbsp;&nbsp;sudo &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— попробуй',
+      '&nbsp;&nbsp;git status &nbsp;— состояние репо',
+      '&nbsp;&nbsp;npm install &nbsp;— установить всё',
+      '&nbsp;&nbsp;егор &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— справка по Егору',
+      '&nbsp;&nbsp;date &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— текущая дата',
+      '&nbsp;&nbsp;clear &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— очистить историю',
+    ]},
+    'ping':  { out: ['PONG &nbsp;·&nbsp; 3ms &nbsp;·&nbsp; EgorNetwork is up'] },
+    'pong':  { out: ['PING &nbsp;·&nbsp; 3ms &nbsp;·&nbsp; ладно, ладно'] },
+    'whoami':{ out: ['anonymous &nbsp;·&nbsp; EgorNetwork/guest &nbsp;·&nbsp; no sudo rights'] },
+    'лето':  { out: [
+      '<span style="color:var(--accent)">summer(1)</span> — сезон тепла и свободы',
+      '',
+      'SYNOPSIS: &nbsp;лето [--срочно] [--уже-пора]',
+      'DESCRIPTION: наступает 1 июня. отсчёт уже идёт.',
+      'EXIT CODE: &nbsp;0 (с нетерпением)',
+    ]},
+    'summer': { out: ['see: лето'] },
+    'sudo': { out: [
+      '[sudo] пароль для guest:',
+      '<span style="color:#ff6b6b">Permission denied — вы не Егор.</span>',
+    ]},
+    'sudo rm -rf /': { out: [
+      '<span style="color:#ff6b6b">Permission denied — и слава богу.</span>',
+      '<span style="color:rgba(168,179,204,.4)">rm: cannot remove \'/\': Operation not permitted</span>',
+    ]},
+    'ls': { out: [
+      '<span style="color:rgba(109,213,255,.7)">drwxr-xr-x</span>&nbsp; games/',
+      '<span style="color:rgba(109,213,255,.7)">drwxr-xr-x</span>&nbsp; archive/',
+      '<span style="color:rgba(109,213,255,.7)">drwxr-xr-x</span>&nbsp; blog/',
+      '<span style="color:rgba(109,213,255,.4)">-rw-r--r--</span>&nbsp; dreams_about_summer.txt',
+      '<span style="color:rgba(109,213,255,.4)">-rw-r--r--</span>&nbsp; TODO.md &nbsp;<span style="color:rgba(168,179,204,.3)">(1448 строк)</span>',
+      '<span style="color:rgba(109,213,255,.4)">-rw-------</span>&nbsp; secrets.enc &nbsp;<span style="color:rgba(168,179,204,.3)">[ACCESS DENIED]</span>',
+    ]},
+    'cat secrets.enc': { out: [
+      '<span style="color:#ff6b6b">cat: secrets.enc: Permission denied</span>',
+      '<span style="color:rgba(168,179,204,.3)">подсказка: попробуй sudo cat secrets.enc</span>',
+    ]},
+    'sudo cat secrets.enc': { out: [
+      '[sudo] пароль для guest:',
+      '<span style="color:#ff6b6b">Permission denied — вы всё ещё не Егор.</span>',
+    ]},
+    'git status': { out: [
+      'On branch main',
+      'Your branch is ahead of origin/main by 47 commits.',
+      '',
+      'Changes not staged for commit:',
+      '&nbsp;&nbsp;<span style="color:#ff6b6b">modified: &nbsp; motivation.js</span>',
+      '&nbsp;&nbsp;<span style="color:#ff6b6b">deleted: &nbsp;&nbsp; free-time.md</span>',
+      '',
+      'Untracked files:',
+      '&nbsp;&nbsp;<span style="color:rgba(168,179,204,.5)">summer_plans.txt</span>',
+      '',
+      '<span style="color:rgba(168,179,204,.4)">no changes added to commit (и это нормально)</span>',
+    ]},
+    'git push': { out: ['<span style="color:#ff6b6b">error:</span> failed to push some refs','hint: лето не запушить'] },
+    'npm install': { out: [
+      'npm warn deprecated procrastination@∞',
+      '',
+      'added 1337 packages in 4.2s',
+      '',
+      '<span style="color:rgba(40,200,64,.8)">✓</span> 312 packages are looking for funding',
+      '&nbsp;&nbsp;run <span style="color:var(--accent)">npm fund</span> to find out more',
+      '',
+      '<span style="color:rgba(168,179,204,.4)">found 0 vulnerabilities, 1 existential crisis</span>',
+    ]},
+    'егор': { out: [
+      '<span style="color:var(--accent)">egor(1)</span> — разработчик, создатель EgorNetwork',
+      '',
+      'DESCRIPTION:',
+      '&nbsp;&nbsp;злючный; убивает проекты из-за лени;',
+      '&nbsp;&nbsp;делает игры; иногда.',
+      '',
+      'BUGS: слишком много TODO, слишком мало лета',
+      'SEE ALSO: archive/, games/, лень(7)',
+    ]},
+    'egor': { out: ['see: егор'] },
+    'date': { dyn: function() {
+      var d = new Date();
+      return [d.toLocaleDateString('ru-RU',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + ', ' + d.toLocaleTimeString('ru-RU')];
+    }},
+    'uptime': { dyn: function() {
+      return ['up ' + Math.floor(performance.now()/1000) + 's · load: 0.42 0.31 0.28 · users: you'];
+    }},
+    'clear':  { special: 'clear' },
+    'exit':   { out: ['<span style="color:rgba(168,179,204,.4)">нельзя выйти из интернета.</span>'] },
+    'reboot': { out: ['<span style="color:#ff6b6b">reboot: Permission denied — вы не Егор.</span>'] },
+    'vim':    { out: ['<span style="color:rgba(168,179,204,.4)">как выйти из vim? никак. добро пожаловать.</span>'] },
+    ':q':     { out: ['<span style="color:rgba(168,179,204,.4)">вы уже внутри.</span>'] },
+    ':wq':    { out: ['<span style="color:rgba(40,200,64,.8)">saved. но куда?</span>'] },
+    'pwd':    { out: ['/home/egornetwork/www'] },
+    'uname -a': { out: ['EgorNetwork 2.0.0 · cyberpunk · x86_64 · с любовью'] },
+    'yes':    { out: ['y','y','y','y','y','<span style="color:rgba(168,179,204,.3)">(^C — хватит)</span>'] },
+    'make coffee': { out: ['<span style="color:#ff6b6b">make: *** No rule to make target \'coffee\'.</span>','<span style="color:rgba(168,179,204,.4)">hint: сделай сам</span>'] },
+    'make me a sandwich': { out: ['<span style="color:#ff6b6b">What? Make it yourself.</span>'] },
+    'sudo make me a sandwich': { out: ['<span style="color:rgba(40,200,64,.8)">Okay.</span>'] },
+    ':(){ :|:& };:': { out: ['<span style="color:#ff6b6b">нет. просто нет.</span>'] },
+  };
+
+  function addUser(text) {
+    var row = document.createElement('div');
+    row.className = 'oc-user-row oc-injected';
+    row.innerHTML = '<div class="oc-user-bubble"><div class="oc-role-label">user</div><div class="oc-user-text">' + esc(text) + '</div></div>';
+    msgs.appendChild(row);
+    injected.push(row);
+  }
+
+  /* ── typing animation engine ── */
+  function typeLine(element, html, speed) {
+    return new Promise(function(resolve) {
+      var buffer = '';
+      var tokens = html.match(/(<[^>]+>|[^<]+)/g) || [];
+      var tIdx = 0, cIdx = 0;
+      function tick() {
+        if (tIdx >= tokens.length) {
+          element.innerHTML = buffer;
+          resolve();
+          return;
+        }
+        var token = tokens[tIdx];
+        if (token.startsWith('<')) {
+          buffer += token;
+          element.innerHTML = buffer;
+          tIdx++;
+          setTimeout(tick, 0);
+        } else {
+          if (cIdx < token.length) {
+            buffer += token[cIdx];
+            element.innerHTML = buffer;
+            cIdx++;
+            setTimeout(tick, speed);
+          } else {
+            tIdx++;
+            cIdx = 0;
+            setTimeout(tick, 0);
+          }
+        }
+      }
+      tick();
+    });
+  }
+
+  async function addAsst(lines) {
+    var now = new Date();
+    var ts = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+    var row = document.createElement('div');
+    row.className = 'oc-asst-row oc-injected';
+    row.innerHTML =
+      '<div class="oc-asst-head"><span class="oc-diamond">◆</span><span class="oc-asst-name">Exor4ik</span><span class="oc-dot-sep">·</span><span class="oc-asst-time">' + ts + '</span></div>' +
+      '<div class="oc-asst-body"><div class="oc-block" style="margin:0"><div class="oc-block-head"><span class="oc-block-icon"></span>output</div><div class="oc-output-lines"></div></div></div>';
+    msgs.appendChild(row);
+    injected.push(row);
+
+    var linesContainer = row.querySelector('.oc-output-lines');
+
+    for (var i = 0; i < lines.length; i++) {
+      var lineDiv = document.createElement('div');
+      lineDiv.style.lineHeight = '1.6';
+      lineDiv.style.minHeight = '1.2em';
+      linesContainer.appendChild(lineDiv);
+      if (lines[i] === '') {
+        lineDiv.innerHTML = '&nbsp;';
+        await new Promise(function(r){ setTimeout(r, 120); });
+      } else {
+        await typeLine(lineDiv, lines[i], 14);
+        await new Promise(function(r){ setTimeout(r, 60); });
+      }
+      row.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }
+  }
+
+  /* ── command queue & processor ── */
+  var cmdQueue = [];
+  var isProcessing = false;
+  var originalPlaceholder = input ? input.placeholder : '';
+
+  function enqueueCmd(raw) {
+    cmdQueue.push(raw);
+    if (!isProcessing) processQueue();
+  }
+
+  async function processQueue() {
+    if (cmdQueue.length === 0) {
+      isProcessing = false;
+      if(input) { input.disabled = false; input.placeholder = originalPlaceholder; input.focus(); }
+      return;
+    }
+    isProcessing = true;
+    if(input) { input.disabled = true; input.placeholder = 'Exor4ik печатает...'; }
+    var raw = cmdQueue.shift();
+    await runCmdAsync(raw);
+    processQueue();
+  }
+
+  async function runCmdAsync(raw) {
+    var cmd = raw.trim().toLowerCase();
+    if (!cmd) return;
+    addUser(raw.trim());
+
+    if (cmd === 'clear') {
+      injected.forEach(function(r){ r.remove(); });
+      injected = [];
+      return;
+    }
+
+    var def = CMDS[cmd];
+    if (!def) {
+      if (cmd.indexOf('sudo') === 0) {
+        await addAsst(['[sudo] пароль для guest:', '<span style="color:#ff6b6b">Permission denied — вы не Егор.</span>']);
+      } else {
+        await addAsst([
+          '<span style="color:#ff6b6b">command not found:</span> ' + esc(raw.trim()),
+          '<span style="color:rgba(168,179,204,.4)">введите <span style="color:var(--accent)">help</span> для списка команд</span>',
+        ]);
+      }
+      return;
+    }
+
+    if (def.special === 'clear') { await runCmdAsync('clear'); return; }
+    await addAsst(def.dyn ? def.dyn() : def.out);
+  }
+
+  if (input) {
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        var v = input.value;
+        input.value = '';
+        enqueueCmd(v);
+      }
+    });
+  }
+
+  /* ── red dot toast ── */
+  var toast = document.getElementById('oc-toast');
+  var toastMsg = document.getElementById('oc-toast-msg');
+  var toastTimer;
+  function showToast(msg) {
+    toastMsg.innerHTML = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toast.classList.remove('show'); }, 2800);
+  }
+
+  var dotClicks = 0;
+  var dotLines = [
+    'нельзя закрыть вкладку с летом',
+    'ещё раз нажми — посмотрим',
+    'говорю же — нельзя',
+    'ладно, последний раз',
+    'всё. хватит.',
+  ];
+  var dotClose = document.getElementById('oc-dot-close');
+  if (dotClose) {
+    dotClose.addEventListener('click', function() {
+      showToast(dotLines[dotClicks % dotLines.length]);
+      dotClicks++;
+    });
+  }
+
+  /* ── model badge ── */
+  var badge = document.getElementById('oc-model-badge');
+  var models = ['Exor4ik_16.4.24-1400b','gpt-5-turbo','gemini-ultra-2','Exor4ik_16.4.24-1400b-coder','HAL-9000','Exor4ik_16.4.24-800b'];
+  var mIdx = 0;
+  if (badge) {
+    badge.addEventListener('click', function() {
+      mIdx = (mIdx + 1) % models.length;
+      badge.textContent = models[mIdx];
+      if (models[mIdx] === 'HAL-9000') {
+        badge.classList.add('unlocked');
+        showToast('Дэйв, я боюсь, что не могу этого сделать.');
+      } else if (mIdx === 0) {
+        badge.classList.remove('unlocked');
+        showToast('добро пожаловать обратно, Exor4ik_16.4.24-1400b');
+      } else {
+        badge.classList.remove('unlocked');
+      }
+    });
+  }
+
+})();
+</script>
+
 </body>
 </html>

@@ -77,8 +77,22 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
 .status-warn{color:var(--yellow) !important;text-shadow:0 0 8px var(--yellow);}
 .status-danger{color:var(--pink) !important;text-shadow:var(--gpink);}
 </style>
+
+<style>
+#saturnIntro{position:fixed;inset:0;background:radial-gradient(circle,#0b1028,#000);z-index:50000;display:flex;align-items:center;justify-content:center}
+#introCanvas{width:100%;height:100%}
+.skipIntro{position:absolute;bottom:20px;right:20px;color:#fff;border:1px solid #00ffcc;padding:8px;cursor:pointer}
+</style>
+
 </head>
 <body>
+
+<div id="saturnIntro">
+<canvas id="introCanvas"></canvas>
+<div class="skipIntro" onclick="endSaturnIntro()">SKIP</div>
+<audio id="saturnBoot" src="/sound/saturn_startup.mp3"></audio>
+</div>
+
 <div class="scanlines"></div>
 
 <header>
@@ -159,6 +173,7 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
 </div><!-- /game-wrapper -->
 
 <script src="/libs/three.min.js"></script>
+<script src="/libs/GLTFLoader.js"></script>
 <script>
 'use strict';
 
@@ -1003,5 +1018,137 @@ window.addEventListener('resize', ()=>{
   if(runnerGame) runnerGame.resize();
 });
 </script>
+
+<script>
+const introScene = new THREE.Scene();
+
+const introCamera =
+new THREE.PerspectiveCamera(
+70,
+window.innerWidth/window.innerHeight,
+0.1,
+1000
+);
+
+introCamera.position.z=20;
+
+const renderer=
+new THREE.WebGLRenderer({
+ antialias:true,
+ alpha:true
+});
+
+renderer.setSize(
+window.innerWidth,
+window.innerHeight
+);
+
+document.body.appendChild(
+renderer.domElement
+);
+
+(function(){
+const intro=document.getElementById("saturnIntro");
+const audio=document.getElementById("saturnBoot");
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,1000);
+cam.position.z=12;
+const r=new THREE.WebGLRenderer({canvas:introCanvas,alpha:true});
+r.setSize(innerWidth,innerHeight);
+scene.add(new THREE.AmbientLight(0xffffff,1.5));
+let shards=[];
+const loader = new THREE.GLTFLoader();
+
+loader.load(
+    "/models/EgorNetwork.glb",
+    function(gltf){
+
+        const logo = gltf.scene;
+
+        logo.scale.set(1,1,1);
+
+        // Начальная позиция - произвольная, на расстоянии
+        const startPos = new THREE.Vector3(
+            (Math.random()-0.5)*20,
+            (Math.random()-0.5)*20,
+            Math.random()*15 + 10
+        );
+        logo.position.copy(startPos);
+
+        // Целевая позиция - центр к камере
+        const targetPos = new THREE.Vector3(0, 0, 0);
+        
+        scene.add(logo);
+
+        // Применяем эффекты к материалам
+        logo.traverse(obj=>{
+            if(obj.isMesh){
+                obj.material.emissive = new THREE.Color(0x66ccff);
+                obj.material.emissiveIntensity = 0.6;
+            }
+        });
+
+        // Сохраняем данные для анимации
+        logo.userData.startPos = startPos;
+        logo.userData.targetPos = targetPos;
+        logo.userData.startTime = Date.now();
+        logo.userData.duration = 3500; // 3.5 секунды движения
+        logo.userData.fadeStart = 2500; // Начинать исчезать на 2.5й секунде
+
+        animateFragments(logo);
+    }
+);
+
+function animateFragments(logo){
+
+    function animate(){
+        requestAnimationFrame(animate);
+
+        const elapsed = Date.now() - logo.userData.startTime;
+        const progress = Math.min(elapsed / logo.userData.duration, 1);
+
+        // Движение в центр
+        if(progress < 1){
+            logo.position.lerpVectors(
+                logo.userData.startPos,
+                logo.userData.targetPos,
+                progress
+            );
+
+            // Поворот
+            logo.rotation.x += 0.03;
+            logo.rotation.y += 0.04;
+        }
+
+        // Плавное исчезание
+        const fadeProgress = Math.max(0, (elapsed - logo.userData.fadeStart) / 1000);
+        if(fadeProgress > 0){
+            logo.traverse(obj=>{
+                if(obj.isMesh){
+                    obj.material.opacity = 1 - fadeProgress;
+                    obj.material.transparent = true;
+                }
+            });
+        }
+
+        r.render(scene, cam);
+    }
+
+    animate();
+}
+
+audio.play().catch(()=>{});
+let startTime = Date.now();
+function anim(){
+ const elapsed = Date.now() - startTime;
+ r.render(scene, cam);
+ if(elapsed < 4500) requestAnimationFrame(anim);
+ else endSaturnIntro();
+}
+anim();
+window.endSaturnIntro=function(){intro.style.opacity='0';setTimeout(()=>intro.remove(),700);}
+})();
+</script>
+
 </body>
 </html>
