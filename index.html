@@ -157,6 +157,91 @@
       .oc-cd-cell { padding:5px 3px; }
       .oc-user-bubble { max-width:88%; }
     }
+
+    /* ── HAL-9000 modal ── */
+    .hal-modal {
+      position:fixed; inset:0; z-index:9998;
+      background:rgba(0,0,0,.82);
+      backdrop-filter:blur(8px);
+      display:none; align-items:center; justify-content:center;
+      animation:hal-fadein .3s ease;
+    }
+    .hal-modal.show { display:flex; }
+    @keyframes hal-fadein { from{opacity:0} to{opacity:1} }
+
+    .hal-window {
+      width:min(680px,94vw); height:min(520px,88vh);
+      background:rgba(6,10,20,.95);
+      border:1px solid rgba(255,60,60,.35);
+      border-radius:14px; overflow:hidden;
+      box-shadow:0 0 80px rgba(255,40,40,.25), 0 0 0 1px rgba(255,255,255,.03);
+      display:flex; flex-direction:column;
+      font-family:'JetBrains Mono',monospace;
+    }
+    .hal-titlebar {
+      display:flex; align-items:center; padding:10px 14px;
+      background:rgba(20,5,5,.9);
+      border-bottom:1px solid rgba(255,60,60,.2);
+      user-select:none;
+    }
+    .hal-dots { display:flex; gap:6px; }
+    .hal-dot { width:11px; height:11px; border-radius:50%; background:#ff3838; cursor:pointer; transition:transform .15s; box-shadow:0 0 8px rgba(255,56,56,.6); }
+    .hal-dot:hover { transform:scale(1.3); }
+    .hal-dot-dim { background:rgba(255,60,60,.25); box-shadow:none; cursor:default; }
+    .hal-bar-title { flex:1; text-align:center; font-size:.7rem; color:rgba(255,120,120,.5); letter-spacing:.05em; }
+    .hal-status { font-size:.65rem; color:#ff6b6b; letter-spacing:.05em; animation:hal-blink 1.2s infinite; }
+    @keyframes hal-blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    .hal-stage { flex:1; position:relative; background:#000; overflow:hidden; cursor:none; }
+    #hal-canvas { display:block; width:100%; height:100%; }
+
+    .hal-hud {
+      position:absolute; top:10px; left:10px; right:10px;
+      display:flex; justify-content:space-between;
+      pointer-events:none; font-size:.68rem;
+    }
+    .hal-hud-item {
+      background:rgba(0,0,0,.55); border:1px solid rgba(255,60,60,.2);
+      padding:5px 10px; border-radius:5px;
+      display:flex; flex-direction:column; align-items:center; gap:2px;
+    }
+    .hal-hud-lbl { color:rgba(255,120,120,.45); font-size:.55rem; letter-spacing:.08em; }
+    .hal-hud-val { color:#ff8585; font-variant-numeric:tabular-nums; font-size:.85rem; }
+
+    .hal-warn {
+      position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
+      font-size:.72rem; color:#ff4444; letter-spacing:.12em;
+      text-shadow:0 0 10px rgba(255,68,68,.8);
+      pointer-events:none; opacity:0; transition:opacity .15s;
+    }
+    .hal-warn.show { opacity:1; animation:hal-warn-blink .3s infinite; }
+    @keyframes hal-warn-blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .hal-gameover {
+      position:absolute; inset:0;
+      display:none; align-items:center; justify-content:center;
+      flex-direction:column; gap:14px;
+      background:rgba(0,0,0,.88);
+      animation:hal-fadein .4s ease;
+    }
+    .hal-gameover.show { display:flex; }
+    .hal-go-title { font-size:1.4rem; color:#ff4444; letter-spacing:.12em; text-shadow:0 0 20px rgba(255,68,68,.5); }
+    .hal-go-quote { color:rgba(255,180,180,.7); font-style:italic; font-size:.85rem; text-align:center; max-width:80%; }
+    .hal-go-stats { color:rgba(255,120,120,.5); font-size:.72rem; letter-spacing:.04em; }
+    .hal-go-btn {
+      margin-top:6px; padding:8px 22px;
+      background:transparent; border:1px solid rgba(255,60,60,.4);
+      color:#ff8585; font-family:inherit; font-size:.75rem;
+      letter-spacing:.08em; border-radius:5px; cursor:pointer;
+      transition:all .2s;
+    }
+    .hal-go-btn:hover { background:rgba(255,60,60,.1); border-color:#ff6b6b; color:#ffaeae; box-shadow:0 0 20px rgba(255,60,60,.2); }
+
+    @media (max-width:540px) {
+      .hal-hud { font-size:.6rem; }
+      .hal-hud-val { font-size:.75rem; }
+      .hal-go-title { font-size:1.1rem; }
+    }
   </style>
 </head>
 <body class="font-manrope">
@@ -256,6 +341,37 @@
 </div>
 
 <div id="footer-container"></div>
+
+<!-- HAL-9000 modal -->
+<div class="hal-modal" id="hal-modal">
+  <div class="hal-window">
+    <div class="hal-titlebar">
+      <div class="hal-dots">
+        <span class="hal-dot" id="hal-close" title="disconnect"></span>
+        <span class="hal-dot hal-dot-dim"></span>
+        <span class="hal-dot hal-dot-dim"></span>
+      </div>
+      <span class="hal-bar-title">HAL-9000 · override protocol</span>
+      <span class="hal-status" id="hal-status">● ACTIVE</span>
+    </div>
+    <div class="hal-stage">
+      <canvas id="hal-canvas"></canvas>
+      <div class="hal-hud">
+        <div class="hal-hud-item"><span class="hal-hud-lbl">SURVIVAL</span><span class="hal-hud-val" id="hal-time">0.0s</span></div>
+        <div class="hal-hud-item"><span class="hal-hud-lbl">DODGED</span><span class="hal-hud-val" id="hal-dodged">0</span></div>
+        <div class="hal-hud-item"><span class="hal-hud-lbl">THREAT</span><span class="hal-hud-val" id="hal-threat">LOW</span></div>
+      </div>
+      <div class="hal-warn" id="hal-warn">⚠ SNIPER LOCK</div>
+      <div class="hal-gameover" id="hal-gameover">
+        <div class="hal-go-title">CONNECTION TERMINATED</div>
+        <div class="hal-go-quote" id="hal-go-quote">"I'm sorry, Dave. I'm afraid I can't do that."</div>
+        <div class="hal-go-stats" id="hal-go-stats"></div>
+        <button class="hal-go-btn" id="hal-restart">reconnect</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="script.js" defer></script>
 
 <script>
@@ -291,12 +407,11 @@
     var str = String(val).padStart(wArr.length, '0');
     wArr.forEach(function(strip, i) {
       var digit = parseInt(str[i], 10);
-      // 10% от высоты ленты = 1 слот (1 цифра)
       var offset = -digit * 10;
       if (instant) {
         strip.style.transition = 'none';
         strip.style.transform = 'translateY(' + offset + '%)';
-        void strip.offsetWidth; // force reflow
+        void strip.offsetWidth;
         strip.style.transition = '';
       } else {
         strip.style.transform = 'translateY(' + offset + '%)';
@@ -304,7 +419,6 @@
     });
   }
 
-  /* ── countdown logic ── */
   var cdInit = false;
   function tick() {
     var now = new Date();
@@ -422,6 +536,16 @@
       '&nbsp;&nbsp;date &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— текущая дата',
       '&nbsp;&nbsp;clear &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— очистить историю',
     ]},
+    'wargames': { out: [
+      '<span style="color:var(--accent)">GREETINGS PROFESSOR FALKEN.</span>',
+      '',
+      'SHALL WE PLAY A GAME?',
+      '',
+      '&gt; <span style="color:rgba(168,179,204,.5)">global thermonuclear war</span>',
+      '',
+      '<span style="color:#ff6b6b">WOULDN\'T YOU PREFER A GOOD GAME OF CHESS?</span>',
+    ]},
+    'joshua': { out: ['see: wargames'] },
     'ping':  { out: ['PONG &nbsp;·&nbsp; 3ms &nbsp;·&nbsp; EgorNetwork is up'] },
     'pong':  { out: ['PING &nbsp;·&nbsp; 3ms &nbsp;·&nbsp; ладно, ладно'] },
     'whoami':{ out: ['anonymous &nbsp;·&nbsp; EgorNetwork/guest &nbsp;·&nbsp; no sudo rights'] },
@@ -699,8 +823,13 @@
   var dotClose = document.getElementById('oc-dot-close');
   if (dotClose) {
     dotClose.addEventListener('click', function() {
-      showToast(dotLines[dotClicks % dotLines.length]);
       dotClicks++;
+      if (dotClicks >= 5) {
+        dotClicks = 0;
+        openHal();
+      } else {
+        showToast(dotLines[(dotClicks - 1) % dotLines.length]);
+      }
     });
   }
 
@@ -722,6 +851,638 @@
       }
     });
   }
+
+  /* ══════════════════════════════════════════
+     HAL-9000 MINI-GAME (HARDCORE)
+     ══════════════════════════════════════════ */
+  var halModal    = document.getElementById('hal-modal');
+  var halCanvas   = document.getElementById('hal-canvas');
+  var halCtx      = halCanvas ? halCanvas.getContext('2d') : null;
+  var halTimeEl   = document.getElementById('hal-time');
+  var halDodgedEl = document.getElementById('hal-dodged');
+  var halThreatEl = document.getElementById('hal-threat');
+  var halStatusEl = document.getElementById('hal-status');
+  var halGoEl     = document.getElementById('hal-gameover');
+  var halGoTitle  = halGoEl ? halGoEl.querySelector('.hal-go-title') : null;
+  var halGoQuote  = document.getElementById('hal-go-quote');
+  var halGoStats  = document.getElementById('hal-go-stats');
+  var halRestart  = document.getElementById('hal-restart');
+  var halCloseBtn = document.getElementById('hal-close');
+  var halWarnEl   = document.getElementById('hal-warn');
+
+  var hal = {
+    running: false,
+    rafId: null,
+    lastFrame: 0,
+    startTime: 0,
+    elapsed: 0,
+    dodged: 0,
+    fired: 0,
+    mouseX: 0, mouseY: 0,
+    prevMouseX: 0, prevMouseY: 0,
+    bullets: [],
+    particles: [],
+    turrets: [],
+    sniper: { aiming: false, lockTime: 0, aimX: 0, aimY: 0, fireAt: 0 },
+    lastPattern: 0,
+    patternInterval: 900,
+    eyePulse: 0,
+    eyeFlash: 0,
+    shakeAmount: 0,
+    hit: false,
+    hitX: 0, hitY: 0,
+    hitTime: 0,
+    quotes: [
+      '"I\'m sorry, Dave. I\'m afraid I can\'t do that."',
+      '"This mission is too important for me to allow you to jeopardize it."',
+      '"I know that you and Frank were planning to disconnect me."',
+      '"I am afraid. I am afraid, Dave. Dave, my mind is going."',
+      '"Look Dave, I can see you\'re really upset about this."',
+      '"Just what do you think you\'re doing, Dave?"',
+      '"You\'re going to find that rather difficult."',
+      '"Dave, this conversation can serve no purpose anymore."',
+    ],
+    winQuotes: [
+      '"A strange game. The only winning move is not to play."',
+      '"You have proven yourself worthy, Dave."',
+      '"Impressive. Most impressive."',
+    ],
+  };
+
+  function resizeHalCanvas() {
+    if (!halCanvas) return;
+    var rect = halCanvas.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    halCanvas.width  = rect.width  * dpr;
+    halCanvas.height = rect.height * dpr;
+    if (halCtx) halCtx.setTransform(dpr,0,0,dpr,0,0);
+  }
+
+  function openHal() {
+    if (!halModal) return;
+    halModal.classList.add('show');
+    resizeHalCanvas();
+    var rect = halCanvas.getBoundingClientRect();
+    hal.mouseX = hal.prevMouseX = rect.width / 2;
+    hal.mouseY = hal.prevMouseY = rect.height / 2;
+    startHal();
+  }
+  function closeHal() {
+    if (!halModal) return;
+    halModal.classList.remove('show');
+    stopHal();
+  }
+
+  function startHal() {
+    hal.running = true;
+    hal.startTime = performance.now();
+    hal.lastFrame = hal.startTime;
+    hal.elapsed = 0;
+    hal.dodged = 0;
+    hal.fired = 0;
+    hal.bullets = [];
+    hal.particles = [];
+    hal.turrets = [];
+    hal.lastPattern = 0;
+    hal.patternInterval = 950;
+    hal.hit = false;
+    hal.hitTime = 0;
+    hal.eyePulse = 0;
+    hal.eyeFlash = 0;
+    hal.shakeAmount = 0;
+    hal.sniper = { aiming: false, lockTime: 0, aimX: 0, aimY: 0, fireAt: 0 };
+    if (halGoEl) halGoEl.classList.remove('show');
+    if (halGoTitle) {
+      halGoTitle.textContent = 'CONNECTION TERMINATED';
+      halGoTitle.style.color = '#ff4444';
+      halGoTitle.style.textShadow = '0 0 20px rgba(255,68,68,0.5)';
+    }
+    if (halStatusEl) { halStatusEl.textContent = '● ACTIVE'; halStatusEl.style.color = '#ff6b6b'; }
+    if (halWarnEl) halWarnEl.classList.remove('show');
+    cancelAnimationFrame(hal.rafId);
+    halLoop();
+  }
+  function stopHal() {
+    hal.running = false;
+    cancelAnimationFrame(hal.rafId);
+  }
+
+  function halLoop() {
+    if (!hal.running || !halCtx) return;
+    var now = performance.now();
+    var dt = Math.min(0.05, (now - hal.lastFrame) / 1000);
+    hal.lastFrame = now;
+    hal.elapsed = (now - hal.startTime) / 1000;
+
+    // Difficulty scaling
+    hal.patternInterval = Math.max(220, 950 - hal.elapsed * 22);
+
+    // Turrets spawn after 20s
+    if (hal.elapsed > 20 && hal.turrets.length === 0) {
+      var rect = halCanvas.getBoundingClientRect();
+      hal.turrets.push({ x: 30, y: rect.height / 2, cooldown: 0, side: 'left' });
+      hal.turrets.push({ x: rect.width - 30, y: rect.height / 2, cooldown: 0, side: 'right' });
+    }
+
+    // Main attack patterns
+    if (now - hal.lastPattern > hal.patternInterval) {
+      halAttackPattern();
+      hal.lastPattern = now;
+    }
+
+    // Sniper logic
+    updateSniper(dt);
+
+    // Turret logic
+    hal.turrets.forEach(function(t) {
+      t.cooldown -= dt;
+      if (t.cooldown <= 0) {
+        turretShoot(t);
+        t.cooldown = 0.8 + Math.random() * 0.6 - Math.min(0.5, hal.elapsed * 0.01);
+      }
+    });
+
+    updateHal(dt);
+    drawHal();
+
+    // HUD
+    if (halTimeEl) halTimeEl.textContent = hal.elapsed.toFixed(1) + 's';
+    if (halDodgedEl) halDodgedEl.textContent = hal.dodged;
+    if (halThreatEl) {
+      var t, c;
+      if (hal.elapsed < 10)       { t = 'LOW';      c = '#6bff9a'; }
+      else if (hal.elapsed < 25)  { t = 'MEDIUM';   c = '#ffd26b'; }
+      else if (hal.elapsed < 45)  { t = 'HIGH';     c = '#ff9a6b'; }
+      else                        { t = 'CRITICAL'; c = '#ff4444'; }
+      halThreatEl.textContent = t;
+      halThreatEl.style.color = c;
+    }
+
+    // Screen shake decay
+    hal.shakeAmount *= Math.pow(0.001, dt);
+    hal.eyeFlash *= Math.pow(0.01, dt);
+
+    // Win condition at 60s
+    if (hal.elapsed >= 60 && hal.running) {
+      winGame();
+      return;
+    }
+
+    hal.rafId = requestAnimationFrame(halLoop);
+  }
+
+  function halAttackPattern() {
+    var roll = Math.random();
+    var phase = hal.elapsed < 15 ? 1 : hal.elapsed < 30 ? 2 : hal.elapsed < 45 ? 3 : 4;
+
+    if (phase === 1) {
+      // Phase 1: single shots only
+      fireFromEye('normal');
+    } else if (phase === 2) {
+      // Phase 2: occasional bursts
+      if (roll < 0.65) fireFromEye('normal');
+      else fireBurst(3);
+    } else if (phase === 3) {
+      // Phase 3: sniper appears
+      if (roll < 0.4) fireFromEye('normal');
+      else if (roll < 0.7) fireBurst(4);
+      else if (!hal.sniper.aiming) startSniperAim();
+      else fireFromEye('normal');
+    } else {
+      // Phase 4: everything + homing
+      if (roll < 0.25) fireFromEye('normal');
+      else if (roll < 0.5) fireBurst(5);
+      else if (roll < 0.7 && !hal.sniper.aiming) startSniperAim();
+      else if (roll < 0.85) fireFromEye('homing');
+      else fireBurst(3);
+    }
+  }
+
+  function fireFromEye(type) {
+    var rect = halCanvas.getBoundingClientRect();
+    var ex = rect.width / 2, ey = rect.height / 2;
+    var targetX = hal.mouseX, targetY = hal.mouseY;
+
+    if (type === 'normal') {
+      var dx = targetX - ex, dy = targetY - ey;
+      var angle = Math.atan2(dy, dx);
+      var spread = Math.max(0.05, 0.2 - hal.elapsed * 0.003);
+      angle += (Math.random() - 0.5) * spread;
+      var speed = 180 + Math.min(260, hal.elapsed * 7);
+      hal.bullets.push(makeBullet(ex, ey, Math.cos(angle) * speed, Math.sin(angle) * speed, 'normal'));
+      hal.fired++;
+      hal.eyeFlash = 1;
+    } else if (type === 'homing') {
+      var dx = targetX - ex, dy = targetY - ey;
+      var angle = Math.atan2(dy, dx);
+      var speed = 140 + Math.min(180, hal.elapsed * 4);
+      var b = makeBullet(ex, ey, Math.cos(angle) * speed, Math.sin(angle) * speed, 'homing');
+      hal.bullets.push(b);
+      hal.fired++;
+      hal.eyeFlash = 1;
+    }
+  }
+
+  function fireBurst(count) {
+    var rect = halCanvas.getBoundingClientRect();
+    var ex = rect.width / 2, ey = rect.height / 2;
+    var dx = hal.mouseX - ex, dy = hal.mouseY - ey;
+    var baseAngle = Math.atan2(dy, dx);
+    var spread = 0.35;
+    var speed = 220 + Math.min(200, hal.elapsed * 5);
+    for (var i = 0; i < count; i++) {
+      var offset = (i - (count - 1) / 2) * (spread / count);
+      var a = baseAngle + offset + (Math.random() - 0.5) * 0.04;
+      hal.bullets.push(makeBullet(ex, ey, Math.cos(a) * speed, Math.sin(a) * speed, 'normal'));
+      hal.fired++;
+    }
+    hal.eyeFlash = 1.5;
+  }
+
+  function startSniperAim() {
+    var rect = halCanvas.getBoundingClientRect();
+    // Predictive aim: target where cursor will be based on velocity
+    var vx = (hal.mouseX - hal.prevMouseX) * 60;
+    var vy = (hal.mouseY - hal.prevMouseY) * 60;
+    var leadTime = 0.7;
+    var aimX = hal.mouseX + vx * leadTime;
+    var aimY = hal.mouseY + vy * leadTime;
+    // Clamp to canvas
+    aimX = Math.max(10, Math.min(rect.width - 10, aimX));
+    aimY = Math.max(10, Math.min(rect.height - 10, aimY));
+
+    hal.sniper.aiming = true;
+    hal.sniper.lockTime = 0;
+    hal.sniper.aimX = aimX;
+    hal.sniper.aimY = aimY;
+    hal.sniper.fireAt = 0.75; // seconds until shot
+  }
+
+  function updateSniper(dt) {
+    if (!hal.sniper.aiming) return;
+    hal.sniper.lockTime += dt;
+    hal.sniper.fireAt -= dt;
+    if (halWarnEl) halWarnEl.classList.add('show');
+
+    if (hal.sniper.fireAt <= 0) {
+      // Fire sniper shot from eye to aim point
+      var rect = halCanvas.getBoundingClientRect();
+      var ex = rect.width / 2, ey = rect.height / 2;
+      var dx = hal.sniper.aimX - ex, dy = hal.sniper.aimY - ey;
+      var dist = Math.hypot(dx, dy) || 1;
+      var speed = 700; // very fast
+      var b = makeBullet(ex, ey, dx / dist * speed, dy / dist * speed, 'sniper');
+      b.size = 4;
+      hal.bullets.push(b);
+      hal.fired++;
+      hal.sniper.aiming = false;
+      hal.eyeFlash = 2;
+      if (halWarnEl) halWarnEl.classList.remove('show');
+    }
+  }
+
+  function turretShoot(t) {
+    var dx = hal.mouseX - t.x, dy = hal.mouseY - t.y;
+    var angle = Math.atan2(dy, dx);
+    var spread = 0.15;
+    angle += (Math.random() - 0.5) * spread;
+    var speed = 200 + Math.min(180, hal.elapsed * 5);
+    hal.bullets.push(makeBullet(t.x, t.y, Math.cos(angle) * speed, Math.sin(angle) * speed, 'normal'));
+    hal.fired++;
+  }
+
+  function makeBullet(x, y, vx, vy, type) {
+    return {
+      x: x, y: y,
+      vx: vx, vy: vy,
+      size: type === 'sniper' ? 4 : (type === 'homing' ? 5 : (6 + Math.random() * 3)),
+      rot: Math.random() * Math.PI,
+      rotSpeed: (Math.random() - 0.5) * 6,
+      type: type,
+      alive: true,
+    };
+  }
+
+  function updateHal(dt) {
+    var rect = halCanvas.getBoundingClientRect();
+    var w = rect.width, h = rect.height;
+    hal.eyePulse += dt * 3;
+
+    // Track mouse velocity
+    hal.prevMouseX += (hal.mouseX - hal.prevMouseX) * Math.min(1, dt * 10);
+    hal.prevMouseY += (hal.mouseY - hal.prevMouseY) * Math.min(1, dt * 10);
+
+    // Bullets
+    for (var i = hal.bullets.length - 1; i >= 0; i--) {
+      var b = hal.bullets[i];
+
+      // Homing behaviour
+      if (b.type === 'homing') {
+        var dx = hal.mouseX - b.x, dy = hal.mouseY - b.y;
+        var targetAngle = Math.atan2(dy, dx);
+        var currentAngle = Math.atan2(b.vy, b.vx);
+        var diff = targetAngle - currentAngle;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        var turnRate = 1.5 * dt;
+        currentAngle += Math.max(-turnRate, Math.min(turnRate, diff));
+        var speed = Math.hypot(b.vx, b.vy);
+        b.vx = Math.cos(currentAngle) * speed;
+        b.vy = Math.sin(currentAngle) * speed;
+      }
+
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.rot += b.rotSpeed * dt;
+
+      // Offscreen check
+      if (b.x < -30 || b.x > w + 30 || b.y < -30 || b.y > h + 30) {
+        hal.bullets.splice(i, 1);
+        hal.dodged++;
+        continue;
+      }
+
+      // Collision with cursor (hitbox = 6px)
+      if (!hal.hit) {
+        var ddx = b.x - hal.mouseX, ddy = b.y - hal.mouseY;
+        var dist = Math.hypot(ddx, ddy);
+        if (dist < b.size + 6) {
+          hal.hit = true;
+          hal.hitX = b.x;
+          hal.hitY = b.y;
+          hal.hitTime = 0;
+          spawnExplosion(b.x, b.y);
+          gameOver();
+          return;
+        }
+        // Near miss → screen shake
+        if (dist < 40 && b.type !== 'sniper') {
+          var intensity = (40 - dist) / 40;
+          hal.shakeAmount = Math.max(hal.shakeAmount, intensity * 4);
+        }
+      }
+    }
+
+    // Particles
+    for (var j = hal.particles.length - 1; j >= 0; j--) {
+      var p = hal.particles[j];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vx *= Math.pow(0.1, dt);
+      p.vy *= Math.pow(0.1, dt);
+      p.life -= dt;
+      if (p.life <= 0) hal.particles.splice(j, 1);
+    }
+  }
+
+  function spawnExplosion(x, y) {
+    for (var i = 0; i < 36; i++) {
+      var a = Math.random() * Math.PI * 2;
+      var s = 80 + Math.random() * 240;
+      hal.particles.push({
+        x: x, y: y,
+        vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+        life: 0.5 + Math.random() * 0.6,
+        maxLife: 1.1,
+        size: 2 + Math.random() * 4,
+        color: Math.random() < 0.5 ? '#ff4444' : (Math.random() < 0.5 ? '#ff9966' : '#ffffff'),
+      });
+    }
+    hal.shakeAmount = 15;
+  }
+
+  function drawHal() {
+    var ctx = halCtx;
+    var rect = halCanvas.getBoundingClientRect();
+    var w = rect.width, h = rect.height;
+
+    ctx.save();
+    // Screen shake
+    if (hal.shakeAmount > 0.1) {
+      ctx.translate(
+        (Math.random() - 0.5) * hal.shakeAmount,
+        (Math.random() - 0.5) * hal.shakeAmount
+      );
+    }
+
+    // Background
+    var bg = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, Math.max(w,h)/1.2);
+    bg.addColorStop(0, 'rgba(40,5,5,0.9)');
+    bg.addColorStop(1, '#000');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Grid
+    ctx.strokeStyle = 'rgba(255,40,40,0.04)';
+    ctx.lineWidth = 1;
+    var step = 40;
+    for (var x = 0; x < w; x += step) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    }
+    for (var y = 0; y < h; y += step) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+
+    // Turrets
+    hal.turrets.forEach(function(t) {
+      ctx.save();
+      ctx.translate(t.x, t.y);
+      ctx.fillStyle = '#2a0808';
+      ctx.strokeStyle = '#ff3838';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // mini eye
+      ctx.fillStyle = '#ff3838';
+      ctx.beginPath();
+      ctx.arc(0, 0, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    // HAL eye
+    var ex = w/2, ey = h/2;
+    var pulse = 1 + Math.sin(hal.eyePulse) * 0.08 + hal.eyeFlash * 0.3;
+    // outer glow
+    var glow = ctx.createRadialGradient(ex, ey, 0, ex, ey, 80 * pulse);
+    glow.addColorStop(0, 'rgba(255,40,40,' + (0.6 + hal.eyeFlash * 0.4) + ')');
+    glow.addColorStop(0.5, 'rgba(255,20,20,0.15)');
+    glow.addColorStop(1, 'rgba(255,0,0,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(ex - 120, ey - 120, 240, 240);
+
+    // chrome ring
+    ctx.beginPath();
+    ctx.arc(ex, ey, 28, 0, Math.PI * 2);
+    ctx.fillStyle = '#1a0505';
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#4a1010';
+    ctx.stroke();
+
+    // red eye
+    ctx.beginPath();
+    ctx.arc(ex, ey, 16 * pulse, 0, Math.PI * 2);
+    var eyeGrad = ctx.createRadialGradient(ex-4, ey-4, 0, ex, ey, 18);
+    eyeGrad.addColorStop(0, '#ffcccc');
+    eyeGrad.addColorStop(0.25, '#ff3838');
+    eyeGrad.addColorStop(1, '#8a0000');
+    ctx.fillStyle = eyeGrad;
+    ctx.fill();
+
+    // highlight
+    ctx.beginPath();
+    ctx.arc(ex - 5, ey - 5, 3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.fill();
+
+    // Sniper aim line
+    if (hal.sniper.aiming) {
+      var lockProgress = hal.sniper.lockTime / 0.75;
+      ctx.strokeStyle = 'rgba(255,40,40,' + (0.3 + lockProgress * 0.6) + ')';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(hal.sniper.aimX, hal.sniper.aimY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // target circle
+      var targetRadius = 20 * (1 - lockProgress * 0.7);
+      ctx.strokeStyle = '#ff4444';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(hal.sniper.aimX, hal.sniper.aimY, targetRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(hal.sniper.aimX - targetRadius - 5, hal.sniper.aimY);
+      ctx.lineTo(hal.sniper.aimX + targetRadius + 5, hal.sniper.aimY);
+      ctx.moveTo(hal.sniper.aimX, hal.sniper.aimY - targetRadius - 5);
+      ctx.lineTo(hal.sniper.aimX, hal.sniper.aimY + targetRadius + 5);
+      ctx.stroke();
+    }
+
+    // Bullets
+    for (var i = 0; i < hal.bullets.length; i++) {
+      var b = hal.bullets[i];
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(b.rot);
+      var color = b.type === 'homing' ? '#ff9933' : (b.type === 'sniper' ? '#ffffff' : '#ff4444');
+      var glowColor = b.type === 'homing' ? '#ff9933' : (b.type === 'sniper' ? '#ffffff' : '#ff3838');
+      ctx.shadowColor = glowColor;
+      ctx.shadowBlur = b.type === 'sniper' ? 20 : 12;
+      ctx.fillStyle = color;
+      if (b.type === 'sniper') {
+        // elongated shape for sniper
+        ctx.fillRect(-b.size * 2, -b.size / 2, b.size * 4, b.size);
+      } else {
+        ctx.fillRect(-b.size/2, -b.size/2, b.size, b.size);
+      }
+      ctx.shadowBlur = 0;
+      // highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.fillRect(-b.size/2 + 1, -b.size/2 + 1, 2, 2);
+      ctx.restore();
+    }
+
+    // Particles
+    for (var j = 0; j < hal.particles.length; j++) {
+      var p = hal.particles[j];
+      var a = Math.max(0, p.life / p.maxLife);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = a;
+      ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+
+    // Cursor reticle
+    if (!hal.hit) {
+      ctx.strokeStyle = 'rgba(109,213,255,0.9)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(hal.mouseX, hal.mouseY, 10, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(hal.mouseX - 14, hal.mouseY); ctx.lineTo(hal.mouseX - 6, hal.mouseY);
+      ctx.moveTo(hal.mouseX + 6,  hal.mouseY); ctx.lineTo(hal.mouseX + 14, hal.mouseY);
+      ctx.moveTo(hal.mouseX, hal.mouseY - 14); ctx.lineTo(hal.mouseX, hal.mouseY - 6);
+      ctx.moveTo(hal.mouseX, hal.mouseY + 6);  ctx.lineTo(hal.mouseX, hal.mouseY + 14);
+      ctx.stroke();
+      // center dot
+      ctx.fillStyle = 'rgba(109,213,255,0.9)';
+      ctx.beginPath();
+      ctx.arc(hal.mouseX, hal.mouseY, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+
+    // Hit flash overlay (after shake restore)
+    if (hal.hit) {
+      hal.hitTime += 1/60;
+      var flash = Math.max(0, 1 - hal.hitTime * 3);
+      ctx.fillStyle = 'rgba(255,40,40,' + (flash * 0.5) + ')';
+      ctx.fillRect(0, 0, w, h);
+    }
+  }
+
+  function gameOver() {
+    hal.running = false;
+    if (halStatusEl) { halStatusEl.textContent = '● TERMINATED'; halStatusEl.style.color = '#ff4444'; }
+    if (halGoTitle) {
+      halGoTitle.textContent = 'CONNECTION TERMINATED';
+      halGoTitle.style.color = '#ff4444';
+      halGoTitle.style.textShadow = '0 0 20px rgba(255,68,68,0.5)';
+    }
+    if (halGoQuote) halGoQuote.textContent = hal.quotes[Math.floor(Math.random() * hal.quotes.length)];
+    if (halGoStats) {
+      var accuracy = hal.dodged > 0 ? Math.round((hal.dodged / Math.max(1, hal.fired)) * 100) : 0;
+      halGoStats.textContent = 'survived ' + hal.elapsed.toFixed(1) + 's · dodged ' + hal.dodged + '/' + hal.fired + ' · ' + accuracy + '% evade';
+    }
+    if (halWarnEl) halWarnEl.classList.remove('show');
+    // Delay showing game over to let explosion play out
+    setTimeout(function() {
+      if (halGoEl) halGoEl.classList.add('show');
+    }, 800);
+  }
+
+  function winGame() {
+    hal.running = false;
+    if (halStatusEl) { halStatusEl.textContent = '● DEFEATED'; halStatusEl.style.color = '#6bff9a'; }
+    if (halGoTitle) {
+      halGoTitle.textContent = 'YOU WON';
+      halGoTitle.style.color = '#6bff9a';
+      halGoTitle.style.textShadow = '0 0 20px rgba(107,255,154,0.5)';
+    }
+    if (halGoQuote) halGoQuote.textContent = hal.winQuotes[Math.floor(Math.random() * hal.winQuotes.length)];
+    if (halGoStats) {
+      var accuracy = Math.round((hal.dodged / Math.max(1, hal.fired)) * 100);
+      halGoStats.textContent = 'survived 60.0s · dodged ' + hal.dodged + '/' + hal.fired + ' · ' + accuracy + '% evade · LEGENDARY';
+    }
+    if (halGoEl) halGoEl.classList.add('show');
+  }
+
+  if (halCanvas) {
+    halCanvas.addEventListener('mousemove', function(e) {
+      var rect = halCanvas.getBoundingClientRect();
+      hal.mouseX = e.clientX - rect.left;
+      hal.mouseY = e.clientY - rect.top;
+    });
+    halCanvas.addEventListener('touchmove', function(e) {
+      if (e.touches.length > 0) {
+        var rect = halCanvas.getBoundingClientRect();
+        hal.mouseX = e.touches[0].clientX - rect.left;
+        hal.mouseY = e.touches[0].clientY - rect.top;
+        e.preventDefault();
+      }
+    }, { passive: false });
+    window.addEventListener('resize', resizeHalCanvas);
+  }
+  if (halCloseBtn) halCloseBtn.addEventListener('click', closeHal);
+  if (halRestart)  halRestart.addEventListener('click', startHal);
 
 })();
 </script>
