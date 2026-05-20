@@ -301,7 +301,7 @@ function renderAchievements(unlockedList) {
 
   return `
     <div class="profile-section">
-      <div class="profile-section-label">🏆 Достижения</div>
+      <div class="profile-section-label">🏆 Достижения - Сезон "Лето 2026"</div>
       <div class="achievements-progress">
         <span>Получено: <strong style="color:var(--p-accent)">${unlocked.size}</strong> / ${allKeys.length}</span>
         <div class="ach-prog-track"><div class="ach-prog-fill" style="width:${pct}%"></div></div>
