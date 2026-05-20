@@ -36,6 +36,21 @@ const SOCIAL_DEFS = [
   { key:'telegram', label:'Telegram', icon:'✈️', placeholder:'@username' },
 ];
 
+const ALL_ACHIEVEMENTS = {
+  first_command:    { title: 'Hello, World!',     desc: 'Первая команда',        icon: '👋' },
+  hal_encounter:    { title: "I'm Afraid, Dave",  desc: 'HAL активирован',       icon: '🔴' },
+  matrix:           { title: 'Red Pill',          desc: 'Матрица',               icon: '💊' },
+  sudo_fail:        { title: 'Permission Denied', desc: 'Попытка sudo',          icon: '🔒' },
+  calculator:       { title: 'Human Calculator',  desc: 'Калькулятор',           icon: '🧮' },
+  quote_master:     { title: 'Wise Words',        desc: '5 разных цитат',        icon: '📚' },
+  time_lord:        { title: 'Time Lord',         desc: 'лето --срочно',         icon: '⏰' },
+  profile_complete: { title: 'Identity',          desc: 'Bio заполнено',         icon: '📝' },
+  avatar_set:       { title: 'Face Reveal',       desc: 'Аватар установлен',     icon: '🖼️' },
+  social_linked:    { title: 'Network Node',      desc: 'Соцсеть добавлена',     icon: '🔗' },
+  hal_survivor:     { title: 'Survivor',          desc: '30с против HAL',        icon: '🛡️' },
+  hal_legend:       { title: 'Legendary',         desc: '60с против HAL',        icon: '👑' },
+};
+
 // Было: 2 минуты. Стало: 3 минуты — запас на задержки сети
 const ONLINE_THRESHOLD_MS = 3 * 60 * 1000;
 
@@ -267,6 +282,35 @@ function renderWin95(data, uid) {
 
 // ─── RENDER: DEFAULT ──────────────────────────────────────────────────────────
 
+function renderAchievements(unlockedList) {
+  const allKeys = Object.keys(ALL_ACHIEVEMENTS);
+  const unlocked = new Set(unlockedList || []);
+  const pct = allKeys.length > 0 ? Math.round((unlocked.size / allKeys.length) * 100) : 0;
+
+  const cards = allKeys.map(key => {
+    const a = ALL_ACHIEVEMENTS[key];
+    const isUnlocked = unlocked.has(key);
+    return `
+      <div class="achievement-card ${isUnlocked ? '' : 'locked'}" title="${esc(a.desc)}">
+        ${!isUnlocked ? '<span class="ach-lock">🔒</span>' : ''}
+        <span class="ach-icon">${a.icon}</span>
+        <span class="ach-title">${esc(a.title)}</span>
+        <span class="ach-desc">${esc(a.desc)}</span>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="profile-section">
+      <div class="profile-section-label">🏆 Достижения</div>
+      <div class="achievements-progress">
+        <span>Получено: <strong style="color:var(--p-accent)">${unlocked.size}</strong> / ${allKeys.length}</span>
+        <div class="ach-prog-track"><div class="ach-prog-fill" style="width:${pct}%"></div></div>
+        <span style="color:var(--p-accent);font-weight:600;">${pct}%</span>
+      </div>
+      <div class="achievements-grid">${cards}</div>
+    </div>`;
+}
+
 function renderDefault(data, uid, isOwn) {
   const online    = isOnline(data.lastSeen);
   const avatarHtml = data.avatar
@@ -377,6 +421,8 @@ function renderDefault(data, uid, isOwn) {
     </div>` : ''}
 
     <!-- Мета -->
+    ${renderAchievements(data.achievements)}
+
     <div class="profile-meta">
       <div class="profile-meta-item">📅 <span>Зарегистрирован: ${formatDate(data.createdAt)}</span></div>
       <div class="profile-meta-item" style="font-size:.75rem;opacity:.4;">
@@ -600,6 +646,66 @@ function bindEditHandlers(data, uid) {
       if (pendingAvatar) update.avatar = pendingAvatar;
 
       await window.db.collection('users').doc(uid).update(update);
+      // ── Auto-unlock profile achievements ──
+      const currentAch = data.achievements || [];
+      const newAch = [...currentAch];
+
+      if (bio && !newAch.includes('profile_complete')) newAch.push('profile_complete');
+      if (pendingAvatar && !newAch.includes('avatar_set')) newAch.push('avatar_set');
+      const hasSocial = Object.values(social).some(v => v && v.trim());
+      if (hasSocial && !newAch.includes('social_linked')) newAch.push('social_linked');
+
+      if (newAch.length > currentAch.length) {
+        update.achievements = newAch;
+        await window.db.collection('users').doc(uid).update({ achievements: newAch });
+        // Показываем popup для каждой новой ачивки с задержкой
+        const newly = newAch.filter(a => !currentAch.includes(a));
+        newly.forEach((key, i) => {
+          setTimeout(() => {
+            const ach = ALL_ACHIEVEMENTS[key];
+            if (ach) {
+              // Создаём временный popup если его нет на странице профиля
+              let popup = document.getElementById('achievement-popup');
+              if (!popup) {
+                popup = document.createElement('div');
+                popup.id = 'achievement-popup';
+                popup.className = 'achievement-popup';
+                popup.innerHTML = '<div class="achievement-icon"></div><div class="achievement-title"></div><div class="achievement-desc"></div>';
+                // Добавляем стили если их нет
+                if (!document.getElementById('ach-popup-style')) {
+                  const style = document.createElement('style');
+                  style.id = 'ach-popup-style';
+                  style.textContent = `
+                    .achievement-popup {
+                      position:fixed; top:32px; right:32px;
+                      background:rgba(10,16,30,.98);
+                      border:1px solid rgba(139,123,255,.4);
+                      border-radius:12px; padding:16px 20px;
+                      font-family:'JetBrains Mono',monospace;
+                      box-shadow:0 20px 50px rgba(0,0,0,.7), 0 0 30px rgba(139,123,255,.2);
+                      transform:translateX(400px);
+                      transition:transform .5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+                      z-index:10000; max-width:320px;
+                    }
+                    .achievement-popup.show { transform:translateX(0); }
+                    .achievement-icon { font-size:1.5rem; margin-bottom:8px; }
+                    .achievement-title { color:rgba(139,123,255,.9); font-size:.85rem; font-weight:600; margin-bottom:4px; }
+                    .achievement-desc { color:rgba(168,179,204,.6); font-size:.72rem; line-height:1.4; }
+                    @media(max-width:540px){ .achievement-popup{right:16px;max-width:calc(100vw - 32px);} }
+                  `;
+                  document.head.appendChild(style);
+                }
+                document.body.appendChild(popup);
+              }
+              popup.querySelector('.achievement-icon').textContent = ach.icon;
+              popup.querySelector('.achievement-title').textContent = ach.title;
+              popup.querySelector('.achievement-desc').textContent = ach.desc;
+              popup.classList.add('show');
+              setTimeout(() => popup.classList.remove('show'), 4000);
+            }
+          }, i * 1500);
+        });
+      }
       if (window.auth.currentUser) await window.auth.currentUser.updateProfile({ displayName:name });
 
       Object.assign(data, update);

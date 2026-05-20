@@ -10,6 +10,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <style>
+    :root {
+      --bg-gradient: radial-gradient(ellipse at top, rgba(109,213,255,0.08) 0%, transparent 50%),
+                     radial-gradient(ellipse at bottom, rgba(139,123,255,0.08) 0%, transparent 50%),
+                     linear-gradient(180deg, #060a14 0%, #0a0f1e 100%);
+    }
+
+    body {
+      background: var(--bg-gradient);
+      min-height: 100vh;
+      transition: background 2s ease;
+    }
+
     .oc-wrap { display:flex; flex-direction:column; align-items:center; gap:0; padding:0; width:100%; }
 
     .oc-window {
@@ -151,11 +163,30 @@
     .oc-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
     .oc-toast-icon { color:var(--accent); margin-right:8px; }
 
+    /* Achievement notification */
+    .achievement-popup {
+      position:fixed; top:32px; right:32px;
+      background:rgba(10,16,30,.98);
+      border:1px solid rgba(139,123,255,.4);
+      border-radius:12px; padding:16px 20px;
+      font-family:'JetBrains Mono',monospace;
+      box-shadow:0 20px 50px rgba(0,0,0,.7), 0 0 30px rgba(139,123,255,.2);
+      transform:translateX(400px);
+      transition:transform .5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      z-index:10000;
+      max-width:320px;
+    }
+    .achievement-popup.show { transform:translateX(0); }
+    .achievement-icon { font-size:1.5rem; margin-bottom:8px; }
+    .achievement-title { color:rgba(139,123,255,.9); font-size:.85rem; font-weight:600; margin-bottom:4px; }
+    .achievement-desc { color:rgba(168,179,204,.6); font-size:.72rem; line-height:1.4; }
+
     @media (max-width:540px) {
       .digit-wheel { width:0.68rem; height:1.35rem; }
       .digit-strip span { height:1.35rem; line-height:1.35rem; font-size:1.25rem; }
       .oc-cd-cell { padding:5px 3px; }
       .oc-user-bubble { max-width:88%; }
+      .achievement-popup { right:16px; max-width:calc(100vw - 32px); }
     }
 
     /* ── HAL-9000 modal ── */
@@ -340,6 +371,13 @@
   <span class="oc-toast-icon">◆</span><span id="oc-toast-msg"></span>
 </div>
 
+<!-- Achievement popup -->
+<div class="achievement-popup" id="achievement-popup">
+  <div class="achievement-icon">🏆</div>
+  <div class="achievement-title" id="achievement-title">Achievement Unlocked!</div>
+  <div class="achievement-desc" id="achievement-desc">Description</div>
+</div>
+
 <div id="footer-container"></div>
 
 <!-- HAL-9000 modal -->
@@ -386,6 +424,167 @@
     if (r === 1) return 'день';
     if (r >= 2 && r <= 4) return 'дня';
     return 'дней';
+  }
+
+  /* ── Achievements system ── */
+    /* ── Achievements system (Firebase + localStorage fallback) ── */
+  var ACHIEVEMENTS = {
+    first_command:    { title: 'Hello, World!',     desc: 'Выполни первую команду в терминале',    icon: '👋' },
+    hal_encounter:    { title: "I'm Afraid, Dave",  desc: 'Активируй HAL-9000',                    icon: '🔴' },
+    matrix:           { title: 'Red Pill',          desc: 'Запусти матрицу',                        icon: '💊' },
+    sudo_fail:        { title: 'Permission Denied', desc: 'Попробуй sudo',                          icon: '🔒' },
+    calculator:       { title: 'Human Calculator',  desc: 'Используй калькулятор',                   icon: '🧮' },
+    quote_master:     { title: 'Wise Words',        desc: 'Получи 5 разных цитат',                  icon: '📚' },
+    time_lord:        { title: 'Time Lord',         desc: 'Запусти лето --срочно',                  icon: '⏰' },
+    profile_complete: { title: 'Identity',          desc: 'Заполни bio в профиле',                  icon: '📝' },
+    avatar_set:       { title: 'Face Reveal',       desc: 'Установи аватар',                        icon: '🖼️' },
+    social_linked:    { title: 'Network Node',      desc: 'Добавь соцсеть',                         icon: '🔗' },
+    hal_survivor:     { title: 'Survivor',          desc: 'Выживи 30 секунд против HAL',            icon: '🛡️' },
+    hal_legend:       { title: 'Legendary',         desc: 'Выживи 60 секунд против HAL',            icon: '👑' },
+  };
+
+  // Локальный кэш полученных ачивок (чтобы не дёргать Firestore каждый раз)
+  var _localAchievements = null;
+
+  function getLocalAchievements() {
+    if (_localAchievements) return _localAchievements;
+    try {
+      _localAchievements = JSON.parse(localStorage.getItem('egornet_achievements') || '[]');
+    } catch(e) { _localAchievements = []; }
+    return _localAchievements;
+  }
+
+  async function getUnlocked() {
+    // Если авторизован — читаем из Firestore
+    if (window.auth && window.auth.currentUser && window.db) {
+      try {
+        var uid = window.auth.currentUser.uid;
+        var doc = await window.db.collection('users').doc(uid).get();
+        if (doc.exists) {
+          var data = doc.data();
+          var arr = data.achievements || [];
+          // Синхронизируем локальный кэш
+          _localAchievements = arr;
+          localStorage.setItem('egornet_achievements', JSON.stringify(arr));
+          return arr;
+        }
+      } catch(e) { console.warn('Achievement fetch failed, using local:', e); }
+    }
+    return getLocalAchievements();
+  }
+
+  async function unlockAchievement(key) {
+    if (!ACHIEVEMENTS[key]) return;
+    var unlocked = await getUnlocked();
+    if (unlocked.indexOf(key) !== -1) return; // уже есть
+
+    unlocked.push(key);
+    _localAchievements = unlocked;
+    localStorage.setItem('egornet_achievements', JSON.stringify(unlocked));
+    showAchievement(ACHIEVEMENTS[key]);
+
+    // Сохраняем в Firestore если авторизован
+    if (window.auth && window.auth.currentUser && window.db) {
+      try {
+        var uid = window.auth.currentUser.uid;
+        await window.db.collection('users').doc(uid).update({
+          achievements: unlocked
+        });
+      } catch(e) { console.warn('Failed to save achievement to Firestore:', e); }
+    }
+  }
+
+  function showAchievement(ach) {
+    var popup = document.getElementById('achievement-popup');
+    var title = document.getElementById('achievement-title');
+    var desc = document.getElementById('achievement-desc');
+    var icon = popup ? popup.querySelector('.achievement-icon') : null;
+    if (!popup || !title || !desc) return;
+    icon.textContent = ach.icon;
+    title.textContent = ach.title;
+    desc.textContent = ach.desc;
+    popup.classList.add('show');
+    setTimeout(function() { popup.classList.remove('show'); }, 4000);
+  }
+
+  /* ── Dynamic theme (time of day) ── */
+  function updateTimeTheme() {
+    var hour = new Date().getHours();
+    var root = document.documentElement;
+    var gradient;
+    if (hour >= 5 && hour < 8) {
+      // Dawn
+      gradient = 'radial-gradient(ellipse at top, rgba(255,179,71,0.12) 0%, transparent 50%), radial-gradient(ellipse at bottom, rgba(255,107,107,0.08) 0%, transparent 50%), linear-gradient(180deg, #0a0f1e 0%, #1a0f0a 100%)';
+    } else if (hour >= 8 && hour < 18) {
+      // Day
+      gradient = 'radial-gradient(ellipse at top, rgba(109,213,255,0.12) 0%, transparent 50%), radial-gradient(ellipse at bottom, rgba(139,123,255,0.08) 0%, transparent 50%), linear-gradient(180deg, #060a14 0%, #0a0f1e 100%)';
+    } else if (hour >= 18 && hour < 21) {
+      // Evening
+      gradient = 'radial-gradient(ellipse at top, rgba(255,107,107,0.1) 0%, transparent 50%), radial-gradient(ellipse at bottom, rgba(139,123,255,0.12) 0%, transparent 50%), linear-gradient(180deg, #0a0f1e 0%, #0f0a1a 100%)';
+    } else {
+      // Night
+      gradient = 'radial-gradient(ellipse at top, rgba(139,123,255,0.08) 0%, transparent 50%), radial-gradient(ellipse at bottom, rgba(109,213,255,0.05) 0%, transparent 50%), linear-gradient(180deg, #000000 0%, #060a14 100%)';
+    }
+    root.style.setProperty('--bg-gradient', gradient);
+    document.body.style.background = gradient;
+  }
+  updateTimeTheme();
+  setInterval(updateTimeTheme, 60000);
+
+  /* ── Quotes database ── */
+  var QUOTES = [
+    { text: 'Any fool can write code that a computer can understand. Good programmers write code that humans can understand.', author: 'Martin Fowler' },
+    { text: 'The best error message is the one that never shows up.', author: 'Thomas Fuchs' },
+    { text: 'Code is like humor. When you have to explain it, its bad.', author: 'Cory House' },
+    { text: 'First, solve the problem. Then, write the code.', author: 'John Johnson' },
+    { text: 'Experience is the name everyone gives to their mistakes.', author: 'Oscar Wilde' },
+    { text: 'In order to be irreplaceable, one must always be different.', author: 'Coco Chanel' },
+    { text: 'Java is to JavaScript what car is to Carpet.', author: 'Chris Heilmann' },
+    { text: 'Knowledge is power.', author: 'Francis Bacon' },
+    { text: 'Simplicity is the soul of efficiency.', author: 'Austin Freeman' },
+    { text: 'Make it work, make it right, make it fast.', author: 'Kent Beck' },
+    { text: 'The only way to learn a new programming language is by writing programs in it.', author: 'Dennis Ritchie' },
+    { text: 'Sometimes it pays to stay in bed on Monday, rather than spending the rest of the week debugging Mondays code.', author: 'Dan Salomon' },
+    { text: 'Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away.', author: 'Antoine de Saint-Exupéry' },
+    { text: 'Before software can be reusable it first has to be usable.', author: 'Ralph Johnson' },
+    { text: 'The most disastrous thing that you can ever learn is your first programming language.', author: 'Alan Kay' },
+    { text: 'Talk is cheap. Show me the code.', author: 'Linus Torvalds' },
+    { text: 'Programs must be written for people to read, and only incidentally for machines to execute.', author: 'Harold Abelson' },
+    { text: 'Truth can only be found in one place: the code.', author: 'Robert C. Martin' },
+    { text: 'Give a man a program, frustrate him for a day. Teach a man to program, frustrate him for a lifetime.', author: 'Muhammad Waseem' },
+    { text: 'Youve baked a really lovely cake, but then youve used dog shit for frosting.', author: 'Steve Jobs' },
+  ];
+
+  var quoteHistory = [];
+
+  /* ── Calculator ── */
+  function safeEval(expr) {
+    // Only allow numbers, operators, parentheses, spaces
+    if (!/^[\d\s+\-*/().]+$/.test(expr)) {
+      return { error: 'Недопустимые символы' };
+    }
+    try {
+      var result = Function('"use strict"; return (' + expr + ')')();
+      if (typeof result !== 'number' || !isFinite(result)) {
+        return { error: 'Некорректный результат' };
+      }
+      return { result: result };
+    } catch(e) {
+      return { error: 'Ошибка вычисления' };
+    }
+  }
+
+  /* ── Weather (random) ── */
+  function getWeather() {
+    var conditions = [
+      { icon: '☀', text: 'Ясно', temp: Math.floor(15 + Math.random() * 15) },
+      { icon: '⛅', text: 'Переменная облачность', temp: Math.floor(10 + Math.random() * 15) },
+      { icon: '☁', text: 'Облачно', temp: Math.floor(8 + Math.random() * 12) },
+      { icon: '🌧', text: 'Дождь', temp: Math.floor(5 + Math.random() * 10) },
+      { icon: '⛈', text: 'Гроза', temp: Math.floor(10 + Math.random() * 8) },
+      { icon: '❄', text: 'Снег', temp: Math.floor(-10 + Math.random() * 5) },
+    ];
+    return conditions[Math.floor(Math.random() * conditions.length)];
   }
 
   /* ── mechanical wheels engine ── */
@@ -521,6 +720,7 @@
   var input = document.getElementById('oc-cmd-input');
   var msgs  = document.getElementById('oc-messages-list');
   var injected = [];
+  var firstCommandDone = false;
 
   var CMDS = {
     'help': { out: [
@@ -535,6 +735,12 @@
       '&nbsp;&nbsp;егор &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— справка по Егору',
       '&nbsp;&nbsp;date &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— текущая дата',
       '&nbsp;&nbsp;clear &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— очистить историю',
+      '',
+      '<span style="color:var(--accent-2)">bonus commands:</span>',
+      '&nbsp;&nbsp;quote &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— случайная цитата',
+      '&nbsp;&nbsp;calc [expr] &nbsp;— калькулятор (calc 2+2*3)',
+      '&nbsp;&nbsp;weather &nbsp;&nbsp;&nbsp;— текущая погода',
+      '&nbsp;&nbsp;matrix &nbsp;&nbsp;&nbsp;— красная таблетка',
     ]},
     'wargames': { out: [
       '<span style="color:var(--accent)">GREETINGS PROFESSOR FALKEN.</span>',
@@ -736,11 +942,76 @@
     if (!trimmed) return;
     addUser(trimmed);
 
+    if (!firstCommandDone) {
+      firstCommandDone = true;
+      unlockAchievement('first_command');
+    }
+
     var lower = trimmed.toLowerCase();
 
     if (lower === 'clear') {
       injected.forEach(function(r){ r.remove(); });
       injected = [];
+      return;
+    }
+
+    // Calculator
+    if (lower.startsWith('calc ')) {
+      var expr = trimmed.substring(5).trim();
+      var result = safeEval(expr);
+      if (result.error) {
+        await addAsst([
+          '<span style="color:#ff6b6b">calc error:</span> ' + result.error,
+          '<span style="color:rgba(168,179,204,.4)">пример: calc 2+2*3</span>',
+        ]);
+      } else {
+        unlockAchievement('calculator');
+        await addAsst([
+          '<span style="color:var(--accent)">' + esc(expr) + ' =</span>',
+          '<strong style="color:var(--text);font-size:1.1em">' + result.result + '</strong>',
+        ]);
+      }
+      return;
+    }
+
+    // Quote
+    if (lower === 'quote') {
+      var q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+      quoteHistory.push(q);
+      if (quoteHistory.length >= 5) unlockAchievement('quote_master');
+      await addAsst([
+        '<em style="color:rgba(168,179,204,.8)">"' + esc(q.text) + '"</em>',
+        '<span style="color:rgba(109,213,255,.6)">— ' + esc(q.author) + '</span>',
+      ]);
+      return;
+    }
+
+    // Weather
+    if (lower === 'weather') {
+      var w = getWeather();
+      await addAsst([
+        '<span style="color:var(--accent)">current weather:</span>',
+        w.icon + ' <strong>' + w.text + '</strong>',
+        'температура: <strong style="color:var(--text)">' + w.temp + '°C</strong>',
+        '<span style="color:rgba(168,179,204,.4)">(случайная генерация)</span>',
+      ]);
+      return;
+    }
+
+    // Matrix
+    if (lower === 'matrix') {
+      unlockAchievement('matrix');
+      var matrixLines = [];
+      for (var i = 0; i < 8; i++) {
+        var line = '';
+        for (var j = 0; j < 40; j++) {
+          line += Math.random() < 0.5 ? '<span style="color:rgba(40,200,64,0.8)">1</span>' : '<span style="color:rgba(40,200,64,0.4)">0</span>';
+        }
+        matrixLines.push(line);
+      }
+      matrixLines.push('');
+      matrixLines.push('<span style="color:var(--accent)">wake up, neo...</span>');
+      await addAsst(matrixLines, 3);
       return;
     }
 
@@ -757,6 +1028,7 @@
 
     if (baseCmd === 'лето' || baseCmd === 'summer') {
       if (args.includes('--срочно') || args.includes('--urgent')) {
+        unlockAchievement('time_lord');
         var now = new Date();
         var year = now.getFullYear();
         var summerStart = new Date(year, 5, 1);
@@ -783,6 +1055,7 @@
     }
 
     if (lower.startsWith('sudo')) {
+      unlockAchievement('sudo_fail');
       await addAsst(['[sudo] пароль для guest:', '<span style="color:#ff6b6b">Permission denied — вы не Егор.</span>']);
     } else {
       await addAsst([
@@ -826,6 +1099,7 @@
       dotClicks++;
       if (dotClicks >= 5) {
         dotClicks = 0;
+        unlockAchievement('hal_encounter');
         openHal();
       } else {
         showToast(dotLines[(dotClicks - 1) % dotLines.length]);
@@ -974,26 +1248,21 @@
     hal.lastFrame = now;
     hal.elapsed = (now - hal.startTime) / 1000;
 
-    // Difficulty scaling
     hal.patternInterval = Math.max(220, 950 - hal.elapsed * 22);
 
-    // Turrets spawn after 20s
     if (hal.elapsed > 20 && hal.turrets.length === 0) {
       var rect = halCanvas.getBoundingClientRect();
       hal.turrets.push({ x: 30, y: rect.height / 2, cooldown: 0, side: 'left' });
       hal.turrets.push({ x: rect.width - 30, y: rect.height / 2, cooldown: 0, side: 'right' });
     }
 
-    // Main attack patterns
     if (now - hal.lastPattern > hal.patternInterval) {
       halAttackPattern();
       hal.lastPattern = now;
     }
 
-    // Sniper logic
     updateSniper(dt);
 
-    // Turret logic
     hal.turrets.forEach(function(t) {
       t.cooldown -= dt;
       if (t.cooldown <= 0) {
@@ -1005,7 +1274,6 @@
     updateHal(dt);
     drawHal();
 
-    // HUD
     if (halTimeEl) halTimeEl.textContent = hal.elapsed.toFixed(1) + 's';
     if (halDodgedEl) halDodgedEl.textContent = hal.dodged;
     if (halThreatEl) {
@@ -1018,11 +1286,9 @@
       halThreatEl.style.color = c;
     }
 
-    // Screen shake decay
     hal.shakeAmount *= Math.pow(0.001, dt);
     hal.eyeFlash *= Math.pow(0.01, dt);
 
-    // Win condition at 60s
     if (hal.elapsed >= 60 && hal.running) {
       winGame();
       return;
@@ -1036,20 +1302,16 @@
     var phase = hal.elapsed < 15 ? 1 : hal.elapsed < 30 ? 2 : hal.elapsed < 45 ? 3 : 4;
 
     if (phase === 1) {
-      // Phase 1: single shots only
       fireFromEye('normal');
     } else if (phase === 2) {
-      // Phase 2: occasional bursts
       if (roll < 0.65) fireFromEye('normal');
       else fireBurst(3);
     } else if (phase === 3) {
-      // Phase 3: sniper appears
       if (roll < 0.4) fireFromEye('normal');
       else if (roll < 0.7) fireBurst(4);
       else if (!hal.sniper.aiming) startSniperAim();
       else fireFromEye('normal');
     } else {
-      // Phase 4: everything + homing
       if (roll < 0.25) fireFromEye('normal');
       else if (roll < 0.5) fireBurst(5);
       else if (roll < 0.7 && !hal.sniper.aiming) startSniperAim();
@@ -1101,13 +1363,11 @@
 
   function startSniperAim() {
     var rect = halCanvas.getBoundingClientRect();
-    // Predictive aim: target where cursor will be based on velocity
     var vx = (hal.mouseX - hal.prevMouseX) * 60;
     var vy = (hal.mouseY - hal.prevMouseY) * 60;
     var leadTime = 0.7;
     var aimX = hal.mouseX + vx * leadTime;
     var aimY = hal.mouseY + vy * leadTime;
-    // Clamp to canvas
     aimX = Math.max(10, Math.min(rect.width - 10, aimX));
     aimY = Math.max(10, Math.min(rect.height - 10, aimY));
 
@@ -1115,7 +1375,7 @@
     hal.sniper.lockTime = 0;
     hal.sniper.aimX = aimX;
     hal.sniper.aimY = aimY;
-    hal.sniper.fireAt = 0.75; // seconds until shot
+    hal.sniper.fireAt = 0.75;
   }
 
   function updateSniper(dt) {
@@ -1125,12 +1385,11 @@
     if (halWarnEl) halWarnEl.classList.add('show');
 
     if (hal.sniper.fireAt <= 0) {
-      // Fire sniper shot from eye to aim point
       var rect = halCanvas.getBoundingClientRect();
       var ex = rect.width / 2, ey = rect.height / 2;
       var dx = hal.sniper.aimX - ex, dy = hal.sniper.aimY - ey;
       var dist = Math.hypot(dx, dy) || 1;
-      var speed = 700; // very fast
+      var speed = 700;
       var b = makeBullet(ex, ey, dx / dist * speed, dy / dist * speed, 'sniper');
       b.size = 4;
       hal.bullets.push(b);
@@ -1168,15 +1427,12 @@
     var w = rect.width, h = rect.height;
     hal.eyePulse += dt * 3;
 
-    // Track mouse velocity
     hal.prevMouseX += (hal.mouseX - hal.prevMouseX) * Math.min(1, dt * 10);
     hal.prevMouseY += (hal.mouseY - hal.prevMouseY) * Math.min(1, dt * 10);
 
-    // Bullets
     for (var i = hal.bullets.length - 1; i >= 0; i--) {
       var b = hal.bullets[i];
 
-      // Homing behaviour
       if (b.type === 'homing') {
         var dx = hal.mouseX - b.x, dy = hal.mouseY - b.y;
         var targetAngle = Math.atan2(dy, dx);
@@ -1195,14 +1451,12 @@
       b.y += b.vy * dt;
       b.rot += b.rotSpeed * dt;
 
-      // Offscreen check
       if (b.x < -30 || b.x > w + 30 || b.y < -30 || b.y > h + 30) {
         hal.bullets.splice(i, 1);
         hal.dodged++;
         continue;
       }
 
-      // Collision with cursor (hitbox = 6px)
       if (!hal.hit) {
         var ddx = b.x - hal.mouseX, ddy = b.y - hal.mouseY;
         var dist = Math.hypot(ddx, ddy);
@@ -1215,7 +1469,6 @@
           gameOver();
           return;
         }
-        // Near miss → screen shake
         if (dist < 40 && b.type !== 'sniper') {
           var intensity = (40 - dist) / 40;
           hal.shakeAmount = Math.max(hal.shakeAmount, intensity * 4);
@@ -1223,7 +1476,6 @@
       }
     }
 
-    // Particles
     for (var j = hal.particles.length - 1; j >= 0; j--) {
       var p = hal.particles[j];
       p.x += p.vx * dt;
@@ -1257,7 +1509,6 @@
     var w = rect.width, h = rect.height;
 
     ctx.save();
-    // Screen shake
     if (hal.shakeAmount > 0.1) {
       ctx.translate(
         (Math.random() - 0.5) * hal.shakeAmount,
@@ -1265,14 +1516,12 @@
       );
     }
 
-    // Background
     var bg = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, Math.max(w,h)/1.2);
     bg.addColorStop(0, 'rgba(40,5,5,0.9)');
     bg.addColorStop(1, '#000');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
 
-    // Grid
     ctx.strokeStyle = 'rgba(255,40,40,0.04)';
     ctx.lineWidth = 1;
     var step = 40;
@@ -1283,7 +1532,6 @@
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
     }
 
-    // Turrets
     hal.turrets.forEach(function(t) {
       ctx.save();
       ctx.translate(t.x, t.y);
@@ -1294,7 +1542,6 @@
       ctx.arc(0, 0, 14, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
-      // mini eye
       ctx.fillStyle = '#ff3838';
       ctx.beginPath();
       ctx.arc(0, 0, 5, 0, Math.PI * 2);
@@ -1302,10 +1549,8 @@
       ctx.restore();
     });
 
-    // HAL eye
     var ex = w/2, ey = h/2;
     var pulse = 1 + Math.sin(hal.eyePulse) * 0.08 + hal.eyeFlash * 0.3;
-    // outer glow
     var glow = ctx.createRadialGradient(ex, ey, 0, ex, ey, 80 * pulse);
     glow.addColorStop(0, 'rgba(255,40,40,' + (0.6 + hal.eyeFlash * 0.4) + ')');
     glow.addColorStop(0.5, 'rgba(255,20,20,0.15)');
@@ -1313,7 +1558,6 @@
     ctx.fillStyle = glow;
     ctx.fillRect(ex - 120, ey - 120, 240, 240);
 
-    // chrome ring
     ctx.beginPath();
     ctx.arc(ex, ey, 28, 0, Math.PI * 2);
     ctx.fillStyle = '#1a0505';
@@ -1322,7 +1566,6 @@
     ctx.strokeStyle = '#4a1010';
     ctx.stroke();
 
-    // red eye
     ctx.beginPath();
     ctx.arc(ex, ey, 16 * pulse, 0, Math.PI * 2);
     var eyeGrad = ctx.createRadialGradient(ex-4, ey-4, 0, ex, ey, 18);
@@ -1332,13 +1575,11 @@
     ctx.fillStyle = eyeGrad;
     ctx.fill();
 
-    // highlight
     ctx.beginPath();
     ctx.arc(ex - 5, ey - 5, 3, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
     ctx.fill();
 
-    // Sniper aim line
     if (hal.sniper.aiming) {
       var lockProgress = hal.sniper.lockTime / 0.75;
       ctx.strokeStyle = 'rgba(255,40,40,' + (0.3 + lockProgress * 0.6) + ')';
@@ -1349,7 +1590,6 @@
       ctx.lineTo(hal.sniper.aimX, hal.sniper.aimY);
       ctx.stroke();
       ctx.setLineDash([]);
-      // target circle
       var targetRadius = 20 * (1 - lockProgress * 0.7);
       ctx.strokeStyle = '#ff4444';
       ctx.lineWidth = 1.5;
@@ -1364,7 +1604,6 @@
       ctx.stroke();
     }
 
-    // Bullets
     for (var i = 0; i < hal.bullets.length; i++) {
       var b = hal.bullets[i];
       ctx.save();
@@ -1376,19 +1615,16 @@
       ctx.shadowBlur = b.type === 'sniper' ? 20 : 12;
       ctx.fillStyle = color;
       if (b.type === 'sniper') {
-        // elongated shape for sniper
         ctx.fillRect(-b.size * 2, -b.size / 2, b.size * 4, b.size);
       } else {
         ctx.fillRect(-b.size/2, -b.size/2, b.size, b.size);
       }
       ctx.shadowBlur = 0;
-      // highlight
       ctx.fillStyle = 'rgba(255,255,255,0.7)';
       ctx.fillRect(-b.size/2 + 1, -b.size/2 + 1, 2, 2);
       ctx.restore();
     }
 
-    // Particles
     for (var j = 0; j < hal.particles.length; j++) {
       var p = hal.particles[j];
       var a = Math.max(0, p.life / p.maxLife);
@@ -1398,7 +1634,6 @@
     }
     ctx.globalAlpha = 1;
 
-    // Cursor reticle
     if (!hal.hit) {
       ctx.strokeStyle = 'rgba(109,213,255,0.9)';
       ctx.lineWidth = 1.5;
@@ -1411,7 +1646,6 @@
       ctx.moveTo(hal.mouseX, hal.mouseY - 14); ctx.lineTo(hal.mouseX, hal.mouseY - 6);
       ctx.moveTo(hal.mouseX, hal.mouseY + 6);  ctx.lineTo(hal.mouseX, hal.mouseY + 14);
       ctx.stroke();
-      // center dot
       ctx.fillStyle = 'rgba(109,213,255,0.9)';
       ctx.beginPath();
       ctx.arc(hal.mouseX, hal.mouseY, 1.5, 0, Math.PI * 2);
@@ -1420,7 +1654,6 @@
 
     ctx.restore();
 
-    // Hit flash overlay (after shake restore)
     if (hal.hit) {
       hal.hitTime += 1/60;
       var flash = Math.max(0, 1 - hal.hitTime * 3);
@@ -1443,8 +1676,8 @@
       halGoStats.textContent = 'survived ' + hal.elapsed.toFixed(1) + 's · dodged ' + hal.dodged + '/' + hal.fired + ' · ' + accuracy + '% evade';
     }
     if (halWarnEl) halWarnEl.classList.remove('show');
-    // Delay showing game over to let explosion play out
     setTimeout(function() {
+      if (hal.elapsed >= 30) unlockAchievement('hal_survivor');
       if (halGoEl) halGoEl.classList.add('show');
     }, 800);
   }
@@ -1462,6 +1695,7 @@
       var accuracy = Math.round((hal.dodged / Math.max(1, hal.fired)) * 100);
       halGoStats.textContent = 'survived 60.0s · dodged ' + hal.dodged + '/' + hal.fired + ' · ' + accuracy + '% evade · LEGENDARY';
     }
+    unlockAchievement('hal_legend');
     if (halGoEl) halGoEl.classList.add('show');
   }
 
