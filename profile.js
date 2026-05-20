@@ -2,7 +2,7 @@
  * 👤 Profile System v2 — EgorNetwork
  *
  * Firestore: users/{uid}
- *   name, bio, avatar (base64 96x96), role, createdAt,
+ *   name, bio, avatar (base64 162x162), role, createdAt,
  *   customStatus, social{github,discord,telegram},
  *   techTags[], theme, lastSeen (Timestamp)
  */
@@ -83,7 +83,7 @@ function showError(msg) {
 
 // ─── AVATAR ───────────────────────────────────────────────────────────────────
 
-function resizeToBase64(file, size=96) { 
+function resizeToBase64(file, size=162) { 
   return new Promise((resolve,reject)=>{
     const reader=new FileReader();
     reader.onload=e=>{
@@ -618,7 +618,7 @@ function bindEditHandlers(data, uid) {
     if(!file) return;
     if(file.size>5*1024*1024){ if(errEl) errEl.textContent='Файл слишком большой (макс. 5 МБ).'; return; }
     try {
-      const b64 = await resizeToBase64(file, 96);
+      const b64 = await resizeToBase64(file, 162);
       pendingAvatar=b64;
       const d=document.getElementById('profile-avatar-display');
       if(d) d.innerHTML=`<img src="${b64}" alt="avatar">`;

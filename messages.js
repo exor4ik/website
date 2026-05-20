@@ -304,6 +304,54 @@ function renderConvItem(conv, convIdStr, myUid) {
   return li;
 }
 
+async function ensureConversationExists(cId, myUid, otherId, otherName, otherAvatar) {
+  const convRef = window.db.collection('conversations').doc(cId);
+  try {
+    const convSnap = await convRef.get();
+    if (convSnap.exists) return { ref: convRef, snap: convSnap };
+  } catch (err) {
+    if (err?.code !== 'permission-denied') throw err;
+    console.warn('⚠️ Нет доступа на чтение нового диалога до его создания, создаём напрямую:', cId);
+  }
+
+  if (!userCache[myUid]) await getUser(myUid);
+  const now = firebase.firestore.Timestamp.now();
+
+  await convRef.set({
+    participants: [myUid, otherId],
+    participantNames: {
+      [myUid]: userCache[myUid]?.name || currentUser?.displayName || currentUser?.email || 'Вы',
+      [otherId]: otherName || 'Пользователь',
+    },
+    participantAvatars: {
+      [myUid]: userCache[myUid]?.avatar || null,
+      [otherId]: otherAvatar || null,
+    },
+    unread: {
+      [myUid]: 0,
+      [otherId]: 0,
+    },
+    lastMessage: '',
+    lastMessageAt: now,
+    isSecret: false,
+    createdAt: now,
+  }, { merge: true });
+
+  try {
+    const createdSnap = await convRef.get();
+    return { ref: convRef, snap: createdSnap };
+  } catch (err) {
+    console.warn('⚠️ Диалог создан, но повторное чтение пока недоступно:', err);
+    return {
+      ref: convRef,
+      snap: {
+        exists: true,
+        data: () => ({ isSecret: false }),
+      },
+    };
+  }
+}
+
 // ─── CONVERSATIONS LIST ───────────────────────────────────────────────────────
 
 function initConvList(myUid) {
@@ -353,6 +401,14 @@ async function openConversation(cId, otherId, otherName, otherAvatar) {
   const chatArea = document.getElementById('chat-area');
   if (!chatArea) return;
 
+  if (otherId) {
+    userCache[otherId] = {
+      ...(userCache[otherId] || {}),
+      name: otherName || userCache[otherId]?.name || 'Пользователь',
+      avatar: otherAvatar || userCache[otherId]?.avatar || null,
+    };
+  }
+
   chatArea.innerHTML = `
     <div class="chat-header">
       <div class="chat-header-avatar">${avatarHtml(otherAvatar, otherName, 36)}</div>
@@ -391,8 +447,13 @@ async function openConversation(cId, otherId, otherName, otherAvatar) {
   }
 
   // Загружаем текущий режим
-  const convRef = window.db.collection('conversations').doc(cId);
-  const convSnap = await convRef.get();
+  const { ref: convRef, snap: convSnap } = await ensureConversationExists(
+    cId,
+    currentUser.uid,
+    otherId,
+    otherName,
+    otherAvatar
+  );
   updateModeUI(convSnap.exists ? (convSnap.data().isSecret || false) : false);
 
   // Слушаем изменения режима
@@ -555,38 +616,52 @@ async function sendMessage(cId, otherId, otherName, otherAvatar) {
     const me = currentUser;
 
     if (!userCache[me.uid]) await getUser(me.uid);
-
-    const batch = window.db.batch();
-
-    const msgRef = window.db
-      .collection('conversations').doc(cId)
-      .collection('messages').doc();
-    batch.set(msgRef, {
-      senderUid: me.uid,
-      text: encryptedText,
-      _encrypted: isEncrypted,
-      _e2ee: isEncrypted,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      read: false,
-    });
-
     const convRef = window.db.collection('conversations').doc(cId);
-    batch.set(convRef, {
-      participants:       [me.uid, otherId],
-      participantNames:   {
-        [me.uid]:  userCache[me.uid]?.name  || me.displayName || me.email,
-        [otherId]: otherName,
-      },
-      participantAvatars: {
-        [me.uid]:  userCache[me.uid]?.avatar  || me.displayName?.[0]?.toUpperCase() || '?',
-        [otherId]: otherAvatar || otherName[0]?.toUpperCase() || '?',
-      },
-      lastMessage:    text,
-      lastMessageAt:  firebase.firestore.FieldValue.serverTimestamp(),
-      [`unread.${otherId}`]: firebase.firestore.FieldValue.increment(1),
-    }, { merge: true });
+    const msgRef = convRef.collection('messages').doc();
+    const myName = userCache[me.uid]?.name || me.displayName || me.email || 'Вы';
+    const myAvatar = userCache[me.uid]?.avatar || null;
+    const safeOtherName = otherName || userCache[otherId]?.name || 'Пользователь';
+    const safeOtherAvatar = otherAvatar ?? userCache[otherId]?.avatar ?? null;
 
-    await batch.commit();
+    await window.db.runTransaction(async tx => {
+      const convSnap = await tx.get(convRef);
+      const convData = convSnap.exists ? convSnap.data() : {};
+      const unread = {
+        ...((convData && typeof convData.unread === 'object' && convData.unread) || {}),
+      };
+
+      unread[otherId] = (Number(unread[otherId]) || 0) + 1;
+      unread[me.uid] = 0;
+
+      tx.set(msgRef, {
+        senderUid: me.uid,
+        text: encryptedText,
+        _encrypted: isEncrypted,
+        _e2ee: isEncrypted,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        read: false,
+      });
+
+      tx.set(convRef, {
+        participants: [me.uid, otherId],
+        participantNames: {
+          ...((convData && convData.participantNames) || {}),
+          [me.uid]: myName,
+          [otherId]: safeOtherName,
+        },
+        participantAvatars: {
+          ...((convData && convData.participantAvatars) || {}),
+          [me.uid]: myAvatar,
+          [otherId]: safeOtherAvatar,
+        },
+        unread,
+        lastMessage: text,
+        lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+        _encrypted: isEncrypted,
+        _e2ee: isEncrypted,
+        createdAt: convData?.createdAt || firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    });
   } catch (err) {
     console.error('❌ Send:', err);
     inputEl.value = text;
@@ -599,8 +674,20 @@ async function sendMessage(cId, otherId, otherName, otherAvatar) {
 // ─── MARK AS READ ─────────────────────────────────────────────────────────────
 
 function markAsRead(cId, myUid) {
-  window.db.collection('conversations').doc(cId).update({
-    [`unread.${myUid}`]: 0,
+  const convRef = window.db.collection('conversations').doc(cId);
+  window.db.runTransaction(async tx => {
+    const snap = await tx.get(convRef);
+    if (!snap.exists) return;
+
+    const convData = snap.data() || {};
+    const unread = {
+      ...((convData && typeof convData.unread === 'object' && convData.unread) || {}),
+    };
+
+    if ((Number(unread[myUid]) || 0) === 0) return;
+    unread[myUid] = 0;
+
+    tx.set(convRef, { unread }, { merge: true });
   }).catch(() => {});
 }
 
