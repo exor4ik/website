@@ -202,7 +202,23 @@ function renderTerminal(data, uid) {
   const social = SOCIAL_DEFS
     .filter(s=>data.social?.[s.key])
     .map(s=>`<span class="terminal-tag-chip">${s.icon} ${esc(data.social[s.key])}</span>`)
-    .join(' ');
+    .join('');
+  
+  // Achievements for terminal view
+  const unlocked = new Set(data.achievements || []);
+  const achList = Object.keys(ALL_ACHIEVEMENTS).map(key => {
+    const a = ALL_ACHIEVEMENTS[key];
+    const isUnlocked = unlocked.has(key);
+    return `<div class="terminal-line" style="margin-left:12px;">
+      <span class="terminal-prompt">$ </span>
+      <span style="color:${isUnlocked?'#39ff14':'#555'};">
+        ${isUnlocked?'✓':'✗'} [${esc(key)}] ${esc(a.title)} — ${esc(a.desc)}
+      </span>
+    </div>`;
+  }).join('');
+  const achCount = unlocked.size;
+  const achTotal = Object.keys(ALL_ACHIEVEMENTS).length;
+  const achPct = Math.round((achCount / achTotal) * 100);
 
   return `
   <div class="profile-terminal" id="view-terminal" style="display:none;">
@@ -224,6 +240,14 @@ function renderTerminal(data, uid) {
       <div class="terminal-line"><span class="terminal-key">JOINED</span>=<span class="terminal-val">"${formatDate(data.createdAt)}"</span></div>
       ${tags?`<div class="terminal-line" style="margin-top:8px;"><span class="terminal-prompt"># TECH_STACK</span></div><div class="terminal-line">${tags}</div>`:''}
       ${social?`<div class="terminal-line" style="margin-top:8px;"><span class="terminal-prompt"># SOCIAL</span></div><div class="terminal-line">${social}</div>`:''}
+      
+      <!-- Achievements -->
+      <div class="terminal-line" style="margin-top:14px;border-top:1px dashed #333;padding-top:10px;">
+        <span class="terminal-prompt"># </span><span style="color:#6cd5ff;">ACHIEVEMENTS</span>
+        <span style="color:#888;margin-left:8px;">[${achCount}/${achTotal} · ${achPct}%]</span>
+      </div>
+      ${achList}
+      
       <div class="terminal-line" style="margin-top:12px;"><span class="terminal-prompt">$ </span><span class="terminal-cursor"></span></div>
     </div>
   </div>`;
@@ -241,6 +265,19 @@ function renderWin95(data, uid) {
     .filter(s=>data.social?.[s.key])
     .map(s=>`<div class="win95-row"><span class="win95-label">${s.icon} ${s.label}:</span><span class="win95-val">${esc(data.social[s.key])}</span></div>`)
     .join('');
+  
+  // Achievements for Win95 view
+  const unlocked = new Set(data.achievements || []);
+  const achList = Object.keys(ALL_ACHIEVEMENTS).map(key => {
+    const a = ALL_ACHIEVEMENTS[key];
+    const isUnlocked = unlocked.has(key);
+    return `<span class="win95-tag" style="${isUnlocked?'':'filter:grayscale(1);opacity:.5;'}" title="${esc(a.desc)}">
+      ${isUnlocked?'':'🔒 '}${a.icon} ${esc(a.title)}
+    </span>`;
+  }).join('');
+  const achCount = unlocked.size;
+  const achTotal = Object.keys(ALL_ACHIEVEMENTS).length;
+  const achPct = Math.round((achCount / achTotal) * 100);
 
   return `
   <div class="profile-win95" id="view-win95" style="display:none;">
@@ -276,6 +313,17 @@ function renderWin95(data, uid) {
         <div class="win95-section-title">Контакты</div>
         ${social}
       </div>`:''}
+      
+      <!-- Achievements Window -->
+      <div class="win95-section">
+        <div class="win95-section-title">🏆 Achievements [${achCount}/${achTotal}]</div>
+        <div style="background:#fff;border:1px inset #808080;padding:8px;margin-top:6px;">
+          <div style="background:#000080;color:#fff;font-size:.7rem;padding:2px 6px;margin-bottom:6px;">
+            Progress: ${achPct}% ■■■■■■■■■□
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;">${achList}</div>
+        </div>
+      </div>
     </div>
   </div>`;
 }
