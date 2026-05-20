@@ -78,9 +78,33 @@
     .oc-block-icon { width:7px; height:7px; background:rgba(109,213,255,.4); border-radius:50%; animation:pulse-dot 2s ease-in-out infinite; }
     @keyframes pulse-dot { 0%,100%{opacity:.4} 50%{opacity:1} }
 
-    .oc-cd-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px; }
-    .oc-cd-cell { background:rgba(109,213,255,.04); border:1px solid rgba(109,213,255,.09); border-radius:7px; padding:8px 6px; text-align:center; }
-    .oc-cd-num { display:block; font-size:1.65rem; font-weight:600; color:var(--accent); line-height:1; letter-spacing:-.03em; font-variant-numeric:tabular-nums; }
+    /* ── Soviet-style mechanical counter ── */
+    .oc-cd-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+    .oc-cd-cell { background:rgba(109,213,255,.04); border:1px solid rgba(109,213,255,.09); border-radius:7px; padding:6px 4px; text-align:center; display:flex; flex-direction:column; align-items:center; }
+    .oc-cd-num-wrap { display:inline-flex; gap:2px; justify-content:center; margin-bottom:4px; }
+    .digit-wheel {
+      width:0.78rem; height:1.55rem; overflow:hidden; position:relative;
+      background:linear-gradient(180deg, rgba(0,0,0,.65) 0%, rgba(12,18,30,.9) 50%, rgba(0,0,0,.65) 100%);
+      border-radius:3px; border:1px solid rgba(109,213,255,.12);
+      box-shadow:inset 0 2px 5px rgba(0,0,0,.7), 0 1px 0 rgba(255,255,255,.03);
+    }
+    .digit-wheel::after {
+      content:''; position:absolute; top:50%; left:0; right:0; height:1px;
+      background:rgba(0,0,0,.55); box-shadow:0 1px 0 rgba(255,255,255,.06);
+      z-index:2; pointer-events:none;
+    }
+    .digit-strip {
+      position:absolute; top:0; left:0; width:100%;
+      display:flex; flex-direction:column; align-items:center;
+      transition:transform 0.42s cubic-bezier(0.22, 0.85, 0.35, 1);
+      will-change:transform;
+    }
+    .digit-strip span {
+      display:block; height:1.55rem; line-height:1.55rem;
+      font-size:1.45rem; font-weight:700; color:var(--accent);
+      font-variant-numeric:tabular-nums; text-align:center;
+      text-shadow:0 0 9px rgba(109,213,255,.35);
+    }
     .oc-cd-lbl { display:block; font-size:.57rem; color:rgba(168,179,204,.38); text-transform:uppercase; letter-spacing:.08em; margin-top:5px; }
 
     .oc-prog-row { display:flex; align-items:center; gap:8px; font-size:.67rem; color:rgba(168,179,204,.35); margin-bottom:6px; }
@@ -109,11 +133,9 @@
     .oc-statusbar { display:flex; align-items:center; justify-content:space-between; padding:5px 14px; font-size:.6rem; color:rgba(168,179,204,.2); background:rgba(0,0,0,.2); border-top:1px solid rgba(255,255,255,.025); font-family:'JetBrains Mono',monospace; letter-spacing:.03em; }
     .oc-sb-dot { width:6px; height:6px; background:#28c840; border-radius:50%; display:inline-block; margin-right:5px; box-shadow:0 0 6px rgba(40,200,64,.5); }
 
-    /* injected messages animation */
     .oc-injected { animation:oc-fadein .22s ease forwards; }
     @keyframes oc-fadein { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
 
-    /* toast */
     .oc-toast {
       position:fixed; bottom:32px; left:50%;
       transform:translateX(-50%) translateY(16px);
@@ -130,8 +152,9 @@
     .oc-toast-icon { color:var(--accent); margin-right:8px; }
 
     @media (max-width:540px) {
-      .oc-cd-num { font-size:1.25rem; }
-      .oc-cd-cell { padding:7px 4px; }
+      .digit-wheel { width:0.68rem; height:1.35rem; }
+      .digit-strip span { height:1.35rem; line-height:1.35rem; font-size:1.25rem; }
+      .oc-cd-cell { padding:5px 3px; }
       .oc-user-bubble { max-width:88%; }
     }
   </style>
@@ -149,7 +172,6 @@
   <div class="oc-wrap fade" id="hero">
     <div class="oc-window">
 
-      <!-- Title bar -->
       <div class="oc-titlebar">
         <div class="oc-dots">
           <span class="oc-dot oc-dot-r" id="oc-dot-close" title="закрыть"></span>
@@ -160,9 +182,7 @@
         <span class="oc-badge" id="oc-model-badge" title="нажми 5 раз...">Exor4ik_16.4.24-1400b</span>
       </div>
 
-      <!-- Messages -->
       <div class="oc-messages" id="oc-messages-list">
-
         <div class="oc-user-row">
           <div class="oc-user-bubble">
             <div class="oc-role-label">user</div>
@@ -194,7 +214,7 @@
         <div class="oc-user-row">
           <div class="oc-user-bubble">
             <div class="oc-role-label">user</div>
-            <div class="oc-user-text">Кстати, какие функции у сайта EgorNetwork?</div>
+            <div class="oc-user-text">Кстати, что такое EgorNetwork?</div>
           </div>
         </div>
 
@@ -204,14 +224,12 @@
             <span class="oc-asst-name">Exor4ik</span>
           </div>
           <div class="oc-asst-body">
-            Функции сайта EgorNetwork — блог и форум, где мы публикуем игры.<br>
+            EgorNetwork — блог и форум, где мы делаем игры.<br>
             <span style="color:var(--muted)">Скачать их можно на странице загрузок. В архиве хранится история разделов и проектов — в том числе тех, что злючный Егорчик закрыл, потому что делать их дальше было лень.</span>
           </div>
         </div>
-
       </div>
 
-      <!-- Input -->
       <div class="oc-inputbar">
         <div class="oc-inputbox">
           <span class="oc-inputbox-prefix">›</span>
@@ -223,7 +241,6 @@
         <span class="oc-key">⌘K</span>
       </div>
 
-      <!-- Status bar -->
       <div class="oc-statusbar">
         <span><span class="oc-sb-dot"></span>connected</span>
         <span id="oc-sb-date">—</span>
@@ -245,7 +262,6 @@
 (function () {
   'use strict';
 
-  /* ── helpers ── */
   function pad(n) { return String(n).padStart(2, '0'); }
   function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function getDaysLabel(n) {
@@ -256,9 +272,40 @@
     return 'дней';
   }
 
-  /* ── countdown ── */
-  var cdInit = false;
+  /* ── mechanical wheels engine ── */
+  var wheelEls = { d:[], h:[], m:[], s:[] };
+  var wheelsReady = false;
 
+  function createWheelHTML(idPrefix, numDigits) {
+    const digits = Array.from({length:10},(_,i)=>`<span>${i}</span>`).join('');
+    let html = '<div class="oc-cd-num-wrap">';
+    for(let i=0; i<numDigits; i++) {
+      html += `<div class="digit-wheel" id="${idPrefix}-${i}"><div class="digit-strip">${digits}</div></div>`;
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function setWheels(wArr, val, instant) {
+    val = Math.max(0, val);
+    var str = String(val).padStart(wArr.length, '0');
+    wArr.forEach(function(strip, i) {
+      var digit = parseInt(str[i], 10);
+      // 10% от высоты ленты = 1 слот (1 цифра)
+      var offset = -digit * 10;
+      if (instant) {
+        strip.style.transition = 'none';
+        strip.style.transform = 'translateY(' + offset + '%)';
+        void strip.offsetWidth; // force reflow
+        strip.style.transition = '';
+      } else {
+        strip.style.transform = 'translateY(' + offset + '%)';
+      }
+    });
+  }
+
+  /* ── countdown logic ── */
+  var cdInit = false;
   function tick() {
     var now = new Date();
     var year = now.getFullYear();
@@ -286,12 +333,12 @@
       renderMeta(now);
       cdInit = true;
     } else {
-      var el = ['cd-d','cd-h','cd-m','cd-s'];
-      var vals = [days, hours, minutes, seconds];
-      el.forEach(function(id, i) {
-        var e = document.getElementById(id);
-        if (e) e.textContent = pad(vals[i]);
-      });
+      if (wheelsReady) {
+        setWheels(wheelEls.d, days);
+        setWheels(wheelEls.h, hours);
+        setWheels(wheelEls.m, minutes);
+        setWheels(wheelEls.s, seconds);
+      }
       var fill = document.getElementById('cd-fill');
       if (fill) fill.style.width = progress + '%';
       var meta = document.getElementById('cd-meta');
@@ -299,15 +346,30 @@
     }
   }
 
-  function cell(id, val, lbl) {
-    return '<div class="oc-cd-cell"><span class="oc-cd-num" id="' + id + '">' + val + '</span><span class="oc-cd-lbl">' + lbl + '</span></div>';
-  }
-
   function renderCountdown(d, h, m, s, progress, yr) {
     document.getElementById('oc-countdown').innerHTML =
-      '<div class="oc-cd-grid">' + cell('cd-d',pad(d),'дней') + cell('cd-h',pad(h),'часов') + cell('cd-m',pad(m),'минут') + cell('cd-s',pad(s),'секунд') + '</div>' +
+      '<div class="oc-cd-grid">' +
+      '<div class="oc-cd-cell">' + createWheelHTML('cd-d', 3) + '<span class="oc-cd-lbl">дней</span></div>' +
+      '<div class="oc-cd-cell">' + createWheelHTML('cd-h', 2) + '<span class="oc-cd-lbl">часов</span></div>' +
+      '<div class="oc-cd-cell">' + createWheelHTML('cd-m', 2) + '<span class="oc-cd-lbl">минут</span></div>' +
+      '<div class="oc-cd-cell">' + createWheelHTML('cd-s', 2) + '<span class="oc-cd-lbl">секунд</span></div>' +
+      '</div>' +
       '<div class="oc-prog-row"><span>март</span><div class="oc-prog-track"><div class="oc-prog-fill" id="cd-fill" style="width:' + progress + '%"></div></div><span class="oc-prog-accent">лето</span></div>' +
       '<div class="oc-meta" id="cd-meta">до 1 июня ' + yr + ' · весна ' + parseFloat(progress).toFixed(0) + '% позади</div>';
+
+    ['d','h','m','s'].forEach(k => {
+      const count = k === 'd' ? 3 : 2;
+      wheelEls[k] = [];
+      for(let i=0; i<count; i++) {
+        wheelEls[k].push(document.getElementById(`cd-${k}-${i}`).querySelector('.digit-strip'));
+      }
+    });
+    wheelsReady = true;
+
+    setWheels(wheelEls.d, d, true);
+    setWheels(wheelEls.h, h, true);
+    setWheels(wheelEls.m, m, true);
+    setWheels(wheelEls.s, s, true);
   }
 
   function renderResponse(days) {
@@ -341,7 +403,7 @@
   setInterval(tick, 1000);
   setInterval(updateSbDate, 60000);
 
-  /* ── terminal easter egg ── */
+  /* ── terminal engine ── */
   var input = document.getElementById('oc-cmd-input');
   var msgs  = document.getElementById('oc-messages-list');
   var injected = [];
@@ -352,7 +414,7 @@
       '&nbsp;&nbsp;ping &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— проверить соединение',
       '&nbsp;&nbsp;whoami &nbsp;&nbsp;&nbsp;&nbsp;— кто ты такой',
       '&nbsp;&nbsp;ls &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— список файлов',
-      '&nbsp;&nbsp;лето &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— справка по лету',
+      '&nbsp;&nbsp;лето [--срочно] &nbsp;— справка по лету / ускорить',
       '&nbsp;&nbsp;sudo &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— попробуй',
       '&nbsp;&nbsp;git status &nbsp;— состояние репо',
       '&nbsp;&nbsp;npm install &nbsp;— установить всё',
@@ -460,7 +522,6 @@
     injected.push(row);
   }
 
-  /* ── typing animation engine ── */
   function typeLine(element, html, speed) {
     return new Promise(function(resolve) {
       var buffer = '';
@@ -495,7 +556,8 @@
     });
   }
 
-  async function addAsst(lines) {
+  async function addAsst(lines, speed) {
+    speed = speed || 14;
     var now = new Date();
     var ts = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
     var row = document.createElement('div');
@@ -507,7 +569,6 @@
     injected.push(row);
 
     var linesContainer = row.querySelector('.oc-output-lines');
-
     for (var i = 0; i < lines.length; i++) {
       var lineDiv = document.createElement('div');
       lineDiv.style.lineHeight = '1.6';
@@ -517,14 +578,13 @@
         lineDiv.innerHTML = '&nbsp;';
         await new Promise(function(r){ setTimeout(r, 120); });
       } else {
-        await typeLine(lineDiv, lines[i], 14);
+        await typeLine(lineDiv, lines[i], speed);
         await new Promise(function(r){ setTimeout(r, 60); });
       }
       row.scrollIntoView({ behavior:'smooth', block:'nearest' });
     }
   }
 
-  /* ── command queue & processor ── */
   var cmdQueue = [];
   var isProcessing = false;
   var originalPlaceholder = input ? input.placeholder : '';
@@ -548,31 +608,64 @@
   }
 
   async function runCmdAsync(raw) {
-    var cmd = raw.trim().toLowerCase();
-    if (!cmd) return;
-    addUser(raw.trim());
+    var trimmed = raw.trim();
+    if (!trimmed) return;
+    addUser(trimmed);
 
-    if (cmd === 'clear') {
+    var lower = trimmed.toLowerCase();
+
+    if (lower === 'clear') {
       injected.forEach(function(r){ r.remove(); });
       injected = [];
       return;
     }
 
-    var def = CMDS[cmd];
-    if (!def) {
-      if (cmd.indexOf('sudo') === 0) {
-        await addAsst(['[sudo] пароль для guest:', '<span style="color:#ff6b6b">Permission denied — вы не Егор.</span>']);
-      } else {
-        await addAsst([
-          '<span style="color:#ff6b6b">command not found:</span> ' + esc(raw.trim()),
-          '<span style="color:rgba(168,179,204,.4)">введите <span style="color:var(--accent)">help</span> для списка команд</span>',
-        ]);
-      }
+    var def = CMDS[lower];
+    if (def) {
+      if (def.special === 'clear') { await runCmdAsync('clear'); return; }
+      await addAsst(def.dyn ? def.dyn() : def.out);
       return;
     }
 
-    if (def.special === 'clear') { await runCmdAsync('clear'); return; }
-    await addAsst(def.dyn ? def.dyn() : def.out);
+    var parts = lower.split(/\s+/);
+    var baseCmd = parts[0];
+    var args = parts.slice(1);
+
+    if (baseCmd === 'лето' || baseCmd === 'summer') {
+      if (args.includes('--срочно') || args.includes('--urgent')) {
+        var now = new Date();
+        var year = now.getFullYear();
+        var summerStart = new Date(year, 5, 1);
+        var summerEnd   = new Date(year, 8, 1);
+        var isSummer = now >= summerStart && now < summerEnd;
+        var daysLeft = 0;
+        if (!isSummer) {
+          if (now >= summerEnd) summerStart = new Date(year + 1, 5, 1);
+          daysLeft = Math.floor((summerStart - now) / 86400000);
+        }
+        var urgentLines = [
+          '<span style="color:#ffb347">[WARN]</span> параметр --срочно активирован',
+          'инициализация ускорения времени...',
+          '████████████████████ 100%',
+          '<span style="color:#ff6b6b">error:</span> cannot force season. calendar is write-protected.',
+          isSummer ? 'лето уже здесь. расслабьтесь.' : 'до лета всё ещё <strong style="color:var(--accent)">' + daysLeft + '</strong> ' + getDaysLabel(daysLeft) + '.',
+          '<span style="color:rgba(168,179,204,.4)">hint: время не поддаётся sudo. ждите.</span>'
+        ];
+        await addAsst(urgentLines, 6);
+        return;
+      }
+      await addAsst(CMDS['лето'].out);
+      return;
+    }
+
+    if (lower.startsWith('sudo')) {
+      await addAsst(['[sudo] пароль для guest:', '<span style="color:#ff6b6b">Permission denied — вы не Егор.</span>']);
+    } else {
+      await addAsst([
+        '<span style="color:#ff6b6b">command not found:</span> ' + esc(trimmed),
+        '<span style="color:rgba(168,179,204,.4)">введите <span style="color:var(--accent)">help</span> для списка команд</span>',
+      ]);
+    }
   }
 
   if (input) {
@@ -585,7 +678,6 @@
     });
   }
 
-  /* ── red dot toast ── */
   var toast = document.getElementById('oc-toast');
   var toastMsg = document.getElementById('oc-toast-msg');
   var toastTimer;
@@ -612,7 +704,6 @@
     });
   }
 
-  /* ── model badge ── */
   var badge = document.getElementById('oc-model-badge');
   var models = ['Exor4ik_16.4.24-1400b','gpt-5-turbo','gemini-ultra-2','Exor4ik_16.4.24-1400b-coder','HAL-9000','Exor4ik_16.4.24-800b'];
   var mIdx = 0;
