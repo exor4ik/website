@@ -747,7 +747,8 @@ function createBugs() {
 
 async function loadComponent(id, file) {
   try {
-    const response = await fetch(file, { cache: 'force-cache' });
+    // HTML-компоненты меняются в процессе разработки, поэтому не берем их из force-cache.
+    const response = await fetch(file, { cache: 'no-store' });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     const html = await response.text();
