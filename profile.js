@@ -37,18 +37,20 @@ const SOCIAL_DEFS = [
 ];
 
 const ALL_ACHIEVEMENTS = {
-  first_command:    { title: 'Hello, World!',     desc: 'Первая команда',        icon: '👋' },
-  hal_encounter:    { title: "I'm Afraid, Dave",  desc: 'HAL активирован',       icon: '🔴' },
-  matrix:           { title: 'Red Pill',          desc: 'Матрица',               icon: '💊' },
-  sudo_fail:        { title: 'Permission Denied', desc: 'Попытка sudo',          icon: '🔒' },
-  calculator:       { title: 'Human Calculator',  desc: 'Калькулятор',           icon: '🧮' },
-  quote_master:     { title: 'Wise Words',        desc: '5 разных цитат',        icon: '📚' },
-  time_lord:        { title: 'Time Lord',         desc: 'лето --срочно',         icon: '⏰' },
-  profile_complete: { title: 'Identity',          desc: 'Bio заполнено',         icon: '📝' },
-  avatar_set:       { title: 'Face Reveal',       desc: 'Аватар установлен',     icon: '🖼️' },
-  social_linked:    { title: 'Network Node',      desc: 'Соцсеть добавлена',     icon: '🔗' },
-  hal_survivor:     { title: 'Survivor',          desc: '30с против HAL',        icon: '🛡️' },
-  hal_legend:       { title: 'Legendary',         desc: '60с против HAL',        icon: '👑' },
+  first_command:    { title: 'Hello, World!',               desc: 'Первая команда',        icon: '👋' },
+  hal_encounter:    { title: "I'm Afraid, Dave",            desc: 'HAL активирован',       icon: '🔴' },
+  matrix:           { title: 'Red Pill',                    desc: 'Матрица',               icon: '💊' },
+  sudo_fail:        { title: 'Permission Denied',           desc: 'Попытка sudo',          icon: '🔒' },
+  calculator:       { title: 'Human Calculator',            desc: 'Калькулятор',           icon: '🧮' },
+  quote_master:     { title: 'Wise Words',                  desc: '5 разных цитат',        icon: '📚' },
+  time_lord:        { title: 'Time Lord',                   desc: 'лето --срочно',         icon: '⏰' },
+  profile_complete: { title: 'Identity',                    desc: 'Bio заполнено',         icon: '📝' },
+  avatar_set:       { title: 'Face Reveal',                 desc: 'Аватар установлен',     icon: '🖼️' },
+  social_linked:    { title: 'Network Node',                desc: 'Соцсеть добавлена',     icon: '🔗' },
+  hal_survivor:     { title: 'Survivor',                    desc: '30с против HAL',        icon: '🛡️' },
+  hal_legend:       { title: 'Legendary',                   desc: '60с против HAL',        icon: '👑' },
+  whoami:           { title: 'WhoAmI',                      desc: 'Кто я?',                icon: '❓' },
+  login_yourself:   { title: 'EgorNetwork.Login("you");',   desc: 'Авторизоваться снова',  icon: '🔄' },
 };
 
 // Было: 2 минуты. Стало: 3 минуты — запас на задержки сети
@@ -316,7 +318,7 @@ function renderWin95(data, uid) {
       
       <!-- Achievements Window -->
       <div class="win95-section">
-        <div class="win95-section-title">🏆 Achievements [${achCount}/${achTotal}]</div>
+        <div class="win95-section-title">🏆 Achievements - Season "Summer 2026" [${achCount}/${achTotal}]</div>
         <div style="background:#fff;border:1px inset #808080;padding:8px;margin-top:6px;">
           <div style="background:#000080;color:#fff;font-size:.7rem;padding:2px 6px;margin-bottom:6px;">
             Progress: ${achPct}% ■■■■■■■■■□

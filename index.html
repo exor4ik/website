@@ -431,16 +431,19 @@
   var ACHIEVEMENTS = {
     first_command:    { title: 'Hello, World!',     desc: 'Выполни первую команду в терминале',    icon: '👋' },
     hal_encounter:    { title: "I'm Afraid, Dave",  desc: 'Активируй HAL-9000',                    icon: '🔴' },
-    matrix:           { title: 'Red Pill',          desc: 'Запусти матрицу',                        icon: '💊' },
-    sudo_fail:        { title: 'Permission Denied', desc: 'Попробуй sudo',                          icon: '🔒' },
-    calculator:       { title: 'Human Calculator',  desc: 'Используй калькулятор',                   icon: '🧮' },
-    quote_master:     { title: 'Wise Words',        desc: 'Получи 5 разных цитат',                  icon: '📚' },
-    time_lord:        { title: 'Time Lord',         desc: 'Запусти лето --срочно',                  icon: '⏰' },
-    profile_complete: { title: 'Identity',          desc: 'Заполни bio в профиле',                  icon: '📝' },
-    avatar_set:       { title: 'Face Reveal',       desc: 'Установи аватар',                        icon: '🖼️' },
-    social_linked:    { title: 'Network Node',      desc: 'Добавь соцсеть',                         icon: '🔗' },
-    hal_survivor:     { title: 'Survivor',          desc: 'Выживи 30 секунд против HAL',            icon: '🛡️' },
-    hal_legend:       { title: 'Legendary',         desc: 'Выживи 60 секунд против HAL',            icon: '👑' },
+    matrix:           { title: 'Red Pill',          desc: 'Запусти матрицу',                       icon: '💊' },
+    sudo_fail:        { title: 'Permission Denied', desc: 'Попробуй sudo',                         icon: '🔒' },
+    calculator:       { title: 'Human Calculator',  desc: 'Используй калькулятор',                 icon: '🧮' },
+    quote_master:     { title: 'Wise Words',        desc: 'Получи 5 разных цитат',                 icon: '📚' },
+    time_lord:        { title: 'Time Lord',         desc: 'Запусти лето --срочно',                 icon: '⏰' },
+    profile_complete: { title: 'Identity',          desc: 'Заполни bio в профиле',                 icon: '📝' },
+    avatar_set:       { title: 'Face Reveal',       desc: 'Установи аватар',                       icon: '🖼️' },
+    social_linked:    { title: 'Network Node',      desc: 'Добавь соцсеть',                        icon: '🔗' },
+    hal_survivor:     { title: 'Survivor',          desc: 'Выживи 30 секунд против HAL',           icon: '🛡️' },
+    hal_legend:       { title: 'Legendary',         desc: 'Выживи 60 секунд против HAL',           icon: '👑' },
+    whoami:           { title: 'WhoAmI',            desc: 'Кто я?',                                icon: '❓' },
+    login_yourself:   { title: 'EgorNetwork.Login("you");',   desc: 'Авторизоваться снова',  icon: '🔄' },
+
   };
 
   // Локальный кэш полученных ачивок (чтобы не дёргать Firestore каждый раз)
@@ -842,6 +845,9 @@
     'make me a sandwich': { out: ['<span style="color:#ff6b6b">What? Make it yourself.</span>'] },
     'sudo make me a sandwich': { out: ['<span style="color:rgba(40,200,64,.8)">Okay.</span>'] },
     ':(){ :|:& };:': { out: ['<span style="color:#ff6b6b">нет. просто нет.</span>'] },
+    'login egor': { out: ['<span style="color:rgba(40,200,64,.8)">User not found. Please try another user.</span>'] },
+    'login root': { out: ['<span style="color:rgba(40,200,64,.8)">The heck are you doing? Nope.</span>'] },
+    'login you': { out: ['<span style="color:rgba(40,200,64,.8)">How to login as you? You are you.</span>'] },
   };
 
   function addUser(text) {
@@ -953,6 +959,16 @@
       injected.forEach(function(r){ r.remove(); });
       injected = [];
       return;
+    }
+
+    // WhoAmI
+    if (lower === 'whoami') {
+      unlockAchievement('whoami');
+    }
+
+    // Login you
+    if (lower === 'login you') {
+      unlockAchievement('login_yourself');
     }
 
     // Calculator
