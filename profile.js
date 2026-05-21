@@ -51,6 +51,7 @@ const ALL_ACHIEVEMENTS = {
   hal_legend:       { title: 'Legendary',                   desc: '60с против HAL',        icon: '👑' },
   whoami:           { title: 'WhoAmI',                      desc: 'Кто я?',                icon: '❓' },
   login_yourself:   { title: 'EgorNetwork.Login("you");',   desc: 'Авторизоваться снова',  icon: '🔄' },
+  truckers:         { title: 'Где мой DVD диск?',           desc: 'Попробуйте запустить игру', icon: '🚚' },
 };
 
 // Было: 2 минуты. Стало: 3 минуты — запас на задержки сети
