@@ -481,10 +481,6 @@
   }
 
   async function unlockAchievement(key) {
-    // Achievement sound playback
-    var audio = new Audio('/sound/achievement_unlocked.wav');
-    audio.volume = 0.22;
-    audio.play().catch(e => console.warn('Audio play failed:', e));
     if (!ACHIEVEMENTS[key]) return;
     var unlocked = await getUnlocked();
     if (unlocked.indexOf(key) !== -1) return; // уже есть
@@ -493,6 +489,11 @@
     _localAchievements = unlocked;
     localStorage.setItem('egornet_achievements', JSON.stringify(unlocked));
     showAchievement(ACHIEVEMENTS[key]);
+
+    // Achievement sound playback
+    var audio = new Audio('/sound/achievement_unlocked.wav');
+    audio.volume = 0.22;
+    audio.play().catch(e => console.warn('Audio play failed:', e));
 
     // Сохраняем в Firestore если авторизован
     if (window.auth && window.auth.currentUser && window.db) {
