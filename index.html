@@ -430,21 +430,24 @@
     /* ── Achievements system (Firebase + localStorage fallback) ── */
   // Emoji only
   var ACHIEVEMENTS = {
-    first_command:    { title: 'Hello, World!',               desc: 'Первая команда',        icon: '👋' },
-    hal_encounter:    { title: "I'm Afraid, Dave",            desc: 'HAL активирован',       icon: '🔴' },
-    matrix:           { title: 'Red Pill',                    desc: 'Матрица',               icon: '💊' },
-    sudo_fail:        { title: 'Permission Denied',           desc: 'Попытка sudo',          icon: '🔒' },
-    calculator:       { title: 'Human Calculator',            desc: 'Калькулятор',           icon: '🧮' },
-    quote_master:     { title: 'Wise Words',                  desc: '5 разных цитат',        icon: '📚' },
-    time_lord:        { title: 'Time Lord',                   desc: 'лето --срочно',         icon: '⏰' },
-    profile_complete: { title: 'Identity',                    desc: 'Bio заполнено',         icon: '📝' },
-    avatar_set:       { title: 'Face Reveal',                 desc: 'Аватар установлен',     icon: '🖼️' },
-    social_linked:    { title: 'Network Node',                desc: 'Соцсеть добавлена',     icon: '🔗' },
-    hal_survivor:     { title: 'Survivor',                    desc: '30с против HAL',        icon: '🛡️' },
-    hal_legend:       { title: 'Legendary',                   desc: '60с против HAL',        icon: '👑' },
-    whoami:           { title: 'WhoAmI',                      desc: 'Кто я?',                icon: '❓' },
-    login_yourself:   { title: 'EgorNetwork.Login("you");',   desc: 'Авторизоваться снова',  icon: '🔄' },
-    truckers:         { title: 'Где мой DVD диск?',           desc: 'Попробуйте запустить игру', icon: '🚚' },
+    first_command:    { title: 'Hello, World!',               desc: 'Первая команда',                    icon: '👋' },
+    hal_encounter:    { title: "I'm Afraid, Dave",            desc: 'HAL активирован',                   icon: '🔴' },
+    matrix:           { title: 'Red Pill',                    desc: 'Матрица',                           icon: '💊' },
+    sudo_fail:        { title: 'Permission Denied',           desc: 'Попытка sudo',                      icon: '🔒' },
+    calculator:       { title: 'Human Calculator',            desc: 'Калькулятор',                       icon: '🧮' },
+    quote_master:     { title: 'Wise Words',                  desc: '5 разных цитат',                    icon: '📚' },
+    time_lord:        { title: 'Time Lord',                   desc: 'лето --срочно',                     icon: '⏰' },
+    profile_complete: { title: 'Identity',                    desc: 'Bio заполнено',                     icon: '📝' },
+    avatar_set:       { title: 'Face Reveal',                 desc: 'Аватар установлен',                 icon: '🖼️' },
+    social_linked:    { title: 'Network Node',                desc: 'Соцсеть добавлена',                 icon: '🔗' },
+    hal_survivor:     { title: 'Survivor',                    desc: '30с против HAL',                    icon: '🛡️' },
+    hal_legend:       { title: 'Legendary',                   desc: '60с против HAL',                    icon: '👑' },
+    whoami:           { title: 'WhoAmI',                      desc: 'Кто я?',                            icon: '❓' },
+    login_yourself:   { title: 'EgorNetwork.Login("you");',   desc: 'Авторизоваться снова',              icon: '🔄' },
+    truckers:         { title: 'Где мой DVD диск?',           desc: 'Попробуйте запустить игру',         icon: '🚚' },
+    wargames:         { title: 'Термоядерная война?',         desc: 'Хочешь ли ты поиграть в эту игру?', icon: '💣' },
+    help_all:         { title: 'I can\'t help to all people', desc: 'Мне не хватит сил помочь всем.',    icon: '🆘' },
+    nothing_free:     { title: 'Nothing is Free',             desc: 'Ничто не является бесплатным',      icon: '💸' }
   };
 
   // Локальный кэш полученных ачивок (чтобы не дёргать Firestore каждый раз)
@@ -478,6 +481,10 @@
   }
 
   async function unlockAchievement(key) {
+    // Achievement sound playback
+    var audio = new Audio('/sound/achievement_unlocked.wav');
+    audio.volume = 0.22;
+    audio.play().catch(e => console.warn('Audio play failed:', e));
     if (!ACHIEVEMENTS[key]) return;
     var unlocked = await getUnlocked();
     if (unlocked.indexOf(key) !== -1) return; // уже есть
@@ -746,6 +753,7 @@
       '&nbsp;&nbsp;weather &nbsp;&nbsp;&nbsp;— текущая погода',
       '&nbsp;&nbsp;matrix &nbsp;&nbsp;&nbsp;— красная таблетка',
     ]},
+    'help --all': { out: ['I can\'t help to all people. Sorry.'] },
     'wargames': { out: [
       '<span style="color:var(--accent)">GREETINGS PROFESSOR FALKEN.</span>',
       '',
@@ -853,6 +861,7 @@
     'login root': { out: ['<span style="color:rgba(40,200,64,.8)">The heck are you doing? Nope.</span>'] },
     'login you': { out: ['<span style="color:rgba(40,200,64,.8)">How to login as you? You are you.</span>'] },
     './дальнобойщики2': { out: ['<span style="color:rgba(168,179,204,.4)">Вставьте CD диск с игрой в привод CD/DVD.</span>'] },
+    'free -h': { out: ['Sorry, there is nothing free in our world...']},
   };
 
   function addUser(text) {
@@ -979,6 +988,21 @@
     // Дальнобойщики 2
     if (lower === './дальнобойщики2') {
       unlockAchievement('truckers');
+    }
+
+    // Wargames
+    if (lower === 'wargames' || lower === 'joshua') {
+      unlockAchievement('wargames');
+    }
+    
+    // Help --all
+    if (lower === 'help --all') {
+      unlockAchievement('help_all');
+    }
+
+    // free -h
+    if (lower === 'free -h') {
+      unlockAchievement('nothing_free');
     }
 
     // Calculator
