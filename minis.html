@@ -79,9 +79,11 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
 </style>
 
 <style>
-#saturnIntro{position:fixed;inset:0;background:radial-gradient(circle,#0b1028,#000);z-index:50000;display:flex;align-items:center;justify-content:center}
-#introCanvas{width:100%;height:100%}
-.skipIntro{position:absolute;bottom:20px;right:20px;color:#fff;border:1px solid #00ffcc;padding:8px;cursor:pointer}
+#saturnIntro{position:fixed;inset:0;z-index:50000;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#saturnIntro::before{content:"";position:absolute;inset:0;background:radial-gradient(circle,#0b1028,#000);opacity:1;transition:opacity .5s ease}
+#saturnIntro.is-ending::before{opacity:0}
+#introCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:1}
+.skipIntro{position:fixed;right:max(20px,env(safe-area-inset-right));bottom:max(20px,env(safe-area-inset-bottom));z-index:3;color:#fff;border:1px solid #00ffcc;padding:8px;cursor:pointer}
 </style>
 
 </head>
@@ -90,7 +92,7 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
 <div id="saturnIntro">
 <canvas id="introCanvas"></canvas>
 <div class="skipIntro" onclick="endSaturnIntro()">SKIP</div>
-<audio id="saturnBoot" src="/sound/saturn_startup.mp3"></audio>
+<audio id="saturnBoot" src="sound/saturn_startup.mp3"></audio>
 </div>
 
 <div class="scanlines"></div>
@@ -172,8 +174,8 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
 
 </div><!-- /game-wrapper -->
 
-<script src="/libs/three.min.js"></script>
-<script src="/libs/GLTFLoader.js"></script>
+<script src="libs/three.min.js"></script>
+<script src="libs/GLTFLoader.js"></script>
 <script>
 'use strict';
 
@@ -1057,10 +1059,11 @@ const r=new THREE.WebGLRenderer({canvas:introCanvas,alpha:true});
 r.setSize(innerWidth,innerHeight);
 scene.add(new THREE.AmbientLight(0xffffff,1.5));
 let shards=[];
+let introEnding = false;
 const loader = new THREE.GLTFLoader();
 
 loader.load(
-    "/models/EgorNetwork.glb",
+    "models/EgorNetwork.glb",
     function(gltf){
 
         const logo = gltf.scene;
@@ -1102,6 +1105,7 @@ loader.load(
 function animateFragments(logo){
 
     function animate(){
+        if(introEnding) return;
         requestAnimationFrame(animate);
 
         const elapsed = Date.now() - logo.userData.startTime;
@@ -1141,12 +1145,19 @@ audio.play().catch(()=>{});
 let startTime = Date.now();
 function anim(){
  const elapsed = Date.now() - startTime;
+ if(introEnding) return;
  r.render(scene, cam);
  if(elapsed < 4500) requestAnimationFrame(anim);
  else endSaturnIntro();
 }
 anim();
-window.endSaturnIntro=function(){intro.style.opacity='0';setTimeout(()=>intro.remove(),700);}
+window.endSaturnIntro=function(){
+ if(introEnding || !intro) return;
+ introEnding = true;
+ intro.classList.add('is-ending');
+ intro.style.pointerEvents='none';
+ setTimeout(()=>intro.remove(),500);
+}
 })();
 </script>
 
