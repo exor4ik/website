@@ -18,6 +18,12 @@ const THEMES = [
   { id:'minimal',   label:'Minimal',   colors:['#e8ecff','#a8b3cc'] },
   { id:'sakura',    label:'Sakura',    colors:['#ff85b3','#ffb3d1'] },
   { id:'ocean',     label:'Ocean',     colors:['#00d4ff','#0057ff'] },
+  { id:'ember',     label:'Ember',     colors:['#ff6a3d','#ffd166'] },
+  { id:'forest',    label:'Forest',    colors:['#34d399','#bef264'] },
+  { id:'sunset',    label:'Sunset',    colors:['#ff6b6b','#ffd166'] },
+  { id:'arctic',    label:'Arctic',    colors:['#b6f0ff','#5b86e5'] },
+  { id:'graphite',  label:'Graphite',  colors:['#d9e2ec','#9aa5b1'] },
+  { id:'plasma',    label:'Plasma',    colors:['#ff4db8','#c9a9ff'] },
 ];
 
 const TECH_SUGGESTIONS = [
