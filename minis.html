@@ -23,7 +23,7 @@ body{background-image:linear-gradient(rgba(0,255,180,.025) 1px,transparent 1px),
 
 .scanlines{position:fixed;inset:0;background:repeating-linear-gradient(to bottom,transparent 0,transparent 2px,rgba(0,0,0,.18) 2px,rgba(0,0,0,.18) 4px);pointer-events:none;z-index:9999;opacity:.5;}
 
-header{text-align:center;padding:24px 16px 16px;border-bottom:1px solid var(--dim);position:relative;}
+header{text-align:center;padding:24px 16px 16px;border-bottom:1px solid var(--dim);position:relative;z-index:3;}
 header::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:80%;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);}
 header h1{font-size:clamp(1.4rem,4vw,2.6rem);letter-spacing:.3em;color:var(--cyan);text-shadow:var(--gcyan);animation:flicker 6s infinite;}
 header p{color:var(--dim);font-size:.7rem;letter-spacing:.2em;margin-top:4px;text-transform:uppercase;}
@@ -32,150 +32,147 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
 @keyframes flicker{0%,96%,100%{opacity:1}97%{opacity:.6}98%{opacity:.9}99%{opacity:.5}}
 
 /* ============================================================ */
-/*  GAME CATALOG (консольное меню)                              */
+/*  GAME CATALOG (только 3D картриджи + info)                   */
 /* ============================================================ */
-.game-catalog{max-width:1100px;margin:0 auto;padding:32px 20px 40px;}
-.catalog-header{text-align:center;margin-bottom:28px;}
-.catalog-header h2{font-size:clamp(1.2rem,3vw,1.8rem);color:var(--cyan);letter-spacing:.3em;text-shadow:var(--gcyan);margin-bottom:6px;}
-.catalog-header p{color:var(--dim);font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;}
-.catalog-hint{color:var(--dim);font-size:.65rem;letter-spacing:.12em;margin-top:18px;opacity:.7;}
-
-.catalog-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-  gap:20px;
+#menu-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
 }
 
-.game-card{
-  position:relative;
-  display:flex;
-  flex-direction:column;
-  background:linear-gradient(145deg,rgba(7,7,24,.95),rgba(15,25,35,.85));
-  border:1px solid var(--dim);
-  padding:20px;
-  cursor:pointer;
-  transition:all .25s ease;
-  overflow:hidden;
-  outline:none;
-  opacity:0;
-  transform:translateY(10px);
-  animation:cardIn .5s ease forwards;
-}
-.game-card:nth-child(1){animation-delay:.05s;}
-.game-card:nth-child(2){animation-delay:.15s;}
-.game-card:nth-child(3){animation-delay:.25s;}
-
-@keyframes cardIn{to{opacity:1;transform:translateY(0);}}
-
-.game-card::before{
-  content:'';
-  position:absolute;
-  inset:0;
-  background:linear-gradient(135deg,transparent 30%,rgba(0,255,204,.04) 60%,transparent 90%);
-  opacity:0;
-  transition:opacity .3s;
+#cartridge-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  cursor: pointer;
 }
 
-.game-card:hover,.game-card:focus-visible{
-  border-color:var(--cyan);
-  box-shadow:var(--gcyan),0 8px 24px rgba(0,255,204,.15);
-  transform:translateY(-3px);
-}
-.game-card:hover::before,.game-card:focus-visible::before{opacity:1;}
-.game-card:active{transform:translateY(-1px);}
-
-.card-top{display:flex;align-items:flex-start;gap:14px;margin-bottom:14px;}
-.card-icon{
-  font-size:2.4rem;
-  color:var(--cyan);
-  text-shadow:var(--gcyan);
-  line-height:1;
-  min-width:48px;
-  text-align:center;
-}
-.card-info{flex:1;}
-.card-info h3{
-  font-size:1rem;
-  color:var(--cyan);
-  letter-spacing:.18em;
-  text-shadow:var(--gcyan);
-  margin-bottom:6px;
-}
-.card-info p{
-  font-size:.7rem;
-  color:var(--text);
-  letter-spacing:.08em;
-  line-height:1.5;
-  opacity:.8;
+.game-catalog {
+  position: relative;
+  z-index: 3;
+  pointer-events: none;
+  text-align: center;
+  padding: 40px 20px 0;
 }
 
-.card-footer{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  margin-top:auto;
-  padding-top:14px;
-  border-top:1px solid rgba(42,80,69,.4);
-}
-.card-best{font-size:.68rem;color:var(--dim);letter-spacing:.1em;}
-.card-best b{color:var(--yellow);text-shadow:0 0 6px rgba(255,238,0,.4);}
-.card-play{
-  background:transparent;
-  border:1px solid var(--cyan);
-  color:var(--cyan);
-  font-family:'Courier New',monospace;
-  font-size:.72rem;
-  letter-spacing:.2em;
-  padding:6px 14px;
-  cursor:pointer;
-  transition:all .2s;
-  box-shadow:var(--gcyan);
-}
-.game-card:hover .card-play,.game-card:focus-visible .card-play{
-  background:var(--cyan);
-  color:#040410;
+.catalog-header { margin-bottom: 24px; }
+
+.catalog-header h2 {
+  font-size: clamp(1.4rem, 4vw, 2.4rem);
+  color: #aaddff;
+  letter-spacing: 0.3em;
+  text-shadow:
+    0 0 15px rgba(100, 200, 255, 0.8),
+    0 0 30px rgba(50, 150, 255, 0.5);
+  margin-bottom: 8px;
 }
 
-/* Активная карточка при keyboard-навигации */
-.game-card.focused{
-  border-color:var(--pink);
-  box-shadow:var(--gpink);
+.catalog-header p {
+  color: #6699bb;
+  font-size: 0.85rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+.catalog-hint {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #5599cc;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  opacity: 0.7;
+  text-shadow: 0 0 10px rgba(50, 100, 150, 0.5);
+  text-align: center;
+  width: 90%;
+}
+
+/* Инфо-блок выбранного картриджа */
+.selected-info {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 4;
+  background: rgba(5, 15, 30, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 12px 24px;
+  border: 1px solid rgba(100, 200, 255, 0.3);
+  border-radius: 4px;
+  min-width: 280px;
+}
+.selected-info.visible { opacity: 1; }
+
+.selected-info h3 {
+  font-size: 1.3rem;
+  color: #aaddff;
+  letter-spacing: 0.25em;
+  text-shadow: 0 0 15px rgba(100, 200, 255, 0.9);
+  margin-bottom: 6px;
+}
+.selected-info p {
+  color: #7799bb;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  margin-bottom: 6px;
+}
+.selected-info .best-score {
+  color: #ffcc44;
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 10px rgba(255, 200, 50, 0.6);
+}
+
+/* Мобильный список (когда 3D не показывается) */
+.mobile-game-list {
+  display: none;
+  position: relative;
+  z-index: 5;
+  pointer-events: auto;
+  max-width: 420px;
+  margin: 20px auto;
+  padding: 0 20px;
+}
+.mobile-game-btn {
+  display: block;
+  width: 100%;
+  padding: 18px;
+  margin-bottom: 10px;
+  background: linear-gradient(145deg, rgba(10, 30, 70, 0.8), rgba(20, 60, 120, 0.7));
+  border: 2px solid rgba(100, 180, 255, 0.4);
+  color: #aaddff;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+}
+.mobile-game-btn:hover, .mobile-game-btn:active {
+  background: linear-gradient(145deg, rgba(20, 60, 140, 0.9), rgba(40, 100, 180, 0.8));
+  border-color: rgba(150, 220, 255, 0.7);
+  transform: scale(1.03);
 }
 
 /* ============================================================ */
 /*  GAME PANEL                                                  */
 /* ============================================================ */
-.game-wrapper{max-width:920px;margin:0 auto;padding:0 12px 40px;}
-.game-panel{display:none;}
+.game-wrapper{max-width:920px;margin:0 auto;padding:0 12px 40px;position:relative;z-index:2;}
+.game-panel{display:none;background:rgba(4,4,16,0.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:16px;border:1px solid var(--dim);border-radius:2px;}
 .game-panel.active{display:block;animation:panelIn .35s ease;}
 @keyframes panelIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 
-.panel-nav{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  margin-bottom:10px;
-  padding:6px 0;
-  border-bottom:1px solid rgba(42,80,69,.4);
-}
-.back-btn{
-  background:transparent;
-  border:1px solid var(--dim);
-  color:var(--dim);
-  font-family:'Courier New',monospace;
-  font-size:.7rem;
-  letter-spacing:.15em;
-  padding:6px 12px;
-  cursor:pointer;
-  transition:all .2s;
-}
+.panel-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:6px 0;border-bottom:1px solid rgba(42,80,69,.4);}
+.back-btn{background:transparent;border:1px solid var(--dim);color:var(--dim);font-family:'Courier New',monospace;font-size:.7rem;letter-spacing:.15em;padding:6px 12px;cursor:pointer;transition:all .2s;}
 .back-btn:hover{border-color:var(--pink);color:var(--pink);text-shadow:var(--gpink);}
-.panel-title{
-  color:var(--cyan);
-  font-size:.75rem;
-  letter-spacing:.2em;
-  text-shadow:var(--gcyan);
-}
+.panel-title{color:var(--cyan);font-size:.75rem;letter-spacing:.2em;text-shadow:var(--gcyan);}
 
 .hud{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid var(--dim);margin-bottom:8px;font-size:.75rem;letter-spacing:.1em;}
 .hud span b{color:var(--cyan);font-size:1em;}
@@ -202,10 +199,13 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
 .status-warn{color:var(--yellow) !important;text-shadow:0 0 8px var(--yellow);}
 .status-danger{color:var(--pink) !important;text-shadow:var(--gpink);}
 
-@media (max-width:600px){
-  .catalog-grid{grid-template-columns:1fr;}
-  .game-card{padding:16px;}
-  .card-icon{font-size:2rem;min-width:40px;}
+/* Мобильный адаптив */
+@media (max-width: 700px) {
+  #cartridge-canvas { display: none; }
+  .mobile-game-list { display: block; }
+  .catalog-hint { display: none; }
+  .selected-info { display: none; }
+  .game-catalog { padding-bottom: 20px; }
 }
 </style>
 
@@ -215,125 +215,12 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
 #saturnIntro.is-ending::before{opacity:0}
 #introCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:1}
 .skipIntro{position:fixed;right:max(20px,env(safe-area-inset-right));bottom:max(20px,env(safe-area-inset-bottom));z-index:3;color:#fff;border:1px solid #00ffcc;padding:8px;cursor:pointer}
-
-/* ============================================================ */
-/*  PS2 STYLE MAIN MENU                                          */
-/* ============================================================ */
-#menu-canvas {
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-}
-
-/* Делаем header поверх, чтобы было видно */
-header { position: relative; z-index: 3; }
-
-/* Каталог поверх 3D сцены */
-.game-catalog {
-  position: relative;
-  z-index: 2;
-  pointer-events: none;
-}
-.game-catalog > * { pointer-events: auto; }
-
-/* Полупрозрачные карточки в стиле PS2 */
-.game-card {
-  background: linear-gradient(145deg,
-    rgba(10, 30, 70, 0.55),
-    rgba(20, 60, 120, 0.45));
-  backdrop-filter: blur(12px) saturate(1.2);
-  -webkit-backdrop-filter: blur(12px) saturate(1.2);
-  border: 1px solid rgba(100, 180, 255, 0.3);
-  box-shadow: 
-    inset 0 1px 0 rgba(180, 220, 255, 0.15),
-    inset 0 -1px 0 rgba(0, 30, 80, 0.3),
-    0 4px 20px rgba(0, 100, 200, 0.2);
-}
-
-.game-card:hover, .game-card:focus-visible {
-  background: linear-gradient(145deg,
-    rgba(20, 60, 140, 0.7),
-    rgba(40, 100, 180, 0.55));
-  border-color: rgba(150, 220, 255, 0.7);
-  box-shadow:
-    inset 0 1px 0 rgba(220, 240, 255, 0.3),
-    0 0 30px rgba(100, 180, 255, 0.5),
-    0 8px 32px rgba(0, 150, 255, 0.4);
-}
-
-.game-card .card-play {
-  border-color: rgba(150, 220, 255, 0.7);
-  color: #88ddff;
-  text-shadow: 0 0 8px rgba(100, 200, 255, 0.6);
-}
-
-.game-card:hover .card-play, .game-card:focus-visible .card-play {
-  background: rgba(100, 200, 255, 0.9);
-  color: #041028;
-  text-shadow: none;
-}
-
-.game-card .card-info h3 {
-  color: #88ddff;
-  text-shadow: 0 0 10px rgba(100, 200, 255, 0.6);
-}
-
-.game-card .card-info p {
-  color: #cce8ff;
-  opacity: 0.85;
-}
-
-.game-card .card-icon {
-  color: #88ddff;
-  text-shadow: 0 0 12px rgba(100, 200, 255, 0.8);
-}
-
-.catalog-header h2 {
-  color: #88ddff;
-  text-shadow: 0 0 15px rgba(100, 200, 255, 0.8),
-               0 0 30px rgba(50, 150, 255, 0.5);
-}
-
-.catalog-header p { color: #5599cc; }
-
-.catalog-hint { color: #5599cc; }
-
-.game-card .card-best { color: #5599cc; }
-.game-card .card-best b { color: #ffcc44; text-shadow: 0 0 8px rgba(255, 200, 50, 0.6); }
-
-.game-card .card-footer { border-top-color: rgba(100, 180, 255, 0.25); }
-
-/* Игровые панели — непрозрачный фон */
-.game-wrapper {
-  position: relative;
-  z-index: 2;
-}
-.game-panel {
-  background: rgba(4, 4, 16, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  padding: 16px;
-  border: 1px solid var(--dim);
-  border-radius: 2px;
-}
-
-/* Scanlines поверх всего */
-.scanlines { z-index: 9999; }
-
-/* Адаптация для мобильных */
-@media (max-width: 600px) {
-  .game-card {
-    background: linear-gradient(145deg,
-      rgba(10, 30, 70, 0.7),
-      rgba(20, 60, 120, 0.6));
-  }
-}
 </style>
 
 </head>
 <body>
 <canvas id="menu-canvas"></canvas>
+<canvas id="cartridge-canvas"></canvas>
 
 <div id="saturnIntro">
 <canvas id="introCanvas"></canvas>
@@ -349,92 +236,37 @@ header { position: relative; z-index: 3; }
   <a href="index.html" class="back-to-index">BACK TO MAIN</a>
 </header>
 
-<!-- ============ КАТАЛОГ ИГР ============ -->
+<!-- ============ КАТАЛОГ ============ -->
 <div class="game-catalog" id="game-catalog">
   <div class="catalog-header">
     <h2>SELECT YOUR GAME</h2>
-    <p>3 TITLES AVAILABLE — CHOOSE WISELY</p>
+    <p>INSERT CARTRIDGE TO PLAY</p>
   </div>
 
-  <div class="catalog-grid">
-    <div class="game-card" tabindex="0" data-game="tetris" onclick="openGame('tetris')">
-      <div class="card-top">
-        <div class="card-icon">▓</div>
-        <div class="card-info">
-          <h3>3D TETRIS</h3>
-          <p>CLASSIC BLOCK PUZZLE REIMAGINED IN THREE DIMENSIONS</p>
-        </div>
-      </div>
-      <div class="card-footer">
-        <div class="card-best">BEST: <b id="best-tetris">0</b></div>
-        <div class="card-play">► PLAY</div>
-      </div>
-    </div>
-
-    <div class="game-card" tabindex="0" data-game="runner" onclick="openGame('runner')">
-      <div class="card-top">
-        <div class="card-icon">▓</div>
-        <div class="card-info">
-          <h3>PARKOUR RUNNER</h3>
-          <p>INFINITE CUBE RUNNER IN 3D SPACE — DON'T FALL</p>
-        </div>
-      </div>
-      <div class="card-footer">
-        <div class="card-best">BEST: <b id="best-runner-card">0</b>m</div>
-        <div class="card-play">► PLAY</div>
-      </div>
-    </div>
-
-    <div class="game-card" tabindex="0" data-game="snake" onclick="openGame('snake')">
-      <div class="card-top">
-        <div class="card-icon">▓</div>
-        <div class="card-info">
-          <h3>CYBER SNAKE</h3>
-          <p>DATA STREAM IN THE GRID — COLLECT POWER-UPS</p>
-        </div>
-      </div>
-      <div class="card-footer">
-        <div class="card-best">BEST: <b id="best-snake-card">0</b></div>
-        <div class="card-play">► PLAY</div>
-      </div>
-    </div>
-
-    <div class="game-card" tabindex="0" data-game="starfighter" onclick="openGame('starfighter')">
-      <div class="card-top">
-        <div class="card-icon">🚀</div>
-        <div class="card-info">
-          <h3>STARFIGHTER</h3>
-          <p>3D SPACE SHOOTER — DESTROY ENEMY WAVES IN THE VOID</p>
-        </div>
-      </div>
-      <div class="card-footer">
-        <div class="card-best">BEST: <b id="best-starfighter">0</b></div>
-        <div class="card-play">► PLAY</div>
-      </div>
-    </div>
-
-    <div class="game-card" tabindex="0" data-game="asteroid" onclick="openGame('asteroid')">
-      <div class="card-top">
-        <div class="card-icon">🛡️</div>
-        <div class="card-info">
-          <h3>ASTEROID DEFENSE</h3>
-          <p>ORBITAL TURRET — PROTECT THE PLANET FROM INCOMING THREATS</p>
-        </div>
-      </div>
-      <div class="card-footer">
-        <div class="card-best">BEST: <b id="best-asteroid">0</b></div>
-        <div class="card-play">► PLAY</div>
-      </div>
-    </div>
+  <!-- Мобильный список (виден только на < 700px) -->
+  <div class="mobile-game-list">
+    <button class="mobile-game-btn" onclick="openGame('tetris')">3D TETRIS</button>
+    <button class="mobile-game-btn" onclick="openGame('runner')">PARKOUR RUNNER</button>
+    <button class="mobile-game-btn" onclick="openGame('snake')">CYBER SNAKE</button>
+    <button class="mobile-game-btn" onclick="openGame('starfighter')">STARFIGHTER</button>
+    <button class="mobile-game-btn" onclick="openGame('asteroid')">ASTEROID DEFENSE</button>
   </div>
 
-  <div class="catalog-hint">TIP: USE ↑ ↓ ← → TO NAVIGATE &nbsp;|&nbsp; ENTER TO PLAY &nbsp;|&nbsp; ESC TO RETURN</div>
+  <div class="catalog-hint">
+    🖱️ HOVER & CLICK A CARTRIDGE &nbsp;|&nbsp; ⌨️ ← → + ENTER &nbsp;|&nbsp; ESC TO RETURN FROM GAME
+  </div>
+</div>
+
+<!-- Инфо-блок выбранного картриджа -->
+<div class="selected-info" id="selected-info">
+  <h3 id="sel-title"></h3>
+  <p id="sel-desc"></p>
+  <div class="best-score" id="sel-best"></div>
 </div>
 
 <!-- ============ ИГРОВЫЕ ПАНЕЛИ ============ -->
 <div class="game-wrapper">
 
-  <!-- ===== TETRIS ===== -->
   <div id="panel-tetris" class="game-panel">
     <div class="panel-nav">
       <button class="back-btn" onclick="backToCatalog()">◄ BACK TO GAMES</button>
@@ -463,7 +295,6 @@ header { position: relative; z-index: 3; }
     <div class="hint">← → MOVE &nbsp;|&nbsp; ↑ / Z ROTATE &nbsp;|&nbsp; ↓ SOFT DROP &nbsp;|&nbsp; SPACE HARD DROP &nbsp;|&nbsp; C HOLD PIECE &nbsp;|&nbsp; ESC BACK</div>
   </div>
 
-  <!-- ===== RUNNER ===== -->
   <div id="panel-runner" class="game-panel">
     <div class="panel-nav">
       <button class="back-btn" onclick="backToCatalog()">◄ BACK TO GAMES</button>
@@ -486,7 +317,6 @@ header { position: relative; z-index: 3; }
     <div class="hint">SPACE / CLICK / ↑ — JUMP &nbsp;|&nbsp; DOUBLE JUMP ALLOWED &nbsp;|&nbsp; ESC BACK</div>
   </div>
 
-  <!-- ===== SNAKE ===== -->
   <div id="panel-snake" class="game-panel">
     <div class="panel-nav">
       <button class="back-btn" onclick="backToCatalog()">◄ BACK TO GAMES</button>
@@ -510,7 +340,6 @@ header { position: relative; z-index: 3; }
     <div class="hint">WASD / ← → ↑ ↓ — MOVE &nbsp;|&nbsp; COLLECT POWER-UPS: SPD(red) GHOST(blue) MULTI(gold) &nbsp;|&nbsp; ESC BACK</div>
   </div>
 
-    <!-- ===== STARFIGHTER ===== -->
   <div id="panel-starfighter" class="game-panel">
     <div class="panel-nav">
       <button class="back-btn" onclick="backToCatalog()">◄ BACK TO GAMES</button>
@@ -534,7 +363,6 @@ header { position: relative; z-index: 3; }
     <div class="hint">MOUSE — AIM &nbsp;|&nbsp; SPACE / CLICK — FIRE &nbsp;|&nbsp; COLLECT GREEN RINGS FOR POWER-UPS &nbsp;|&nbsp; ESC BACK</div>
   </div>
 
-  <!-- ===== ASTEROID DEFENSE ===== -->
   <div id="panel-asteroid" class="game-panel">
     <div class="panel-nav">
       <button class="back-btn" onclick="backToCatalog()">◄ BACK TO GAMES</button>
@@ -568,16 +396,18 @@ header { position: relative; z-index: 3; }
 // ============================================================
 let currentTab = null;
 let tetrisGame = null, runnerGame = null, snakeGame = null, starfighterGame = null, asteroidDefenseGame = null;
+let menuScene = null, cartridgeMenu = null;
 
 function openGame(name) {
   document.getElementById('game-catalog').style.display = 'none';
+  document.getElementById('selected-info').classList.remove('visible');
   document.querySelectorAll('.game-panel').forEach(p => p.classList.remove('active'));
   const panel = document.getElementById('panel-' + name);
   panel.classList.add('active');
   currentTab = name;
 
-  // Остановить 3D-меню (освобождаем GPU для игры)
   if (menuScene) menuScene.stop();
+  if (cartridgeMenu) cartridgeMenu.stop();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -599,46 +429,17 @@ function backToCatalog() {
   currentTab = null;
   document.querySelectorAll('.game-panel').forEach(p => p.classList.remove('active'));
 
-  refreshBestCards();
-
   const catalog = document.getElementById('game-catalog');
   catalog.style.display = 'block';
-  document.querySelectorAll('.game-card').forEach(card => {
-    card.style.animation = 'none';
-    void card.offsetWidth;
-    card.style.animation = '';
-  });
 
-  // Возобновить 3D-меню
   if (menuScene) menuScene.resume();
+  if (cartridgeMenu) {
+    cartridgeMenu.resume();
+    cartridgeMenu.updateBestScores();
+    cartridgeMenu.selectByKeyboard(0);
+  }
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function refreshBestCards() {
-  const tBest = parseInt(localStorage.getItem('tBest') || '0');
-  const rBest = parseInt(localStorage.getItem('rBest') || '0');
-  const sBest = parseInt(localStorage.getItem('sHigh') || '0');
-  const sfBest = parseInt(localStorage.getItem('sfBest') || '0');
-  const adBest = parseInt(localStorage.getItem('adBest') || '0');
-  const elT = document.getElementById('best-tetris');
-  const elR = document.getElementById('best-runner-card');
-  const elS = document.getElementById('best-snake-card');
-  const elSF = document.getElementById('best-starfighter');
-  const elAD = document.getElementById('best-asteroid');
-  if (elT) elT.textContent = tBest.toLocaleString();
-  if (elR) elR.textContent = rBest;
-  if (elS) elS.textContent = sBest;
-  if (elSF) elSF.textContent = sfBest.toLocaleString();
-  if (elAD) elAD.textContent = adBest.toLocaleString();
-}
-
-// Keyboard-навигация по каталогу
-let focusedCardIndex = 0;
-function updateCardFocus() {
-  const cards = document.querySelectorAll('.game-card');
-  cards.forEach((c, i) => c.classList.toggle('focused', i === focusedCardIndex));
-  if (cards[focusedCardIndex]) cards[focusedCardIndex].focus({ preventScroll: true });
 }
 
 // ============================================================
@@ -690,6 +491,427 @@ function clearGroup(grp) {
 }
 
 // ============================================================
+//  3D CARTRIDGE MENU (только 3D картриджи)
+// ============================================================
+class CartridgeMenu {
+  constructor() {
+    this.cv = document.getElementById('cartridge-canvas');
+    this.scene = new THREE.Scene();
+    this.scene.background = null;
+
+    this.W = window.innerWidth;
+    this.H = window.innerHeight;
+    this.cv.width = this.W;
+    this.cv.height = this.H;
+
+    this.cam = new THREE.PerspectiveCamera(55, this.W / this.H, 0.1, 100);
+    this.cam.position.set(0, 3, 9);
+    this.cam.lookAt(0, 2.5, 0);
+
+    this.rdr = new THREE.WebGLRenderer({
+      canvas: this.cv,
+      antialias: true,
+      alpha: true,
+    });
+    this.rdr.setSize(this.W, this.H);
+    this.rdr.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    this.rdr.setClearColor(0x000000, 0);
+
+    this.scene.add(new THREE.AmbientLight(0x4466aa, 0.55));
+    const key = new THREE.DirectionalLight(0xaaccff, 0.85);
+    key.position.set(5, 10, 8);
+    this.scene.add(key);
+    const fill = new THREE.DirectionalLight(0xff88aa, 0.3);
+    fill.position.set(-8, 5, -3);
+    this.scene.add(fill);
+    const rim = new THREE.PointLight(0x88ddff, 1.2, 20);
+    rim.position.set(0, 6, -4);
+    this.scene.add(rim);
+
+    this.configs = [
+      {
+        type: 'nes', game: 'tetris',
+        bodyColor: 0xbcbcbc, labelColor: '#cc0022', labelAccent: '#ffdd44',
+        title: '3D TETRIS', subtitle: 'EGOR-NET', tag: '8-BIT',
+        desc: 'CLASSIC BLOCK PUZZLE IN 3D', bestKey: 'tBest',
+      },
+      {
+        type: 'genesis', game: 'runner',
+        bodyColor: 0x111111, labelColor: '#000000', labelAccent: '#ffcc00',
+        title: 'PARKOUR\nRUNNER', subtitle: 'MEGA-EGOR', tag: '16-BIT',
+        desc: 'INFINITE CUBE RUNNER', bestKey: 'rBest',
+      },
+      {
+        type: 'gameboy', game: 'snake',
+        bodyColor: 0xc8c4b8, labelColor: '#00aa44', labelAccent: '#ffffff',
+        title: 'CYBER\nSNAKE', subtitle: 'POCKET-NET', tag: 'DMG',
+        desc: 'DATA STREAM IN THE GRID', bestKey: 'sHigh',
+      },
+      {
+        type: 'snes', game: 'starfighter',
+        bodyColor: 0xd4d0c8, labelColor: '#1a3a88', labelAccent: '#ffdd00',
+        title: 'STARFIGHTER', subtitle: 'SUPER-NET', tag: '32-BIT',
+        desc: '3D SPACE SHOOTER', bestKey: 'sfBest',
+      },
+      {
+        type: 'n64', game: 'asteroid',
+        bodyColor: 0x555555, labelColor: '#aa0066', labelAccent: '#00ffcc',
+        title: 'ASTEROID\nDEFENSE', subtitle: 'N64-NET', tag: '64-BIT',
+        desc: 'ORBITAL TURRET DEFENSE', bestKey: 'adBest',
+      },
+    ];
+
+    this.cartridges = [];
+    this._buildCartridges();
+
+    this.raycaster = new THREE.Raycaster();
+    this.mouse = new THREE.Vector2(-999, -999);
+    this.hoveredIndex = -1;
+    this.selectedIndex = 0;
+
+    this._onMove = e => this._handleMove(e);
+    this._onClick = e => this._handleClick(e);
+    window.addEventListener('mousemove', this._onMove);
+    window.addEventListener('click', this._onClick);
+    window.addEventListener('resize', () => this._onResize());
+
+    this.time = 0;
+    this.running = true;
+    this.raf = null;
+    this.lastT = performance.now();
+    this._loop(this.lastT);
+
+    this.updateBestScores();
+    this.selectByKeyboard(0);
+  }
+
+  _buildCartridges() {
+    const count = this.configs.length;
+    const spacing = 2.4;
+    const totalWidth = (count - 1) * spacing;
+    const startX = -totalWidth / 2;
+
+    this.configs.forEach((cfg, i) => {
+      const cart = this._createCartridge(cfg);
+      cart.group.position.set(startX + i * spacing, 2.2, 0);
+      cart.group.rotation.x = -0.15;
+      cart.group.rotation.y = (i - (count - 1) / 2) * 0.08;
+      this.scene.add(cart.group);
+      cart.targetY = 2.2;
+      cart.targetZ = 0;
+      cart.targetScale = 1;
+      cart.baseY = 2.2;
+      cart.phase = Math.random() * Math.PI * 2;
+      this.cartridges.push(cart);
+    });
+  }
+
+  _createCartridge(cfg) {
+    const group = new THREE.Group();
+
+    let bodyGeo, w, h, d;
+    switch (cfg.type) {
+      case 'nes': w = 1.7; h = 1.2; d = 0.22; break;
+      case 'genesis': w = 1.9; h = 1.35; d = 0.25; break;
+      case 'gameboy': w = 1.3; h = 1.15; d = 0.18; break;
+      case 'snes': w = 1.8; h = 1.25; d = 0.24; break;
+      case 'n64': w = 1.9; h = 1.45; d = 0.3; break;
+    }
+    bodyGeo = new THREE.BoxGeometry(w, h, d);
+
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: cfg.bodyColor, metalness: 0.3, roughness: 0.55,
+    });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    group.add(body);
+
+    if (cfg.type === 'nes' || cfg.type === 'snes') {
+      const notchGeo = new THREE.BoxGeometry(w * 0.6, 0.08, d * 1.05);
+      const notch = new THREE.Mesh(notchGeo, bodyMat);
+      notch.position.set(0, h / 2 + 0.04, 0);
+      group.add(notch);
+    }
+
+    const connGeo = new THREE.BoxGeometry(w * 0.75, 0.15, d * 0.7);
+    const connMat = new THREE.MeshStandardMaterial({
+      color: 0x222222, metalness: 0.8, roughness: 0.4,
+    });
+    const conn = new THREE.Mesh(connGeo, connMat);
+    conn.position.set(0, -h / 2 - 0.075, 0);
+    group.add(conn);
+
+    const pinsGeo = new THREE.BoxGeometry(w * 0.65, 0.08, d * 0.5);
+    const pinsMat = new THREE.MeshStandardMaterial({
+      color: 0xccaa33, metalness: 0.95, roughness: 0.2,
+      emissive: 0x443300, emissiveIntensity: 0.3,
+    });
+    const pins = new THREE.Mesh(pinsGeo, pinsMat);
+    pins.position.set(0, -h / 2 - 0.17, 0);
+    group.add(pins);
+
+    const labelTexture = this._createLabelTexture(cfg, 0);
+    const labelW = w * 0.88;
+    const labelH = h * 0.6;
+    const labelGeo = new THREE.PlaneGeometry(labelW, labelH);
+    const labelMat = new THREE.MeshBasicMaterial({ map: labelTexture });
+    const label = new THREE.Mesh(labelGeo, labelMat);
+    label.position.set(0, h * 0.05, d / 2 + 0.002);
+    group.add(label);
+
+    for (let side of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        const grooveGeo = new THREE.BoxGeometry(0.02, 0.15, d * 0.7);
+        const grooveMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.7 });
+        const groove = new THREE.Mesh(grooveGeo, grooveMat);
+        groove.position.set(side * (w / 2 - 0.04), -h * 0.25 + i * 0.18, 0);
+        group.add(groove);
+      }
+    }
+
+    const screwGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.02, 8);
+    const screwMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.9, roughness: 0.3 });
+    const screwPositions = [
+      [-w * 0.42, h * 0.42, d / 2 + 0.01],
+      [ w * 0.42, h * 0.42, d / 2 + 0.01],
+      [-w * 0.42,-h * 0.42, d / 2 + 0.01],
+      [ w * 0.42,-h * 0.42, d / 2 + 0.01],
+    ];
+    screwPositions.forEach(p => {
+      const screw = new THREE.Mesh(screwGeo, screwMat);
+      screw.position.set(p[0], p[1], p[2]);
+      screw.rotation.x = Math.PI / 2;
+      group.add(screw);
+    });
+
+    const edgeMat = new THREE.LineBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0 });
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(bodyGeo), edgeMat);
+    group.add(edges);
+
+    return { group, body, edges, edgeMat, bodyMat, label, labelTexture, config: cfg };
+  }
+
+  _createLabelTexture(cfg, bestScore = 0) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 340;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = cfg.labelColor;
+    ctx.fillRect(0, 0, 512, 340);
+
+    const grad = ctx.createLinearGradient(0, 0, 512, 0);
+    grad.addColorStop(0, cfg.labelAccent);
+    grad.addColorStop(0.5, cfg.labelAccent + 'aa');
+    grad.addColorStop(1, cfg.labelAccent);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 512, 14);
+    ctx.fillRect(0, 326, 512, 14);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 512; i += 16) {
+      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 340); ctx.stroke();
+    }
+    for (let i = 0; i < 340; i += 16) {
+      ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(512, i); ctx.stroke();
+    }
+
+    ctx.fillStyle = cfg.labelAccent;
+    ctx.font = 'bold 22px "Courier New", monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`◆ ${cfg.tag}`, 20, 45);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 42px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    const titleLines = cfg.title.split('\n');
+    const titleStartY = titleLines.length === 1 ? 145 : 130;
+    titleLines.forEach((line, idx) => {
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillText(line, 258, titleStartY + idx * 46 + 3);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(line, 256, titleStartY + idx * 46);
+    });
+
+    ctx.fillStyle = cfg.labelAccent;
+    ctx.font = 'bold 20px "Courier New", monospace';
+    ctx.fillText(cfg.subtitle, 256, 230);
+
+    ctx.strokeStyle = cfg.labelAccent;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(120, 255);
+    ctx.lineTo(392, 255);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = '14px "Courier New", monospace';
+    ctx.fillText('© EGORNETWORK ENTERTAINMENT', 256, 285);
+    ctx.fillText('LICENSED FOR HOME USE', 256, 305);
+
+    if (bestScore > 0) {
+      ctx.fillStyle = cfg.labelAccent;
+      ctx.font = 'bold 16px "Courier New", monospace';
+      ctx.fillText(`BEST: ${bestScore.toLocaleString()}`, 256, 70);
+    }
+
+    ctx.fillStyle = cfg.labelAccent;
+    ctx.font = '16px monospace';
+    ctx.fillText('★', 30, 310);
+    ctx.fillText('★', 482, 310);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    return texture;
+  }
+
+  updateBestScores() {
+    this.cartridges.forEach((cart, i) => {
+      const cfg = this.configs[i];
+      const best = parseInt(localStorage.getItem(cfg.bestKey) || '0');
+      if (cart.labelTexture) cart.labelTexture.dispose();
+      cart.labelTexture = this._createLabelTexture(cfg, best);
+      cart.label.material.map = cart.labelTexture;
+      cart.label.material.needsUpdate = true;
+    });
+  }
+
+  _handleMove(e) {
+    if (!this.running) return;
+    const rect = this.cv.getBoundingClientRect();
+    this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  }
+
+  _handleClick(e) {
+    if (!this.running || this.hoveredIndex < 0) return;
+    // Не реагируем на клики, когда активна игра
+    if (currentTab !== null) return;
+    const cfg = this.configs[this.hoveredIndex];
+    if (typeof openGame === 'function') openGame(cfg.game);
+  }
+
+  selectByKeyboard(index) {
+    if (index < 0 || index >= this.cartridges.length) return;
+    this.selectedIndex = index;
+    this.cartridges.forEach((c, i) => {
+      if (i === index) {
+        c.targetY = c.baseY + 0.6;
+        c.targetZ = 1.2;
+        c.targetScale = 1.12;
+        c.edgeMat.opacity = 0.9;
+      } else {
+        c.targetY = c.baseY;
+        c.targetZ = 0;
+        c.targetScale = 1;
+        c.edgeMat.opacity = 0;
+      }
+    });
+    this._updateSelectedInfo(index);
+  }
+
+  _updateSelectedInfo(index) {
+    const infoEl = document.getElementById('selected-info');
+    if (index < 0 || !infoEl) {
+      if (infoEl) infoEl.classList.remove('visible');
+      return;
+    }
+    const cfg = this.configs[index];
+    const titleEl = document.getElementById('sel-title');
+    const descEl = document.getElementById('sel-desc');
+    const bestEl = document.getElementById('sel-best');
+    if (titleEl) titleEl.textContent = cfg.title.replace('\n', ' ');
+    if (descEl) descEl.textContent = cfg.desc;
+    const best = parseInt(localStorage.getItem(cfg.bestKey) || '0');
+    if (bestEl) bestEl.textContent = best > 0 ? `BEST: ${best.toLocaleString()}` : '';
+    infoEl.classList.add('visible');
+  }
+
+  _onResize() {
+    this.W = window.innerWidth;
+    this.H = window.innerHeight;
+    this.cv.width = this.W;
+    this.cv.height = this.H;
+    this.cam.aspect = this.W / this.H;
+    this.cam.updateProjectionMatrix();
+    this.rdr.setSize(this.W, this.H);
+  }
+
+  _loop(t) {
+    if (!this.running) return;
+    const dt = Math.min((t - this.lastT) / 1000, 0.05);
+    this.lastT = t;
+    this.time += dt;
+
+    this.raycaster.setFromCamera(this.mouse, this.cam);
+    const bodies = this.cartridges.map(c => c.body);
+    const intersects = this.raycaster.intersectObjects(bodies);
+
+    let newHovered = -1;
+    if (intersects.length > 0) {
+      const hit = intersects[0].object;
+      const idx = bodies.indexOf(hit);
+      if (idx >= 0) newHovered = idx;
+    }
+
+    if (newHovered !== this.hoveredIndex) {
+      this.hoveredIndex = newHovered;
+      const activeIndex = newHovered >= 0 ? newHovered : this.selectedIndex;
+      this.cartridges.forEach((c, i) => {
+        if (i === activeIndex) {
+          c.targetY = c.baseY + 0.6;
+          c.targetZ = 1.2;
+          c.targetScale = 1.12;
+          c.edgeMat.opacity = 0.9;
+        } else {
+          c.targetY = c.baseY;
+          c.targetZ = 0;
+          c.targetScale = 1;
+          c.edgeMat.opacity = 0;
+        }
+      });
+      this._updateSelectedInfo(activeIndex);
+    }
+
+    this.cartridges.forEach((c, i) => {
+      const g = c.group;
+      const bob = Math.sin(this.time * 1.2 + c.phase) * 0.08;
+      const wobble = Math.sin(this.time * 0.8 + c.phase * 1.3) * 0.03;
+      g.position.y += (c.targetY + bob - g.position.y) * 0.1;
+      g.position.z += (c.targetZ - g.position.z) * 0.12;
+      const curScale = g.scale.x;
+      const newScale = curScale + (c.targetScale - curScale) * 0.12;
+      g.scale.setScalar(newScale);
+      g.rotation.z = wobble;
+    });
+
+    this.rdr.render(this.scene, this.cam);
+    this.raf = requestAnimationFrame(tt => this._loop(tt));
+  }
+
+  stop() {
+    this.running = false;
+    if (this.raf) cancelAnimationFrame(this.raf);
+    this.cv.style.display = 'none';
+  }
+
+  resume() {
+    if (this.running) return;
+    this.cv.style.display = 'block';
+    this.running = true;
+    this.lastT = performance.now();
+    this._loop(this.lastT);
+  }
+
+  dispose() {
+    this.stop();
+    window.removeEventListener('mousemove', this._onMove);
+    window.removeEventListener('click', this._onClick);
+  }
+}
+
+// ============================================================
 //  PS2 STYLE MAIN MENU
 // ============================================================
 class MenuScene {
@@ -715,7 +937,6 @@ class MenuScene {
     this.rdr.setSize(this.W, this.H);
     this.rdr.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 
-    // Освещение — мягкое синее
     this.scene.add(new THREE.AmbientLight(0x2244aa, 0.4));
     const topLight = new THREE.DirectionalLight(0x88bbff, 0.6);
     topLight.position.set(0, 30, 10);
@@ -725,12 +946,10 @@ class MenuScene {
     backLight.position.set(-15, 20, -20);
     this.scene.add(backLight);
 
-    // Точечный свет снизу
     const bottomLight = new THREE.PointLight(0x0066ff, 1.5, 80);
     bottomLight.position.set(0, -5, 0);
     this.scene.add(bottomLight);
 
-    // Пол — большая плоскость с glow
     const floorGeo = new THREE.PlaneGeometry(200, 200);
     const floorMat = new THREE.MeshStandardMaterial({
       color: 0x001830,
@@ -746,27 +965,21 @@ class MenuScene {
     this.floor.position.y = -1;
     this.scene.add(this.floor);
 
-    // Генерируем PS2-башни
     this.towers = [];
     this._buildTowers();
-
-    // Частицы
     this._buildParticles();
 
-    // Время для анимации
     this.time = 0;
     this.running = true;
     this.raf = null;
     this.lastT = performance.now();
     this._loop(this.lastT);
 
-    // Resize handler
     this._resizeHandler = () => this._onResize();
     window.addEventListener('resize', this._resizeHandler);
   }
 
   _buildTowers() {
-    // Сетка башен как на PS2 — случайные высоты
     const gridSize = 9;
     const spacing = 4.5;
     const halfGrid = (gridSize * spacing) / 2;
@@ -776,10 +989,8 @@ class MenuScene {
         const x = i * spacing - halfGrid + (Math.random() - 0.5) * 0.8;
         const z = j * spacing - halfGrid + (Math.random() - 0.5) * 0.8;
 
-        // Высота башни — случайно, с некоторой закономерностью
         const height = 3 + Math.pow(Math.random(), 1.5) * 18;
 
-        // Цвета — синие, бирюзовые, фиолетовые оттенки
         const palettes = [
           { base: 0x1a4d99, em: 0x3388ff },
           { base: 0x2a66cc, em: 0x55aaff },
@@ -791,7 +1002,6 @@ class MenuScene {
         ];
         const pal = palettes[Math.floor(Math.random() * palettes.length)];
 
-        // Материал — полупрозрачный с emissive
         const mat = new THREE.MeshPhysicalMaterial({
           color: pal.base,
           emissive: pal.em,
@@ -805,19 +1015,15 @@ class MenuScene {
           side: THREE.DoubleSide,
         });
 
-        // Разные формы башен — кубы, цилиндры, призмы
         let geo;
         const shape = Math.random();
         if (shape < 0.6) {
-          // Квадратные колонны
           const w = 1.2 + Math.random() * 1.2;
           geo = new THREE.BoxGeometry(w, height, w);
         } else if (shape < 0.85) {
-          // Цилиндры
           const r = 0.7 + Math.random() * 0.6;
           geo = new THREE.CylinderGeometry(r, r, height, 16);
         } else {
-          // Шестиугольные призмы
           const r = 0.8 + Math.random() * 0.7;
           geo = new THREE.CylinderGeometry(r, r, height, 6);
         }
@@ -825,21 +1031,16 @@ class MenuScene {
         const tower = new THREE.Mesh(geo, mat);
         tower.position.set(x, height / 2 - 1, z);
 
-        // Wireframe edges для PS2-эффекта
         const edgeMat = new THREE.LineBasicMaterial({
           color: pal.em,
           transparent: true,
           opacity: 0.5,
         });
-        const edges = new THREE.LineSegments(
-          new THREE.EdgesGeometry(geo),
-          edgeMat
-        );
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMat);
         tower.add(edges);
 
         this.scene.add(tower);
 
-        // Сохраняем данные для анимации
         this.towers.push({
           mesh: tower,
           baseHeight: height,
@@ -873,7 +1074,6 @@ class MenuScene {
     this.particles = new THREE.Points(geo, mat);
     this.scene.add(this.particles);
 
-    // Второй слой — крупные "пылинки"
     const pts2 = [];
     for (let i = 0; i < 80; i++) {
       pts2.push(new THREE.Vector3(
@@ -909,7 +1109,6 @@ class MenuScene {
     this.lastT = t;
     this.time += dt;
 
-    // Медленное круговое движение камеры
     const camRadius = 32;
     const camSpeed = 0.04;
     const camAngle = this.time * camSpeed;
@@ -918,16 +1117,13 @@ class MenuScene {
     this.cam.position.y = 16 + Math.sin(this.time * 0.15) * 3;
     this.cam.lookAt(0, 7, 0);
 
-    // Анимация башен — лёгкое покачивание и пульсация emissive
     for (const t2 of this.towers) {
       const pulse = Math.sin(this.time * t2.pulseSpeed + t2.phase);
       t2.mesh.material.emissiveIntensity = t2.baseEmissive + pulse * 0.15;
       t2.mesh.material.opacity = 0.55 + pulse * 0.1;
-      // Небольшое вертикальное покачивание
       t2.mesh.position.y = t2.baseY + pulse * 0.3;
     }
 
-    // Вращение частиц
     this.particles.rotation.y += dt * 0.02;
     this.particles2.rotation.y -= dt * 0.015;
     this.particles2.position.y = Math.sin(this.time * 0.3) * 1.5;
@@ -956,8 +1152,6 @@ class MenuScene {
     this.rdr.dispose();
   }
 }
-
-let menuScene = null;
 
 // ============================================================
 //  3D TETRIS
@@ -1683,6 +1877,12 @@ class CyberSnake {
   }
 }
 
+function startSnake() {
+  document.getElementById('snake-overlay').style.display='none';
+  if (!snakeGame) snakeGame=new CyberSnake();
+  snakeGame.start();
+}
+
 // ============================================================
 //  STARFIGHTER
 // ============================================================
@@ -2075,7 +2275,6 @@ class Starfighter {
       return true;
     });
 
-    // Bullets vs enemies
     for (let i = this.bullets.length - 1; i >= 0; i--) {
       const b = this.bullets[i];
       for (let j = this.enemies.length - 1; j >= 0; j--) {
@@ -2099,7 +2298,6 @@ class Starfighter {
       }
     }
 
-    // Bullets vs asteroids
     for (let i = this.bullets.length - 1; i >= 0; i--) {
       const b = this.bullets[i];
       for (let j = this.asteroids.length - 1; j >= 0; j--) {
@@ -2120,7 +2318,6 @@ class Starfighter {
       }
     }
 
-    // Ship collisions
     if (this.invincible <= 0) {
       for (let j = this.enemies.length - 1; j >= 0; j--) {
         if (this.shipGroup.position.distanceTo(this.enemies[j].mesh.position) < 1.8) {
@@ -2150,7 +2347,6 @@ class Starfighter {
       }
     }
 
-    // Ship vs powerups
     for (let j = this.powerups.length - 1; j >= 0; j--) {
       if (this.shipGroup.position.distanceTo(this.powerups[j].mesh.position) < 1.5) {
         this.powerLevel = Math.min(3, this.powerLevel + 1);
@@ -2548,12 +2744,6 @@ function startAsteroidDefense() {
   asteroidDefenseGame.start();
 }
 
-function startSnake() {
-  document.getElementById('snake-overlay').style.display='none';
-  if (!snakeGame) snakeGame=new CyberSnake();
-  snakeGame.start();
-}
-
 // ============================================================
 //  INPUT ROUTER
 // ============================================================
@@ -2565,24 +2755,25 @@ window.addEventListener('keydown', e=>{
     return;
   }
 
-  // Навигация по каталогу
-  if (currentTab === null) {
-    const cards = document.querySelectorAll('.game-card');
-    if (cards.length === 0) return;
+  // Навигация по картриджам (клавиатурой)
+  if (currentTab === null && cartridgeMenu) {
+    const count = cartridgeMenu.configs.length;
     if (e.code === 'ArrowRight' || e.code === 'ArrowDown') {
       e.preventDefault();
-      focusedCardIndex = (focusedCardIndex + 1) % cards.length;
+      cartridgeMenu.selectedIndex = (cartridgeMenu.selectedIndex + 1) % count;
+      cartridgeMenu.selectByKeyboard(cartridgeMenu.selectedIndex);
       sndSelect();
-      updateCardFocus();
     } else if (e.code === 'ArrowLeft' || e.code === 'ArrowUp') {
       e.preventDefault();
-      focusedCardIndex = (focusedCardIndex - 1 + cards.length) % cards.length;
+      cartridgeMenu.selectedIndex = (cartridgeMenu.selectedIndex - 1 + count) % count;
+      cartridgeMenu.selectByKeyboard(cartridgeMenu.selectedIndex);
       sndSelect();
-      updateCardFocus();
     } else if (e.code === 'Enter' || e.code === 'Space') {
       e.preventDefault();
-      const gameName = cards[focusedCardIndex]?.dataset.game;
-      if (gameName) openGame(gameName);
+      if (cartridgeMenu.selectedIndex >= 0) {
+        const cfg = cartridgeMenu.configs[cartridgeMenu.selectedIndex];
+        openGame(cfg.game);
+      }
     }
     return;
   }
@@ -2602,17 +2793,6 @@ window.addEventListener('keydown', e=>{
 document.getElementById('runner-canvas').addEventListener('click', ()=>{ if(runnerGame) runnerGame.jump(); });
 document.getElementById('runner-canvas').addEventListener('touchstart', e=>{ e.preventDefault(); if(runnerGame) runnerGame.jump(); },{passive:false});
 
-// Клавиши на карточках (Enter/Space)
-document.querySelectorAll('.game-card').forEach((card, idx) => {
-  card.addEventListener('focus', () => { focusedCardIndex = idx; updateCardFocus(); });
-  card.addEventListener('keydown', (e) => {
-    if (e.code === 'Enter' || e.code === 'Space') {
-      e.preventDefault();
-      openGame(card.dataset.game);
-    }
-  });
-});
-
 window.addEventListener('resize', ()=>{
   if(tetrisGame) tetrisGame.resize();
   if(runnerGame) runnerGame.resize();
@@ -2622,45 +2802,24 @@ window.addEventListener('resize', ()=>{
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', () => {
-  refreshBestCards();
-  updateCardFocus();
-  // Инициализация PS2-меню
-  menuScene = new MenuScene();
-});
-if (document.readyState !== 'loading') {
-  refreshBestCards();
-  updateCardFocus();
   if (!menuScene) menuScene = new MenuScene();
+  if (!cartridgeMenu) cartridgeMenu = new CartridgeMenu();
+});
+
+if (document.readyState !== 'loading') {
+  if (!menuScene) menuScene = new MenuScene();
+  if (!cartridgeMenu) cartridgeMenu = new CartridgeMenu();
 }
 </script>
 
 <script>
+// Saturn intro
 const introScene = new THREE.Scene();
-
-const introCamera =
-new THREE.PerspectiveCamera(
-70,
-window.innerWidth/window.innerHeight,
-0.1,
-1000
-);
-
+const introCamera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
 introCamera.position.z=20;
-
-const renderer=
-new THREE.WebGLRenderer({
- antialias:true,
- alpha:true
-});
-
-renderer.setSize(
-window.innerWidth,
-window.innerHeight
-);
-
-document.body.appendChild(
-renderer.domElement
-);
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
 
 (function(){
 const intro=document.getElementById("saturnIntro");
@@ -2671,66 +2830,48 @@ cam.position.z=12;
 const r=new THREE.WebGLRenderer({canvas:introCanvas,alpha:true});
 r.setSize(innerWidth,innerHeight);
 scene.add(new THREE.AmbientLight(0xffffff,1.5));
-let shards=[];
 let introEnding = false;
 const loader = new THREE.GLTFLoader();
 
 loader.load(
     "models/EgorNetwork.glb",
     function(gltf){
-
         const logo = gltf.scene;
-
         logo.scale.set(1,1,1);
-
         const startPos = new THREE.Vector3(
             (Math.random()-0.5)*20,
             (Math.random()-0.5)*20,
             Math.random()*15 + 10
         );
         logo.position.copy(startPos);
-
         const targetPos = new THREE.Vector3(0, 0, 0);
-        
         scene.add(logo);
-
         logo.traverse(obj=>{
             if(obj.isMesh){
                 obj.material.emissive = new THREE.Color(0x66ccff);
                 obj.material.emissiveIntensity = 0.6;
             }
         });
-
         logo.userData.startPos = startPos;
         logo.userData.targetPos = targetPos;
         logo.userData.startTime = Date.now();
         logo.userData.duration = 3500;
         logo.userData.fadeStart = 2500;
-
         animateFragments(logo);
     }
 );
 
 function animateFragments(logo){
-
     function animate(){
         if(introEnding) return;
         requestAnimationFrame(animate);
-
         const elapsed = Date.now() - logo.userData.startTime;
         const progress = Math.min(elapsed / logo.userData.duration, 1);
-
         if(progress < 1){
-            logo.position.lerpVectors(
-                logo.userData.startPos,
-                logo.userData.targetPos,
-                progress
-            );
-
+            logo.position.lerpVectors(logo.userData.startPos, logo.userData.targetPos, progress);
             logo.rotation.x += 0.03;
             logo.rotation.y += 0.04;
         }
-
         const fadeProgress = Math.max(0, (elapsed - logo.userData.fadeStart) / 1000);
         if(fadeProgress > 0){
             logo.traverse(obj=>{
@@ -2740,10 +2881,8 @@ function animateFragments(logo){
                 }
             });
         }
-
         r.render(scene, cam);
     }
-
     animate();
 }
 
