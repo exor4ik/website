@@ -207,6 +207,62 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
   .selected-info { display: none; }
   .game-catalog { padding-bottom: 20px; }
 }
+
+/* Эффект помех при вставке картриджа */
+.crt-flicker {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  background: 
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.15) 0px,
+      rgba(0, 0, 0, 0.15) 2px,
+      transparent 2px,
+      transparent 4px
+    );
+  opacity: 0;
+  transition: opacity 0.08s;
+}
+.crt-flicker.active {
+  opacity: 1;
+  animation: crtFlicker 0.6s steps(8) forwards;
+}
+@keyframes crtFlicker {
+  0%   { opacity: 0; filter: brightness(1); }
+  15%  { opacity: 1; filter: brightness(2.5) hue-rotate(20deg); }
+  30%  { opacity: 0.5; filter: brightness(0.3); }
+  45%  { opacity: 1; filter: brightness(2) hue-rotate(-15deg); }
+  60%  { opacity: 0.8; filter: brightness(0.6); }
+  80%  { opacity: 1; filter: brightness(1.5); }
+  100% { opacity: 0; filter: brightness(1); }
+}
+
+.cart-eject-label {
+  position: fixed;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9997;
+  color: #ffcc00;
+  font-size: 2rem;
+  letter-spacing: 0.5em;
+  text-shadow: 0 0 20px #ffcc00, 0 0 40px #ff8800;
+  opacity: 0;
+  pointer-events: none;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+}
+.cart-eject-label.show {
+  animation: cartLabelShow 0.8s ease-out forwards;
+}
+@keyframes cartLabelShow {
+  0%   { opacity: 0; transform: translate(-50%, -40%) scale(0.8); }
+  30%  { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  70%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -60%) scale(0.9); }
+}
 </style>
 
 <style>
@@ -221,6 +277,9 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
 <body>
 <canvas id="menu-canvas"></canvas>
 <canvas id="cartridge-canvas"></canvas>
+
+<div class="crt-flicker" id="crt-flicker"></div>
+<div class="cart-eject-label" id="cart-eject-label">INSERTING...</div>
 
 <div id="saturnIntro">
 <canvas id="introCanvas"></canvas>
@@ -435,6 +494,27 @@ function backToCatalog() {
   if (menuScene) menuScene.resume();
   if (cartridgeMenu) {
     cartridgeMenu.resume();
+    // Сбросить состояние после eject-анимации
+    cartridgeMenu.isAnimating = false;
+    cartridgeMenu.cartridges.forEach((c, i) => {
+      // Восстановить позиции
+      const count = cartridgeMenu.configs.length;
+      const spacing = 2.4;
+      const totalWidth = (count - 1) * spacing;
+      const startX = -totalWidth / 2;
+      c.group.position.set(startX + i * spacing, 2.2, 0);
+      c.group.rotation.set(-0.15, (i - (count - 1) / 2) * 0.08, 0);
+      c.group.scale.setScalar(1);
+      // Восстановить opacity
+      c.body.material.opacity = 1;
+      c.body.material.transparent = false;
+      // Сбросить eject-таргеты
+      delete c.ejectTargetY;
+      delete c.ejectTargetZ;
+      delete c.ejectTargetScale;
+      delete c.ejectTargetRotX;
+      delete c.ejectTargetRotY;
+    });
     cartridgeMenu.updateBestScores();
     cartridgeMenu.selectByKeyboard(0);
   }
@@ -445,6 +525,14 @@ function backToCatalog() {
 // ============================================================
 //  AUDIO
 // ============================================================
+function sndCartEject() {
+  // Механический "вжжж-клик"
+  beep(180, 0.08, 'square', 0.18, 90);      // первый щелчок
+  setTimeout(() => beep(120, 0.15, 'sawtooth', 0.22, 60), 80);  // вжжж
+  setTimeout(() => beep(440, 0.04, 'square', 0.15), 220);       // клик вставки
+  setTimeout(() => beep(880, 0.08, 'sine', 0.12, 1200), 280);   // подтверждение
+}
+
 let _audioCtx = null;
 function ac() {
   if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -568,6 +656,7 @@ class CartridgeMenu {
     this.mouse = new THREE.Vector2(-999, -999);
     this.hoveredIndex = -1;
     this.selectedIndex = 0;
+    this.isAnimating = false;
 
     this._onMove = e => this._handleMove(e);
     this._onClick = e => this._handleClick(e);
@@ -786,10 +875,70 @@ class CartridgeMenu {
 
   _handleClick(e) {
     if (!this.running || this.hoveredIndex < 0) return;
-    // Не реагируем на клики, когда активна игра
     if (currentTab !== null) return;
-    const cfg = this.configs[this.hoveredIndex];
-    if (typeof openGame === 'function') openGame(cfg.game);
+    if (this.isAnimating) return;  // не даём спамить клики
+
+    const idx = this.hoveredIndex;
+    const cfg = this.configs[idx];
+    this._ejectAnimation(idx, cfg.game);
+  }
+
+  _ejectAnimation(index, gameName) {
+    this.isAnimating = true;
+    sndCartEject();
+
+    // Включить CRT помехи
+    const flickerEl = document.getElementById('crt-flicker');
+    const labelEl = document.getElementById('cart-eject-label');
+    
+    setTimeout(() => {
+      flickerEl.classList.add('active');
+      labelEl.classList.add('show');
+    }, 250);
+
+    // Сохранить оригинальные позиции всех картриджей
+    this.cartridges.forEach((c, i) => {
+      c.origY = c.group.position.y;
+      c.origZ = c.group.position.z;
+      c.origScale = c.group.scale.x;
+      c.origRotX = c.group.rotation.x;
+      c.origRotY = c.group.rotation.y;
+    });
+
+    // Целевые значения для анимации
+    const selected = this.cartridges[index];
+    selected.ejectTargetY = 6;         // вытащить вверх
+    selected.ejectTargetZ = 2;         // ближе к камере
+    selected.ejectTargetScale = 1.3;
+    selected.ejectTargetRotX = -0.4;
+    selected.ejectTargetRotY = 0.3;
+    selected.animPhase = 0;
+    selected.animStart = performance.now();
+
+    // Остальные картриджи — разбегаются в стороны и исчезают
+    this.cartridges.forEach((c, i) => {
+      if (i === index) return;
+      const dir = i < index ? -1 : 1;
+      c.ejectTargetY = 2;
+      c.ejectTargetZ = -8;
+      c.ejectTargetScale = 0.4;
+      c.ejectTargetRotY = dir * 0.8;
+      c.animPhase = 1; // сразу вторая фаза
+      c.animStart = performance.now() + 150 + Math.abs(i - index) * 40;
+    });
+
+    // Запуск игры после анимации
+    setTimeout(() => {
+      // Финальная вспышка
+      flickerEl.classList.remove('active');
+      labelEl.classList.remove('show');
+
+      // Небольшая задержка для плавности
+      setTimeout(() => {
+        this.isAnimating = false;
+        openGame(gameName);
+      }, 100);
+    }, 1100);
   }
 
   selectByKeyboard(index) {
@@ -873,9 +1022,70 @@ class CartridgeMenu {
       });
       this._updateSelectedInfo(activeIndex);
     }
-
+    
+    // Плавная анимация картриджей
     this.cartridges.forEach((c, i) => {
       const g = c.group;
+
+      // Если идёт анимация вытаскивания
+      if (this.isAnimating && c.ejectTargetY !== undefined) {
+        const elapsed = performance.now() - c.animStart;
+        if (elapsed < 0) return; // ждём свою очередь
+        
+        const duration = 900;
+        const progress = Math.min(elapsed / duration, 1);
+        // Easing: easeOutBack для эффекта "дёрганья"
+        const ease = 1 - Math.pow(1 - progress, 3);
+        
+        const startY = c.origY;
+        const startZ = c.origZ;
+        const startScale = c.origScale;
+        const startRotX = c.origRotX;
+        const startRotY = c.origRotY;
+        
+        // Выбранный картридж — сначала дёргается вниз (как будто застрял), потом вылетает
+        if (c.animPhase === 0) {
+          // Фаза 1 (0-25%): дёргается вниз
+          // Фаза 2 (25-100%): вылетает вверх
+          let p;
+          if (progress < 0.25) {
+            // Дёрганье вниз
+            p = progress / 0.25;
+            const dipEase = Math.sin(p * Math.PI * 0.5);
+            g.position.y = startY - 0.25 * dipEase;
+            g.position.z = startZ + 0.1 * dipEase;
+            g.scale.setScalar(startScale + 0.05 * dipEase);
+            // Лёгкий shake
+            g.rotation.z = Math.sin(elapsed * 0.05) * 0.05;
+          } else {
+            // Вылёт вверх с overshoot
+            p = (progress - 0.25) / 0.75;
+            const overshoot = 1 - Math.pow(1 - p, 3);
+            const bounce = Math.sin(p * Math.PI * 1.5) * 0.15 * (1 - p);
+            g.position.y = startY + (c.ejectTargetY - startY) * overshoot + bounce;
+            g.position.z = startZ + (c.ejectTargetZ - startZ) * overshoot;
+            g.scale.setScalar(startScale + (c.ejectTargetScale - startScale) * overshoot);
+            g.rotation.x = startRotX + (c.ejectTargetRotX - startRotX) * overshoot;
+            g.rotation.y = startRotY + (c.ejectTargetRotY - startRotY) * overshoot;
+            g.rotation.z = Math.sin(elapsed * 0.02) * 0.04 * (1 - p);
+          }
+        } else {
+          // Остальные картриджи — просто разбегаются
+          g.position.y = startY + (c.ejectTargetY - startY) * ease;
+          g.position.z = startZ + (c.ejectTargetZ - startZ) * ease;
+          const scaleVal = startScale + (c.ejectTargetScale - startScale) * ease;
+          g.scale.setScalar(scaleVal);
+          g.rotation.y = startRotY + (c.ejectTargetRotY - startRotY) * ease;
+          // Прозрачность
+          if (c.body.material.opacity > 0) {
+            c.body.material.transparent = true;
+            c.body.material.opacity = Math.max(0, 1 - progress * 1.2);
+          }
+        }
+        return;
+      }
+
+      // Обычная idle-анимация (когда нет eject)
       const bob = Math.sin(this.time * 1.2 + c.phase) * 0.08;
       const wobble = Math.sin(this.time * 0.8 + c.phase * 1.3) * 0.03;
       g.position.y += (c.targetY + bob - g.position.y) * 0.1;
@@ -2770,9 +2980,11 @@ window.addEventListener('keydown', e=>{
       sndSelect();
     } else if (e.code === 'Enter' || e.code === 'Space') {
       e.preventDefault();
-      if (cartridgeMenu.selectedIndex >= 0) {
-        const cfg = cartridgeMenu.configs[cartridgeMenu.selectedIndex];
-        openGame(cfg.game);
+      if (cartridgeMenu.selectedIndex >= 0 && !cartridgeMenu.isAnimating) {
+        const idx = cartridgeMenu.selectedIndex;
+        const cfg = cartridgeMenu.configs[idx];
+        // Вызываем ту же анимацию что и при клике мыши
+        cartridgeMenu._ejectAnimation(idx, cfg.game);
       }
     }
     return;
