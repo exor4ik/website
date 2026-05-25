@@ -162,6 +162,120 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
 }
 
 /* ============================================================ */
+/*  MULTIPLAYER / LEADERBOARD / ONLINE                         */
+/* ============================================================ */
+.header-badges {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  z-index: 10;
+}
+.online-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid rgba(0,255,204,.2);
+  background: rgba(0,20,30,.7);
+  font-size: .65rem;
+  letter-spacing: .1em;
+  color: var(--dim);
+}
+.online-badge .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #00ff88;
+  box-shadow: 0 0 6px #00ff88;
+  animation: pulse 2s infinite;
+}
+.online-badge .dot.off { background: #555; box-shadow: none; animation: none; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.auth-mini-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--dim);
+  background: transparent;
+  color: var(--dim);
+  font-family: 'Courier New', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  cursor: pointer;
+  transition: all .2s;
+}
+.auth-mini-btn:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  box-shadow: var(--gcyan);
+}
+.auth-mini-btn.logged-in {
+  border-color: rgba(0,255,204,.3);
+  color: var(--cyan);
+}
+
+/* Leaderboard Panel */
+.leaderboard-panel {
+  display: none;
+  position: relative;
+  z-index: 3;
+  max-width: 500px;
+  margin: 20px auto;
+  padding: 16px 20px;
+  background: rgba(4,4,16,.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--dim);
+  border-radius: 2px;
+}
+.leaderboard-panel.visible { display: block; }
+.leaderboard-panel h3 {
+  color: var(--cyan);
+  font-size: .85rem;
+  letter-spacing: .2em;
+  text-shadow: var(--gcyan);
+  margin-bottom: 12px;
+  text-align: center;
+}
+.lb-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.lb-tab {
+  padding: 4px 10px;
+  border: 1px solid var(--dim);
+  background: transparent;
+  color: var(--dim);
+  font-family: 'Courier New', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  cursor: pointer;
+  transition: all .2s;
+}
+.lb-tab.active { border-color: var(--cyan); color: var(--cyan); text-shadow: var(--gcyan); }
+.lb-tab:hover { border-color: var(--cyan); color: var(--cyan); }
+.lb-entries { max-height: 240px; overflow-y: auto; }
+.lb-entry {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 8px;
+  font-size: .7rem;
+  letter-spacing: .08em;
+  border-bottom: 1px solid rgba(42,80,69,.2);
+}
+.lb-entry:last-child { border-bottom: none; }
+.lb-entry .rank { color: var(--dim); width: 24px; }
+.lb-entry .rank.gold { color: #ffcc00; text-shadow: 0 0 8px #ffcc00; }
+.lb-entry .rank.silver { color: #c0c0c0; text-shadow: 0 0 8px #c0c0c0; }
+.lb-entry .rank.bronze { color: #cd7f32; text-shadow: 0 0 8px #cd7f32; }
+.lb-entry .name { color: #aaddff; flex: 1; text-align: left; margin-left: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-entry .score { color: var(--yellow); text-shadow: 0 0 6px rgba(255,238,0,.4); }
+.lb-entry .you { color: var(--pink); margin-left: 6px; font-size: .6rem; }
+.lb-loading { color: var(--dim); font-size: .7rem; text-align: center; padding: 12px; }
+
+/* ============================================================ */
 /*  GAME PANEL                                                  */
 /* ============================================================ */
 .game-wrapper{max-width:920px;margin:0 auto;padding:0 12px 40px;position:relative;z-index:2;}
@@ -188,6 +302,8 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
 .overlay .new-rec{color:var(--pink);font-size:.85rem;letter-spacing:.15em;text-shadow:var(--gpink);}
 .start-btn{background:transparent;border:1px solid var(--cyan);color:var(--cyan);font-family:'Courier New',monospace;font-size:.9rem;letter-spacing:.2em;padding:10px 28px;cursor:pointer;transition:all .2s;box-shadow:var(--gcyan);margin-top:6px;}
 .start-btn:hover{background:var(--cyan);color:#040410;}
+.start-btn.mp-btn{border-color:var(--purple);color:var(--purple);box-shadow:0 0 8px #cc00ff,0 0 20px rgba(204,0,255,.3);}
+.start-btn.mp-btn:hover{background:var(--purple);color:#040410;}
 
 .hint{font-size:.62rem;color:var(--dim);letter-spacing:.08em;text-align:center;padding:5px 0;border-top:1px solid rgba(42,80,69,.4);margin-top:6px;}
 
@@ -199,6 +315,28 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
 .status-warn{color:var(--yellow) !important;text-shadow:0 0 8px var(--yellow);}
 .status-danger{color:var(--pink) !important;text-shadow:var(--gpink);}
 
+/* Auth Modal */
+.auth-modal{position:fixed;inset:0;z-index:50000;display:none;align-items:center;justify-content:center;}
+.auth-modal.open{display:flex;}
+.auth-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);cursor:pointer;}
+.auth-container{position:relative;background:rgba(7,7,24,.95);border:1px solid rgba(0,255,204,.3);padding:30px;width:min(380px,90vw);max-height:90vh;overflow-y:auto;box-shadow:0 0 40px rgba(0,255,204,.15);}
+.auth-close{position:absolute;top:8px;right:12px;background:none;border:none;color:var(--dim);font-size:1.5rem;cursor:pointer;transition:all .2s;}
+.auth-close:hover{color:var(--pink);}
+.auth-title{color:var(--cyan);font-size:1.1rem;letter-spacing:.2em;margin-bottom:4px;}
+.auth-subtitle{color:var(--dim);font-size:.7rem;margin-bottom:16px;}
+.auth-field{margin-bottom:12px;}
+.auth-field label{display:block;font-size:.65rem;color:var(--dim);margin-bottom:4px;letter-spacing:.1em;}
+.auth-field input{width:100%;padding:10px 12px;background:rgba(0,0,0,.4);border:1px solid rgba(42,80,69,.6);color:var(--text);font-family:'Courier New',monospace;font-size:.8rem;outline:none;transition:border .2s;}
+.auth-field input:focus{border-color:var(--cyan);}
+.auth-error{color:var(--pink);font-size:.7rem;margin-bottom:8px;min-height:1em;}
+.auth-submit{width:100%;padding:10px;background:transparent;border:1px solid var(--cyan);color:var(--cyan);font-family:'Courier New',monospace;font-size:.8rem;letter-spacing:.2em;cursor:pointer;transition:all .2s;box-shadow:var(--gcyan);margin-top:4px;}
+.auth-submit:hover{background:var(--cyan);color:#040410;}
+.auth-google{width:100%;padding:10px;background:transparent;border:1px solid var(--dim);color:var(--text);font-family:'Courier New',monospace;font-size:.8rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;}
+.auth-google:hover{border-color:#4285F4;}
+.auth-divider{text-align:center;color:var(--dim);font-size:.65rem;margin:10px 0;letter-spacing:.15em;}
+.auth-switch{text-align:center;font-size:.7rem;color:var(--dim);margin-top:12px;}
+.auth-switch a{color:var(--cyan);cursor:pointer;}
+
 /* Мобильный адаптив */
 @media (max-width: 700px) {
   #cartridge-canvas { display: none; }
@@ -206,6 +344,7 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
   .catalog-hint { display: none; }
   .selected-info { display: none; }
   .game-catalog { padding-bottom: 20px; }
+  .header-badges { position: relative; top: auto; right: auto; justify-content: center; margin-top: 10px; }
 }
 
 /* Эффект помех при вставке картриджа */
@@ -263,6 +402,22 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
   70%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
   100% { opacity: 0; transform: translate(-50%, -60%) scale(0.9); }
 }
+
+/* Multiplayer Snake specific styles */
+#s-p2-score { color: var(--purple); }
+.snake-mp-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 8px;
+  border: 1px solid var(--purple);
+  color: var(--purple);
+  font-size: .6rem;
+  letter-spacing: .1em;
+  text-shadow: 0 0 6px rgba(204,0,255,.4);
+  z-index: 5;
+  background: rgba(4,4,16,.7);
+}
 </style>
 
 <style>
@@ -293,7 +448,70 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
   <h1>// MINI_GAMES //</h1>
   <p>EgorNetwork Entertainment System &mdash; v2.0</p>
   <a href="index.html" class="back-to-index">BACK TO MAIN</a>
+  <div class="header-badges">
+    <div class="online-badge" id="online-badge">
+      <span class="dot" id="online-dot"></span>
+      <span id="online-count">0</span> ONLINE
+    </div>
+    <button class="auth-mini-btn" id="auth-mini-btn" onclick="toggleAuthModal()">[ LOGIN ]</button>
+  </div>
 </header>
+
+<!-- Auth Modal -->
+<div class="auth-modal" id="auth-modal">
+  <div class="auth-backdrop" onclick="toggleAuthModal()"></div>
+  <div class="auth-container">
+    <button class="auth-close" onclick="toggleAuthModal()">&times;</button>
+    <div class="auth-form" id="login-form">
+      <h2 class="auth-title">ВХОД</h2>
+      <p class="auth-subtitle">ВВЕДИТЕ ДАННЫЕ ДЛЯ ВХОДА</p>
+      <div class="auth-field">
+        <label for="login-email">EMAIL</label>
+        <input type="email" id="login-email" placeholder="your@email.com" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label for="login-password">ПАРОЛЬ</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div class="auth-error" id="login-error"></div>
+      <button class="auth-submit" id="login-submit">ВОЙТИ</button>
+      <div class="auth-divider">ИЛИ</div>
+      <button class="auth-google" id="google-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        ВОЙТИ ЧЕРЕЗ GOOGLE
+      </button>
+      <p class="auth-switch">
+        НЕТ АККАУНТА? <a id="show-register">ЗАРЕГИСТРИРОВАТЬСЯ</a>
+      </p>
+    </div>
+    <div class="auth-form" id="register-form" style="display:none;">
+      <h2 class="auth-title">РЕГИСТРАЦИЯ</h2>
+      <p class="auth-subtitle">СОЗДАЙТЕ НОВЫЙ АККАУНТ</p>
+      <div class="auth-field">
+        <label for="register-name">ИМЯ</label>
+        <input type="text" id="register-name" placeholder="ВАШЕ ИМЯ" autocomplete="name">
+      </div>
+      <div class="auth-field">
+        <label for="register-email">EMAIL</label>
+        <input type="email" id="register-email" placeholder="your@email.com" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label for="register-password">ПАРОЛЬ</label>
+        <input type="password" id="register-password" placeholder="МИНИМУМ 6 СИМВОЛОВ" autocomplete="new-password">
+      </div>
+      <div class="auth-error" id="register-error"></div>
+      <button class="auth-submit" id="register-submit">ЗАРЕГИСТРИРОВАТЬСЯ</button>
+      <p class="auth-switch">
+        УЖЕ ЕСТЬ АККАУНТ? <a id="show-login">ВОЙТИ</a>
+      </p>
+    </div>
+  </div>
+</div>
 
 <!-- ============ КАТАЛОГ ============ -->
 <div class="game-catalog" id="game-catalog">
@@ -313,6 +531,21 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
 
   <div class="catalog-hint">
     🖱️ HOVER & CLICK A CARTRIDGE &nbsp;|&nbsp; ⌨️ ← → + ENTER &nbsp;|&nbsp; ESC TO RETURN FROM GAME
+  </div>
+</div>
+
+<!-- Leaderboard Panel -->
+<div class="leaderboard-panel" id="leaderboard-panel">
+  <h3>▓ GLOBAL LEADERBOARD ▓</h3>
+  <div class="lb-tabs">
+    <button class="lb-tab active" data-game="tetris" onclick="switchLeaderboard('tetris')">TETRIS</button>
+    <button class="lb-tab" data-game="runner" onclick="switchLeaderboard('runner')">RUNNER</button>
+    <button class="lb-tab" data-game="snake" onclick="switchLeaderboard('snake')">SNAKE</button>
+    <button class="lb-tab" data-game="starfighter" onclick="switchLeaderboard('starfighter')">STARFIGHTER</button>
+    <button class="lb-tab" data-game="asteroid" onclick="switchLeaderboard('asteroid')">ASTEROID</button>
+  </div>
+  <div class="lb-entries" id="lb-entries">
+    <div class="lb-loading">LOADING...</div>
   </div>
 </div>
 
@@ -349,6 +582,7 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
         <h2>3D TETRIS</h2>
         <div class="subtitle">CLASSIC GAME IN THREE DIMENSIONS</div>
         <button class="start-btn" onclick="startTetris()">[ START GAME ]</button>
+        <button class="start-btn mp-btn" onclick="startTetrisMultiplayer()" style="display:none;" id="tetris-mp-btn">[ START MULTIPLAYER ]</button>
       </div>
     </div>
     <div class="hint">← → MOVE &nbsp;|&nbsp; ↑ / Z ROTATE &nbsp;|&nbsp; ↓ SOFT DROP &nbsp;|&nbsp; SPACE HARD DROP &nbsp;|&nbsp; C HOLD PIECE &nbsp;|&nbsp; ESC BACK</div>
@@ -384,19 +618,22 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
     </div>
     <div class="hud">
       <span>SCORE:&nbsp;<b id="s-score">0</b></span>
+      <span id="s-p2-score">P2:&nbsp;<b id="s2-score">0</b></span>
       <span>MULT:&nbsp;<b id="s-multi">×1</b></span>
       <span id="s-effect"></span>
       <div class="hud-right"><span>BEST:&nbsp;<b id="s-high">0</b></span></div>
     </div>
-    <div class="canvas-wrap">
+    <div class="canvas-wrap" style="position:relative;">
       <canvas id="snake-canvas" width="600" height="600" style="width:100%;max-width:600px;display:block;margin:0 auto;"></canvas>
       <div class="overlay" id="snake-overlay">
         <h2>CYBER SNAKE</h2>
         <div class="subtitle">DATA STREAM IN THE GRID</div>
-        <button class="start-btn" onclick="startSnake()">[ CONNECT ]</button>
+        <button class="start-btn" onclick="startSnake()">[ SINGLE PLAYER ]</button>
+        <button class="start-btn mp-btn" onclick="startSnakeMultiplayer()">[ CO-OP LOCAL (2P) ]</button>
+        <button class="start-btn mp-btn" onclick="startSnakeGlobalMultiplayer()" style="border-color:#00ff88;color:#00ff88;box-shadow:0 0 8px #00ff88,0 0 20px rgba(0,255,136,.3);">[ GLOBAL ONLINE (2P) ]</button>
       </div>
     </div>
-    <div class="hint">WASD / ← → ↑ ↓ — MOVE &nbsp;|&nbsp; COLLECT POWER-UPS: SPD(red) GHOST(blue) MULTI(gold) &nbsp;|&nbsp; ESC BACK</div>
+    <div class="hint">P1: WASD — MOVE &nbsp;|&nbsp; P2: ← → ↑ ↓ — MOVE &nbsp;|&nbsp; ONLINE: REAL-TIME WITH A PARTNER! &nbsp;|&nbsp; ESC BACK</div>
   </div>
 
   <div id="panel-starfighter" class="game-panel">
@@ -447,8 +684,305 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
 
 <script src="libs/three.min.js"></script>
 <script src="libs/GLTFLoader.js"></script>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
 <script>
 'use strict';
+
+// ============================================================
+//  🔥 FIREBASE INIT
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyDry_UBMTfOSEriZy-HkY6Iov2KvzTkEGI",
+  authDomain: "website-auth-bd057.firebaseapp.com",
+  projectId: "website-auth-bd057",
+  storageBucket: "website-auth-bd057.firebasestorage.app",
+  messagingSenderId: "821575416626",
+  appId: "1:821575416626:web:0ed81ecc4ae5e5622a752b",
+  measurementId: "G-931XVK5Z5D"
+};
+
+let fbApp = null;
+let fbAuth = null;
+let fbDb = null;
+let currentUser = null;
+let isFirebaseReady = false;
+
+function initFirebase() {
+  try {
+    fbApp = firebase.initializeApp(firebaseConfig);
+    fbAuth = firebase.auth();
+    fbDb = firebase.firestore();
+    fbDb.settings({ merge: true });
+    isFirebaseReady = true;
+    console.log('✅ Firebase initialized for Mini Games');
+    
+    fbAuth.onAuthStateChanged(user => {
+      currentUser = user;
+      updateAuthUI();
+      if (user) {
+        setupPresence();
+        loadLeaderboard();
+      } else {
+        document.getElementById('online-count').textContent = '0';
+        document.getElementById('online-dot').className = 'dot off';
+      }
+    });
+  } catch (e) {
+    console.error('❌ Firebase init error:', e);
+  }
+}
+
+function waitForFirebase(cb, max = 30) {
+  let n = 0;
+  const t = setInterval(() => {
+    n++;
+    if (isFirebaseReady && fbDb && fbAuth) { clearInterval(t); cb(); }
+    else if (n >= max) { clearInterval(t); console.warn('Firebase not ready'); }
+  }, 300);
+}
+
+// ============================================================
+//  🔐 AUTH
+// ============================================================
+function toggleAuthModal() {
+  const m = document.getElementById('auth-modal');
+  m.classList.toggle('open');
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('register-error').textContent = '';
+}
+
+function updateAuthUI() {
+  const btn = document.getElementById('auth-mini-btn');
+  if (currentUser) {
+    const name = currentUser.displayName || currentUser.email || 'USER';
+    btn.textContent = `[ ${name} ]`;
+    btn.classList.add('logged-in');
+    btn.onclick = () => {
+      fbAuth.signOut();
+      location.reload();
+    };
+  } else {
+    btn.textContent = '[ LOGIN ]';
+    btn.classList.remove('logged-in');
+    btn.onclick = toggleAuthModal;
+  }
+}
+
+document.getElementById('login-submit').onclick = async () => {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-password').value;
+  const err = document.getElementById('login-error');
+  if (!email || !pass) { err.textContent = 'Заполните все поля'; return; }
+  try {
+    await fbAuth.signInWithEmailAndPassword(email, pass);
+    toggleAuthModal();
+  } catch (e) { err.textContent = e.message; }
+};
+
+document.getElementById('register-submit').onclick = async () => {
+  const name = document.getElementById('register-name').value.trim();
+  const email = document.getElementById('register-email').value.trim();
+  const pass = document.getElementById('register-password').value;
+  const err = document.getElementById('register-error');
+  if (!name || !email || !pass) { err.textContent = 'Заполните все поля'; return; }
+  try {
+    const cred = await fbAuth.createUserWithEmailAndPassword(email, pass);
+    await cred.user.updateProfile({ displayName: name });
+    // Create user profile in Firestore
+    await fbDb.collection('users').doc(cred.user.uid).set({
+      name, email, role: 'user',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toggleAuthModal();
+  } catch (e) { err.textContent = e.message; }
+};
+
+document.getElementById('google-btn').onclick = async () => {
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await fbAuth.signInWithPopup(provider);
+    toggleAuthModal();
+  } catch (e) { document.getElementById('login-error').textContent = e.message; }
+};
+
+document.getElementById('show-register').onclick = () => {
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('register-form').style.display = 'block';
+};
+document.getElementById('show-login').onclick = () => {
+  document.getElementById('register-form').style.display = 'none';
+  document.getElementById('login-form').style.display = 'block';
+};
+
+// ============================================================
+//  📡 ONLINE PRESENCE
+// ============================================================
+let presenceRef = null;
+let presenceUnsub = null;
+
+function setupPresence() {
+  if (!currentUser) return;
+  const uid = currentUser.uid;
+  const name = currentUser.displayName || currentUser.email || 'Anonymous';
+  
+  // Set presence doc
+  presenceRef = fbDb.collection('minis_presence').doc(uid);
+  presenceRef.set({
+    name,
+    online: true,
+    lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+    uid,
+  }).catch(() => {});
+
+  // On disconnect
+  presenceRef.onSnapshot(() => {}); // keep alive
+  window.addEventListener('beforeunload', () => {
+    presenceRef.delete().catch(() => {});
+  });
+
+  // Count online players
+  if (presenceUnsub) presenceUnsub();
+  presenceUnsub = fbDb.collection('minis_presence')
+    .where('online', '==', true)
+    .onSnapshot(snap => {
+      const count = snap.size;
+      document.getElementById('online-count').textContent = count;
+      document.getElementById('online-dot').className = count > 0 ? 'dot' : 'dot off';
+    }, err => {
+      console.warn('Presence error:', err);
+    });
+}
+
+// ============================================================
+//  🏆 GLOBAL LEADERBOARD
+// ============================================================
+const LB_GAMES = ['tetris', 'runner', 'snake', 'starfighter', 'asteroid'];
+const LB_KEYS = { tetris:'tBest', runner:'rBest', snake:'sHigh', starfighter:'sfBest', asteroid:'adBest' };
+let currentLB = 'tetris';
+let leaderboardCache = {};
+
+async function saveScore(game, score) {
+  if (!currentUser || !fbDb) return;
+  const uid = currentUser.uid;
+  const name = currentUser.displayName || currentUser.email || 'Anonymous';
+  
+  try {
+    // Check if we already have a better score
+    const docRef = fbDb.collection('minis_leaderboard').doc(game);
+    const doc = await docRef.get();
+    let scores = [];
+    if (doc.exists) {
+      scores = doc.data().scores || [];
+      // Check existing
+      const existing = scores.find(s => s.uid === uid);
+      if (existing && existing.score >= score) return; // not better
+    }
+    
+    // Update or add
+    if (existing) {
+      existing.score = score;
+      existing.name = name;
+      existing.date = Date.now();
+    } else {
+      scores.push({ uid, name, score, date: Date.now() });
+    }
+    
+    // Sort and trim
+    scores.sort((a, b) => b.score - a.score);
+    scores = scores.slice(0, 50);
+    
+    await docRef.set({ scores, topScore: scores.length > 0 ? scores[0].score : 0 }, { merge: true });
+    
+    // Update leaderboard if visible
+    if (currentLB === game) renderLeaderboard(game);
+  } catch (e) {
+    console.warn('Failed to save score:', e.message);
+  }
+}
+
+async function loadLeaderboard(game) {
+  if (!game) game = currentLB;
+  if (!fbDb) return;
+  
+  try {
+    const doc = await fbDb.collection('minis_leaderboard').doc(game).get();
+    if (doc.exists) {
+      leaderboardCache[game] = doc.data().scores || [];
+    } else {
+      leaderboardCache[game] = [];
+    }
+  } catch (e) {
+    console.warn('Failed to load leaderboard:', e.message);
+    leaderboardCache[game] = [];
+  }
+  renderLeaderboard(game);
+}
+
+async function loadAllLeaderboards() {
+  if (!fbDb) return;
+  showLeaderboard();
+  try {
+    // Load all leaderboards in parallel
+    const promises = LB_GAMES.map(g => 
+      fbDb.collection('minis_leaderboard').doc(g).get().then(doc => {
+        leaderboardCache[g] = doc.exists ? (doc.data().scores || []) : [];
+      }).catch(() => { leaderboardCache[g] = []; })
+    );
+    await Promise.all(promises);
+    renderLeaderboard(currentLB);
+  } catch (e) {
+    console.warn('Leaderboard load error:', e);
+  }
+}
+
+function renderLeaderboard(game) {
+  const el = document.getElementById('lb-entries');
+  const scores = leaderboardCache[game] || [];
+  
+  if (!el) return;
+  if (scores.length === 0) {
+    el.innerHTML = '<div class="lb-loading">NO SCORES YET</div>';
+    return;
+  }
+  
+  el.innerHTML = scores.slice(0, 20).map((s, i) => {
+    const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+    const isYou = currentUser && s.uid === currentUser.uid;
+    return `<div class="lb-entry">
+      <span class="rank ${rankClass}">${String(i + 1).padStart(2, '0')}</span>
+      <span class="name">${escHtml(s.name || 'Unknown')}${isYou ? '<span class="you">(YOU)</span>' : ''}</span>
+      <span class="score">${(s.score || 0).toLocaleString()}</span>
+    </div>`;
+  }).join('');
+}
+
+function switchLeaderboard(game) {
+  currentLB = game;
+  document.querySelectorAll('.lb-tab').forEach(t => t.classList.toggle('active', t.dataset.game === game));
+  renderLeaderboard(game);
+}
+
+function showLeaderboard() {
+  document.getElementById('leaderboard-panel').classList.add('visible');
+}
+
+// ============================================================
+//  🎯 SYNC LOCAL BEST TO GLOBAL LEADERBOARD
+// ============================================================
+async function syncScore(game, score) {
+  if (!currentUser || !fbDb) return;
+  await saveScore(game, score);
+}
+
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"').replace(/'/g,'&#039;');
+}
 
 // ============================================================
 //  GLOBALS & NAVIGATION
@@ -494,10 +1028,8 @@ function backToCatalog() {
   if (menuScene) menuScene.resume();
   if (cartridgeMenu) {
     cartridgeMenu.resume();
-    // Сбросить состояние после eject-анимации
     cartridgeMenu.isAnimating = false;
     cartridgeMenu.cartridges.forEach((c, i) => {
-      // Восстановить позиции
       const count = cartridgeMenu.configs.length;
       const spacing = 2.4;
       const totalWidth = (count - 1) * spacing;
@@ -505,10 +1037,8 @@ function backToCatalog() {
       c.group.position.set(startX + i * spacing, 2.2, 0);
       c.group.rotation.set(-0.15, (i - (count - 1) / 2) * 0.08, 0);
       c.group.scale.setScalar(1);
-      // Восстановить opacity
       c.body.material.opacity = 1;
       c.body.material.transparent = false;
-      // Сбросить eject-таргеты
       delete c.ejectTargetY;
       delete c.ejectTargetZ;
       delete c.ejectTargetScale;
@@ -526,11 +1056,10 @@ function backToCatalog() {
 //  AUDIO
 // ============================================================
 function sndCartEject() {
-  // Механический "вжжж-клик"
-  beep(180, 0.08, 'square', 0.18, 90);      // первый щелчок
-  setTimeout(() => beep(120, 0.15, 'sawtooth', 0.22, 60), 80);  // вжжж
-  setTimeout(() => beep(440, 0.04, 'square', 0.15), 220);       // клик вставки
-  setTimeout(() => beep(880, 0.08, 'sine', 0.12, 1200), 280);   // подтверждение
+  beep(180, 0.08, 'square', 0.18, 90);
+  setTimeout(() => beep(120, 0.15, 'sawtooth', 0.22, 60), 80);
+  setTimeout(() => beep(440, 0.04, 'square', 0.15), 220);
+  setTimeout(() => beep(880, 0.08, 'sine', 0.12, 1200), 280);
 }
 
 let _audioCtx = null;
@@ -579,7 +1108,7 @@ function clearGroup(grp) {
 }
 
 // ============================================================
-//  3D CARTRIDGE MENU (только 3D картриджи)
+//  3D CARTRIDGE MENU
 // ============================================================
 class CartridgeMenu {
   constructor() {
@@ -810,6 +1339,13 @@ class CartridgeMenu {
     ctx.textAlign = 'left';
     ctx.fillText(`◆ ${cfg.tag}`, 20, 45);
 
+    // Show global leaderboard top score on cartridge label if available
+    const lk = cfg.bestKey;
+    const globalTop = localStorage.getItem('global_' + lk);
+    if (globalTop && parseInt(globalTop) > bestScore) {
+      bestScore = parseInt(globalTop);
+    }
+
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 42px "Courier New", monospace';
     ctx.textAlign = 'center';
@@ -858,7 +1394,11 @@ class CartridgeMenu {
   updateBestScores() {
     this.cartridges.forEach((cart, i) => {
       const cfg = this.configs[i];
-      const best = parseInt(localStorage.getItem(cfg.bestKey) || '0');
+      let best = parseInt(localStorage.getItem(cfg.bestKey) || '0');
+      // Check global leaderboard cache
+      const globalBest = leaderboardCache[cfg.game] && leaderboardCache[cfg.game].length > 0
+        ? leaderboardCache[cfg.game][0].score : 0;
+      if (globalBest > best) best = globalBest;
       if (cart.labelTexture) cart.labelTexture.dispose();
       cart.labelTexture = this._createLabelTexture(cfg, best);
       cart.label.material.map = cart.labelTexture;
@@ -876,7 +1416,7 @@ class CartridgeMenu {
   _handleClick(e) {
     if (!this.running || this.hoveredIndex < 0) return;
     if (currentTab !== null) return;
-    if (this.isAnimating) return;  // не даём спамить клики
+    if (this.isAnimating) return;
 
     const idx = this.hoveredIndex;
     const cfg = this.configs[idx];
@@ -887,7 +1427,6 @@ class CartridgeMenu {
     this.isAnimating = true;
     sndCartEject();
 
-    // Включить CRT помехи
     const flickerEl = document.getElementById('crt-flicker');
     const labelEl = document.getElementById('cart-eject-label');
     
@@ -896,7 +1435,6 @@ class CartridgeMenu {
       labelEl.classList.add('show');
     }, 250);
 
-    // Сохранить оригинальные позиции всех картриджей
     this.cartridges.forEach((c, i) => {
       c.origY = c.group.position.y;
       c.origZ = c.group.position.z;
@@ -905,17 +1443,15 @@ class CartridgeMenu {
       c.origRotY = c.group.rotation.y;
     });
 
-    // Целевые значения для анимации
     const selected = this.cartridges[index];
-    selected.ejectTargetY = 6;         // вытащить вверх
-    selected.ejectTargetZ = 2;         // ближе к камере
+    selected.ejectTargetY = 6;
+    selected.ejectTargetZ = 2;
     selected.ejectTargetScale = 1.3;
     selected.ejectTargetRotX = -0.4;
     selected.ejectTargetRotY = 0.3;
     selected.animPhase = 0;
     selected.animStart = performance.now();
 
-    // Остальные картриджи — разбегаются в стороны и исчезают
     this.cartridges.forEach((c, i) => {
       if (i === index) return;
       const dir = i < index ? -1 : 1;
@@ -923,17 +1459,14 @@ class CartridgeMenu {
       c.ejectTargetZ = -8;
       c.ejectTargetScale = 0.4;
       c.ejectTargetRotY = dir * 0.8;
-      c.animPhase = 1; // сразу вторая фаза
+      c.animPhase = 1;
       c.animStart = performance.now() + 150 + Math.abs(i - index) * 40;
     });
 
-    // Запуск игры после анимации
     setTimeout(() => {
-      // Финальная вспышка
       flickerEl.classList.remove('active');
       labelEl.classList.remove('show');
 
-      // Небольшая задержка для плавности
       setTimeout(() => {
         this.isAnimating = false;
         openGame(gameName);
@@ -972,8 +1505,18 @@ class CartridgeMenu {
     const bestEl = document.getElementById('sel-best');
     if (titleEl) titleEl.textContent = cfg.title.replace('\n', ' ');
     if (descEl) descEl.textContent = cfg.desc;
-    const best = parseInt(localStorage.getItem(cfg.bestKey) || '0');
-    if (bestEl) bestEl.textContent = best > 0 ? `BEST: ${best.toLocaleString()}` : '';
+    let best = parseInt(localStorage.getItem(cfg.bestKey) || '0');
+    const globalBest = leaderboardCache[cfg.game] && leaderboardCache[cfg.game].length > 0
+      ? leaderboardCache[cfg.game][0].score : 0;
+    if (globalBest > best) best = globalBest;
+    if (bestEl) {
+      if (best > 0) {
+        bestEl.innerHTML = `GLOBAL BEST: ${best.toLocaleString()}`;
+        if (globalBest > 0) bestEl.innerHTML = `🌐 GLOBAL BEST: ${globalBest.toLocaleString()}`;
+      } else {
+        bestEl.textContent = '';
+      }
+    }
     infoEl.classList.add('visible');
   }
 
@@ -1023,18 +1566,14 @@ class CartridgeMenu {
       this._updateSelectedInfo(activeIndex);
     }
     
-    // Плавная анимация картриджей
     this.cartridges.forEach((c, i) => {
       const g = c.group;
-
-      // Если идёт анимация вытаскивания
       if (this.isAnimating && c.ejectTargetY !== undefined) {
         const elapsed = performance.now() - c.animStart;
-        if (elapsed < 0) return; // ждём свою очередь
+        if (elapsed < 0) return;
         
         const duration = 900;
         const progress = Math.min(elapsed / duration, 1);
-        // Easing: easeOutBack для эффекта "дёрганья"
         const ease = 1 - Math.pow(1 - progress, 3);
         
         const startY = c.origY;
@@ -1043,22 +1582,16 @@ class CartridgeMenu {
         const startRotX = c.origRotX;
         const startRotY = c.origRotY;
         
-        // Выбранный картридж — сначала дёргается вниз (как будто застрял), потом вылетает
         if (c.animPhase === 0) {
-          // Фаза 1 (0-25%): дёргается вниз
-          // Фаза 2 (25-100%): вылетает вверх
           let p;
           if (progress < 0.25) {
-            // Дёрганье вниз
             p = progress / 0.25;
             const dipEase = Math.sin(p * Math.PI * 0.5);
             g.position.y = startY - 0.25 * dipEase;
             g.position.z = startZ + 0.1 * dipEase;
             g.scale.setScalar(startScale + 0.05 * dipEase);
-            // Лёгкий shake
             g.rotation.z = Math.sin(elapsed * 0.05) * 0.05;
           } else {
-            // Вылёт вверх с overshoot
             p = (progress - 0.25) / 0.75;
             const overshoot = 1 - Math.pow(1 - p, 3);
             const bounce = Math.sin(p * Math.PI * 1.5) * 0.15 * (1 - p);
@@ -1070,13 +1603,11 @@ class CartridgeMenu {
             g.rotation.z = Math.sin(elapsed * 0.02) * 0.04 * (1 - p);
           }
         } else {
-          // Остальные картриджи — просто разбегаются
           g.position.y = startY + (c.ejectTargetY - startY) * ease;
           g.position.z = startZ + (c.ejectTargetZ - startZ) * ease;
           const scaleVal = startScale + (c.ejectTargetScale - startScale) * ease;
           g.scale.setScalar(scaleVal);
           g.rotation.y = startRotY + (c.ejectTargetRotY - startRotY) * ease;
-          // Прозрачность
           if (c.body.material.opacity > 0) {
             c.body.material.transparent = true;
             c.body.material.opacity = Math.max(0, 1 - progress * 1.2);
@@ -1085,7 +1616,6 @@ class CartridgeMenu {
         return;
       }
 
-      // Обычная idle-анимация (когда нет eject)
       const bob = Math.sin(this.time * 1.2 + c.phase) * 0.08;
       const wobble = Math.sin(this.time * 0.8 + c.phase * 1.3) * 0.03;
       g.position.y += (c.targetY + bob - g.position.y) * 0.1;
@@ -1629,6 +2159,7 @@ class Tetris3D {
     if (this.score > this.best) {
       this.best = this.score;
       localStorage.setItem('tBest', this.best);
+      syncScore('tetris', this.score);
     }
     const isRec = this.score >= this.best && this.score > 0;
     const ov = document.getElementById('tetris-overlay');
@@ -1681,6 +2212,108 @@ class Tetris3D {
 function startTetris() {
   document.getElementById('tetris-overlay').style.display = 'none';
   if (!tetrisGame) tetrisGame = new Tetris3D();
+  tetrisGame.start();
+}
+
+// ============================================================
+//  TETRIS MULTIPLAYER (BATTLE - local 2P sharing same board)
+// ============================================================
+// In this mode, 2 players take turns controlling pieces.
+// Player 1 controls odd-numbered pieces, Player 2 controls even pieces.
+// The scoring is combined, but we track individual line clears.
+
+let tetrisBattleActive = false;
+
+class TetrisBattle extends Tetris3D {
+  constructor() {
+    super();
+    this.player1Score = 0;
+    this.player2Score = 0;
+    this.currentPlayer = 1; // 1 or 2
+  }
+
+  start() {
+    super.start();
+    this.player1Score = 0;
+    this.player2Score = 0;
+    this.currentPlayer = 1;
+    tetrisBattleActive = true;
+    this._updateBattleHUD();
+    document.querySelector('#panel-tetris .hint').textContent =
+      'P1: A/D MOVE · W ROTATE · S DROP · SPACE HARD DROP | P2: ← → MOVE · ↑ ROTATE · ↓ DROP · 0 HARD DROP | ESC BACK';
+  }
+
+  _lock() {
+    const prevLines = this.lines;
+    super._lock(); // calls spawnPiece, may trigger gameOver
+    if (!this.running) return;
+    const newLines = this.lines - prevLines;
+    if (newLines > 0) {
+      if (this.currentPlayer === 1) this.player1Score += newLines * 100 * this.level;
+      else this.player2Score += newLines * 100 * this.level;
+    }
+    // Switch player
+    this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
+    this._updateBattleHUD();
+  }
+
+  _updateBattleHUD() {
+    document.getElementById('t-score').textContent =
+      `P1:${this.player1Score} P2:${this.player2Score}`;
+  }
+
+  handleKey(e) {
+    if (!this.running || !tetrisBattleActive) return;
+    
+    // Player 1 controls: A, W, D, S, Space
+    switch(e.code) {
+      case 'KeyA': this.move(-1); break;
+      case 'KeyD': this.move(1); break;
+      case 'KeyW': this.rotate(); break;
+      case 'KeyS': this.softDrop(); break;
+      case 'Space': this.hardDrop(); break;
+      case 'KeyC': this.holdPiece(); break;
+      // Player 2 controls: Arrows (left/right/up/down)
+      case 'Numpad4': case 'ArrowLeft': if (e.code === 'ArrowLeft') {} break;
+      default: return;
+    }
+    
+    // Arrow keys only for P2, blocked in battle mode from regular Tetris
+  }
+
+  _gameOver() {
+    this.running = false;
+    tetrisBattleActive = false;
+    sndOver();
+    
+    const totalScore = this.player1Score + this.player2Score;
+    if (totalScore > this.best) {
+      this.best = totalScore;
+      localStorage.setItem('tBest', this.best);
+      syncScore('tetris', totalScore);
+    }
+    
+    const ov = document.getElementById('tetris-overlay');
+    ov.innerHTML = `<h2>BATTLE OVER</h2>
+      <div class="score-big">P1: ${this.player1Score.toLocaleString()} | P2: ${this.player2Score.toLocaleString()}</div>
+      <div class="subtitle">TOTAL: ${totalScore.toLocaleString()} &nbsp;|&nbsp; LINES: ${this.lines}</div>
+      <div class="subtitle">${this.player1Score > this.player2Score ? '🏆 PLAYER 1 WINS!' : this.player2Score > this.player1Score ? '🏆 PLAYER 2 WINS!' : '🤝 DRAW!'}</div>
+      <button class="start-btn" onclick="startTetris()">[ SINGLE PLAYER ]</button>
+      <button class="start-btn mp-btn" onclick="startTetrisMultiplayer()">[ BATTLE AGAIN ]</button>
+      <button class="start-btn" onclick="backToCatalog()" style="margin-top:6px;border-color:var(--pink);color:var(--pink);box-shadow:var(--gpink);">[ BACK TO GAMES ]</button>`;
+    ov.style.display = 'flex';
+  }
+}
+
+function startTetrisMultiplayer() {
+  document.getElementById('tetris-overlay').style.display = 'none';
+  if (!tetrisGame) {
+    tetrisGame = new TetrisBattle();
+  } else {
+    // Replace with battle version
+    if (tetrisGame.raf) cancelAnimationFrame(tetrisGame.raf);
+    tetrisGame = new TetrisBattle();
+  }
   tetrisGame.start();
 }
 
@@ -1864,6 +2497,7 @@ class ParkourRunner {
     if (isRec) {
       this.bestDist = this.dist;
       localStorage.setItem('rBest', this.bestDist);
+      syncScore('runner', this.dist);
     }
     const ov = document.getElementById('runner-overlay');
     ov.innerHTML = `<h2>WIPEOUT</h2><div class="score-big">${this.dist}m</div>${isRec?'<div class="new-rec">▓ NEW RECORD ▓</div>':`<div class="subtitle">BEST: ${this.bestDist}m</div>`}<button class="start-btn" onclick="startRunner()">[ TRY AGAIN ]</button><button class="start-btn" onclick="backToCatalog()" style="margin-top:6px;border-color:var(--pink);color:var(--pink);box-shadow:var(--gpink);">[ BACK TO GAMES ]</button>`;
@@ -1885,7 +2519,7 @@ function startRunner() {
 }
 
 // ============================================================
-//  CYBER SNAKE
+//  CYBER SNAKE (SINGLE + MULTIPLAYER CO-OP)
 // ============================================================
 const SG = 25;
 const SC = 600/SG;
@@ -1896,18 +2530,36 @@ class CyberSnake {
     this.ctx = this.cv.getContext('2d');
     this.running = false; this.raf = null;
     this.high = parseInt(localStorage.getItem('sHigh')||'0');
+    this.isMultiplayer = false;
     document.getElementById('s-high').textContent = this.high;
   }
 
-  start() {
+  start(isMultiplayer = false) {
+    this.isMultiplayer = isMultiplayer;
+    // Snake 1 (P1: WASD)
     this.snake = [{x:12,y:12},{x:11,y:12},{x:10,y:12}];
     this.dir = {x:1,y:0}; this.ndir = {x:1,y:0};
+    // Snake 2 (P2: Arrow keys) — only in multiplayer
+    if (isMultiplayer) {
+      this.snake2 = [{x:12,y:8},{x:11,y:8},{x:10,y:8}]; // start above player 1
+      this.dir2 = {x:1,y:0}; this.ndir2 = {x:1,y:0};
+      this.score2 = 0;
+      document.getElementById('s2-score').textContent = '0';
+      document.getElementById('s-p2-score').style.display = '';
+      document.querySelector('#panel-snake .hint').textContent =
+        'P1: WASD — MOVE &nbsp;|&nbsp; P2: ← → ↑ ↓ — MOVE &nbsp;|&nbsp; CO-OP: SHARE THE GRID! &nbsp;|&nbsp; ESC BACK';
+    } else {
+      this.snake2 = [];
+      this.score2 = 0;
+      document.getElementById('s-p2-score').style.display = 'none';
+    }
     this.score = 0; this.mult = 1; this.multT = 0;
     this.ghostMode = false; this.ghostT = 0;
     this.moveIv = 130; this.moveT = 0;
     this.foods = []; this.powerups = []; this.parts = [];
     this.running = true;
     this._spawnFood(); this._spawnFood();
+    if (isMultiplayer) { this._spawnFood(); this._spawnFood(); } // more food for 2 players
     document.getElementById('s-score').textContent = '0';
     document.getElementById('s-multi').textContent = '×1';
     document.getElementById('s-effect').textContent = '';
@@ -1917,6 +2569,7 @@ class CyberSnake {
 
   _occ(x,y,skipFood=false) {
     if (this.snake.some(s=>s.x===x&&s.y===y)) return true;
+    if (this.snake2.some(s=>s.x===x&&s.y===y)) return true;
     if (!skipFood && this.foods.some(f=>f.x===x&&f.y===y)) return true;
     return false;
   }
@@ -1962,7 +2615,10 @@ class CyberSnake {
       x:(this.snake[0].x+this.dir.x+SG)%SG,
       y:(this.snake[0].y+this.dir.y+SG)%SG,
     };
-    if (!this.ghostMode && this.snake.some(s=>s.x===head.x&&s.y===head.y)) { this._end(); return; }
+    // Self-collision P1
+    if (!this.ghostMode && this.snake.some((s,i)=>i>0&&s.x===head.x&&s.y===head.y)) { this._end(); return; }
+    // Cross-collision with P2's body
+    if (!this.ghostMode && this.snake2.length > 0 && this.snake2.some((s,i)=>i>0&&s.x===head.x&&s.y===head.y)) { this._end(); return; }
     this.snake.unshift(head);
 
     const fi = this.foods.findIndex(f=>f.x===head.x&&f.y===head.y);
@@ -1974,6 +2630,7 @@ class CyberSnake {
       sndEat(); this._spawnFood();
     } else { this.snake.pop(); }
 
+    // Handle power-ups for P1
     const pi = this.powerups.findIndex(p=>p.x===head.x&&p.y===head.y);
     if (pi>=0) {
       const pu = this.powerups[pi]; this.powerups.splice(pi,1);
@@ -1992,6 +2649,39 @@ class CyberSnake {
         document.getElementById('s-multi').textContent='×3';
         document.getElementById('s-effect').textContent = 'MULTIPLIER×3';
         document.getElementById('s-effect').className = 'status-warn';
+      }
+    }
+
+    // ====== PLAYER 2 MOVEMENT ======
+    if (this.snake2.length > 0) {
+      this.dir2 = this.ndir2;
+      const head2 = {
+        x:(this.snake2[0].x+this.dir2.x+SG)%SG,
+        y:(this.snake2[0].y+this.dir2.y+SG)%SG,
+      };
+      // Self-collision P2
+      if (!this.ghostMode && this.snake2.some((s,i)=>i>0&&s.x===head2.x&&s.y===head2.y)) { this._end(); return; }
+      // Cross-collision with P1's body
+      if (!this.ghostMode && this.snake.some((s,i)=>i>0&&s.x===head2.x&&s.y===head2.y)) { this._end(); return; }
+      // Head-on collision (P1 head -> P2 head or vice versa)
+      if (head.x === head2.x && head.y === head2.y) { this._end(); return; }
+      
+      this.snake2.unshift(head2);
+
+      const fi2 = this.foods.findIndex(f=>f.x===head2.x&&f.y===head2.y);
+      if (fi2>=0) {
+        this.foods.splice(fi2,1);
+        this.score2 += 10;
+        document.getElementById('s2-score').textContent = this.score2;
+        this._burst(head2.x, head2.y, 0xff00aa);
+        sndEat(); this._spawnFood();
+      } else { this.snake2.pop(); }
+      
+      // Power-ups for P2 (same pool)
+      const pi2 = this.powerups.findIndex(p=>p.x===head2.x&&p.y===head2.y);
+      if (pi2>=0) {
+        const pu = this.powerups[pi2]; this.powerups.splice(pi2,1);
+        sndPower(); this._burst(head2.x, head2.y, 0xff00aa);
       }
     }
   }
@@ -2051,6 +2741,7 @@ class CyberSnake {
       ctx.fillText(puL[p.type], cx, cy+SC-3);
     });
 
+    // Draw P1 snake (cyan)
     this.snake.forEach((seg,i)=>{
       const t=i/this.snake.length;
       const cx=seg.x*SC, cy=seg.y*SC;
@@ -2065,32 +2756,365 @@ class CyberSnake {
       }
       ctx.shadowBlur=0; ctx.globalAlpha=1;
     });
+
+    // Draw P2 snake (magenta/purple) in multiplayer
+    if (this.snake2 && this.snake2.length > 0) {
+      this.snake2.forEach((seg,i)=>{
+        const t=i/this.snake2.length;
+        const cx=seg.x*SC, cy=seg.y*SC;
+        ctx.globalAlpha=1;
+        ctx.fillStyle=i===0?'#ff00aa':`hsl(${300-t*40},100%,${55-t*20}%)`;
+        if (i===0) { ctx.shadowColor='#ff00aa'; ctx.shadowBlur=14; }
+        ctx.fillRect(cx+1,cy+1,SC-2,SC-2);
+        if (i===0) { ctx.shadowBlur=0;
+          ctx.fillStyle='#2a001a';
+          ctx.fillRect(cx+SC*0.27,cy+SC*0.28,3,3);
+          ctx.fillRect(cx+SC*0.62,cy+SC*0.28,3,3);
+        }
+        ctx.shadowBlur=0; ctx.globalAlpha=1;
+      });
+    }
   }
 
   _end() {
     this.running = false; sndOver();
-    if (this.score > this.high) {
-      this.high=this.score; localStorage.setItem('sHigh',this.high);
+    const combinedScore = this.score + this.score2;
+    if (combinedScore > this.high) {
+      this.high=combinedScore;
+      localStorage.setItem('sHigh',this.high);
+      syncScore('snake', combinedScore);
       document.getElementById('s-high').textContent=this.high;
     }
     const ov=document.getElementById('snake-overlay');
-    const isRec = this.score>=this.high && this.score>0;
-    ov.innerHTML=`<h2>SIGNAL LOST</h2><div class="score-big">SCORE: ${this.score}</div>${isRec?'<div class="new-rec">▓ NEW HIGH SCORE ▓</div>':`<div class="subtitle">BEST: ${this.high}</div>`}<button class="start-btn" onclick="startSnake()">[ RECONNECT ]</button><button class="start-btn" onclick="backToCatalog()" style="margin-top:6px;border-color:var(--pink);color:var(--pink);box-shadow:var(--gpink);">[ BACK TO GAMES ]</button>`;
+    const isRec = combinedScore>=this.high && combinedScore>0;
+    
+    let modeLabel = '';
+    let modeButtons = '';
+    if (this.isMultiplayer) {
+      modeLabel = `<div class="subtitle">P1: ${this.score} | P2: ${this.score2} | COMBINED: ${combinedScore}</div>`;
+      modeButtons = `
+        <button class="start-btn" onclick="startSnake()">[ SINGLE PLAYER ]</button>
+        <button class="start-btn mp-btn" onclick="startSnakeMultiplayer()">[ CO-OP AGAIN ]</button>`;
+    } else {
+      modeLabel = `<div class="subtitle">SCORE: ${this.score}</div>`;
+      modeButtons = `<button class="start-btn" onclick="startSnake()">[ RECONNECT ]</button>`;
+    }
+    
+    ov.innerHTML=`<h2>SIGNAL LOST</h2>
+      <div class="score-big">${this.isMultiplayer ? combinedScore.toLocaleString() : this.score}</div>
+      ${modeLabel}
+      ${isRec?'<div class="new-rec">▓ NEW HIGH SCORE ▓</div>':''}
+      ${modeButtons}
+      <button class="start-btn" onclick="backToCatalog()" style="margin-top:6px;border-color:var(--pink);color:var(--pink);box-shadow:var(--gpink);">[ BACK TO GAMES ]</button>`;
     ov.style.display='flex';
   }
 
   handleKey(e) {
     if (!this.running) return;
+    // P1: WASD
     const map={'ArrowUp':{x:0,y:-1},'KeyW':{x:0,y:-1},'ArrowDown':{x:0,y:1},'KeyS':{x:0,y:1},'ArrowLeft':{x:-1,y:0},'KeyA':{x:-1,y:0},'ArrowRight':{x:1,y:0},'KeyD':{x:1,y:0}};
-    const d=map[e.code];
-    if (d && !(d.x===-this.dir.x && d.y===-this.dir.y)) { this.ndir=d; e.preventDefault(); }
+    
+    if (this.isMultiplayer) {
+      // P2: Arrow keys separate from P1
+      const p2Map = {'ArrowUp':{x:0,y:-1},'ArrowDown':{x:0,y:1},'ArrowLeft':{x:-1,y:0},'ArrowRight':{x:1,y:0}};
+      // P1 keys: WASD
+      const p1Map = {'KeyW':{x:0,y:-1},'KeyS':{x:0,y:1},'KeyA':{x:-1,y:0},'KeyD':{x:1,y:0}};
+      
+      const p1d = p1Map[e.code];
+      if (p1d && !(p1d.x===-this.dir.x && p1d.y===-this.dir.y)) { this.ndir = p1d; e.preventDefault(); }
+      
+      const p2d = p2Map[e.code];
+      if (p2d && this.snake2.length > 0 && !(p2d.x===-this.dir2.x && p2d.y===-this.dir2.y)) { this.ndir2 = p2d; e.preventDefault(); }
+    } else {
+      const d=map[e.code];
+      if (d && !(d.x===-this.dir.x && d.y===-this.dir.y)) { this.ndir=d; e.preventDefault(); }
+    }
   }
 }
 
 function startSnake() {
   document.getElementById('snake-overlay').style.display='none';
   if (!snakeGame) snakeGame=new CyberSnake();
-  snakeGame.start();
+  snakeGame.start(false);
+}
+
+function startSnakeMultiplayer() {
+  document.getElementById('snake-overlay').style.display='none';
+  if (!snakeGame) snakeGame=new CyberSnake();
+  snakeGame.start(true);
+}
+
+// ============================================================
+//  GLOBAL SNAKE (ONLINE MULTIPLAYER VIA FIREBASE)
+// ============================================================
+// Uses Firestore real-time listener. Player 1 creates/lobbies, Player 2 joins.
+
+let globalSnakeActive = false;
+let globalSnakeUnsub = null;
+let globalSnakeStateRef = null;
+let globalSnakePingTimer = null;
+let globalSnakePlayerId = null; // 'p1' or 'p2'
+let globalSnakeOtherConnected = false;
+
+async function startSnakeGlobalMultiplayer() {
+  if (!currentUser || !fbDb) {
+    alert('❌ Пожалуйста, войдите в аккаунт для онлайн-игры!');
+    toggleAuthModal();
+    return;
+  }
+  
+  document.getElementById('snake-overlay').style.display='none';
+  
+  // Show waiting overlay
+  if (!snakeGame) snakeGame = new CyberSnake();
+  const ov = document.getElementById('snake-overlay');
+  ov.style.display = 'flex';
+  ov.innerHTML = `<h2>SEARCHING...</h2>
+    <div class="subtitle">CONNECTING TO GLOBAL SERVER</div>
+    <div class="subtitle" id="gs-status" style="color:var(--cyan);">WAITING FOR OPPONENT...</div>
+    <div class="subtitle" style="color:var(--dim);font-size:.6rem;" id="gs-game-id"></div>
+    <button class="start-btn" onclick="cancelGlobalSnake()" style="border-color:var(--pink);color:var(--pink);box-shadow:var(--gpink);">[ CANCEL ]</button>`;
+  
+  try {
+    await initGlobalSnakeSession();
+  } catch (e) {
+    console.error('Global snake error:', e);
+    ov.innerHTML = `<h2>CONNECTION ERROR</h2>
+      <div class="subtitle">${escHtml(e.message || 'Failed to connect')}</div>
+      <button class="start-btn" onclick="startSnakeGlobalMultiplayer()">[ RETRY ]</button>
+      <button class="start-btn" onclick="backToCatalog()" style="margin-top:6px;border-color:var(--pink);color:var(--pink);box-shadow:var(--gpink);">[ BACK TO GAMES ]</button>`;
+  }
+}
+
+function cancelGlobalSnake() {
+  if (globalSnakeUnsub) { globalSnakeUnsub(); globalSnakeUnsub = null; }
+  if (globalSnakePingTimer) { clearInterval(globalSnakePingTimer); globalSnakePingTimer = null; }
+  if (globalSnakeStateRef) {
+    globalSnakeStateRef.delete().catch(() => {});
+    globalSnakeStateRef = null;
+  }
+  globalSnakeActive = false;
+  globalSnakePlayerId = null;
+  document.getElementById('snake-overlay').style.display = 'none';
+  if (snakeGame) { snakeGame.running = false; if (snakeGame.raf) cancelAnimationFrame(snakeGame.raf); }
+}
+
+async function initGlobalSnakeSession() {
+  const uid = currentUser.uid;
+  const name = currentUser.displayName || currentUser.email || 'Anonymous';
+  
+  // Try to find an existing open lobby or create one
+  const lobbiesRef = fbDb.collection('snake_global');
+  
+  // Look for an open lobby with only 1 player
+  const query = await lobbiesRef.where('status', '==', 'waiting').limit(1).get();
+  
+  let sessionRef;
+  let isHost = false;
+  
+  if (!query.empty) {
+    // Join existing lobby as P2
+    const doc = query.docs[0];
+    sessionRef = doc.ref;
+    isHost = false;
+    globalSnakePlayerId = 'p2';
+    
+    await sessionRef.update({
+      status: 'playing',
+      p2: { uid, name, x: 12, y: 8, dir: {x:1,y:0}, score: 0 },
+      startTime: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    
+    document.getElementById('gs-status').textContent = 'OPPONENT FOUND! STARTING...';
+    document.getElementById('gs-game-id').textContent = '';
+    
+    setTimeout(() => {
+      document.getElementById('snake-overlay').style.display = 'none';
+      startGlobalGame(sessionRef, false);
+    }, 800);
+  } else {
+    // Create new lobby as P1 (host)
+    isHost = true;
+    globalSnakePlayerId = 'p1';
+    
+    sessionRef = await lobbiesRef.add({
+      status: 'waiting',
+      p1: { uid, name, x: 12, y: 12, dir: {x:1,y:0}, score: 0 },
+      p2: null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      gameId: 'snake_' + Date.now(),
+    });
+    
+    globalSnakeStateRef = sessionRef;
+    
+    document.getElementById('gs-game-id').textContent = 'ROOM: ' + sessionRef.id.slice(0, 8);
+    
+    // Listen for P2 joining
+    globalSnakeUnsub = sessionRef.onSnapshot(snap => {
+      if (!snap.exists) return;
+      const data = snap.data();
+      
+      if (data.p2 && data.status === 'playing' && !globalSnakeActive) {
+        document.getElementById('gs-status').textContent = 'OPPONENT JOINED! STARTING...';
+        setTimeout(() => {
+          document.getElementById('snake-overlay').style.display = 'none';
+          startGlobalGame(sessionRef, true);
+        }, 800);
+      }
+    });
+    
+    // Cleanup stale lobbies
+    globalSnakePingTimer = setInterval(async () => {
+      try {
+        if (sessionRef) {
+          await sessionRef.update({ ping: Date.now() });
+        }
+      } catch(e) {}
+    }, 3000);
+  }
+}
+
+function startGlobalGame(sessionRef, isHost) {
+  globalSnakeActive = true;
+  globalSnakeStateRef = sessionRef;
+  
+  // Initialize game locally
+  snakeGame.start(false); // base single player mode
+  snakeGame.running = true;
+  
+  // Override to global mode
+  snakeGame.isMultiplayer = false; // don't use local 2P controls
+  snakeGame.isGlobal = true;
+  
+  // Set player specific state
+  snakeGame.globalPlayerId = globalSnakePlayerId;
+  snakeGame.globalSessionRef = sessionRef;
+  snakeGame.globalOtherScore = 0;
+  snakeGame.globalOtherSnake = [];
+  
+  if (globalSnakePlayerId === 'p1') {
+    snakeGame.snake = [{x:12,y:12},{x:11,y:12},{x:10,y:12}];
+    snakeGame.dir = {x:1,y:0}; snakeGame.ndir = {x:1,y:0};
+  } else {
+    snakeGame.snake = [{x:12,y:8},{x:11,y:8},{x:10,y:8}];
+    snakeGame.dir = {x:1,y:0}; snakeGame.ndir = {x:1,y:0};
+  }
+  
+  // Show P2 score display
+  document.getElementById('s2-score').textContent = '0';
+  document.getElementById('s-p2-score').style.display = '';
+  document.querySelector('#panel-snake .hint').textContent =
+    'WASD — MOVE &nbsp;|&nbsp; REAL-TIME GLOBAL MULTIPLAYER &nbsp;|&nbsp; ESC BACK';
+  
+  // Listen for remote player updates
+  if (globalSnakeUnsub) globalSnakeUnsub();
+  globalSnakeUnsub = sessionRef.onSnapshot(snap => {
+    if (!snap.exists || !globalSnakeActive) return;
+    const data = snap.data();
+    if (!data) return;
+    
+    const remoteKey = globalSnakePlayerId === 'p1' ? 'p2' : 'p1';
+    const remote = data[remoteKey];
+    const myKey = globalSnakePlayerId;
+    const me = data[myKey];
+    
+    if (remote) {
+      globalSnakeOtherConnected = true;
+      // Update other snake position for drawing
+      snakeGame.globalOtherSnake = remote.snake || [];
+      snakeGame.globalOtherScore = remote.score || 0;
+      document.getElementById('s2-score').textContent = snakeGame.globalOtherScore;
+    }
+    
+    // Check if opponent disconnected
+    if (!remote && globalSnakeActive) {
+      endGlobalSnake('OPPONENT DISCONNECTED');
+    }
+  });
+  
+  // Send our position periodically
+  snakeGame._originalTick = snakeGame._tick;
+  snakeGame._tick = function() {
+    this._originalTick.call(this);
+    // Send our state to Firestore
+    if (this.running && this.globalSessionRef) {
+      const myKey = this.globalPlayerId;
+      this.globalSessionRef.update({
+        [`${myKey}.snake`]: this.snake,
+        [`${myKey}.score`]: this.score,
+        [`${myKey}.dir`]: this.dir,
+        [`${myKey}.lastUpdate`]: Date.now(),
+      }).catch(() => {});
+    }
+  };
+  
+  // Override end to handle global disconnect
+  snakeGame._originalEnd = snakeGame._end;
+  snakeGame._end = function() {
+    endGlobalSnake(null);
+    this._originalEnd.call(this);
+  };
+  
+  // Override draw to show remote snake
+  snakeGame._originalDraw = snakeGame._draw;
+  snakeGame._draw = function() {
+    this._originalDraw.call(this);
+    // Draw remote snake (green instead of magenta for online)
+    if (this.globalOtherSnake && this.globalOtherSnake.length > 0) {
+      const ctx = this.ctx;
+      this.globalOtherSnake.forEach((seg, i) => {
+        const t = i / this.globalOtherSnake.length;
+        const cx = seg.x * SC, cy = seg.y * SC;
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = i === 0 ? '#00ff88' : `hsl(${140 - t * 30}, 100%, ${55 - t * 20}%)`;
+        if (i === 0) { ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 14; }
+        ctx.fillRect(cx + 1, cy + 1, SC - 2, SC - 2);
+        if (i === 0) { ctx.shadowBlur = 0;
+          ctx.fillStyle = '#001a0f';
+          ctx.fillRect(cx + SC * 0.27, cy + SC * 0.28, 3, 3);
+          ctx.fillRect(cx + SC * 0.62, cy + SC * 0.28, 3, 3);
+        }
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      });
+    }
+  };
+  
+  // Override handleKey for global mode (only WASD)
+  snakeGame._originalHandleKey = snakeGame.handleKey;
+  snakeGame.handleKey = function(e) {
+    if (!this.running) return;
+    const p1Map = {'KeyW':{x:0,y:-1},'KeyS':{x:0,y:1},'KeyA':{x:-1,y:0},'KeyD':{x:1,y:0}};
+    const d = p1Map[e.code];
+    if (d && !(d.x===-this.dir.x && d.y===-this.dir.y)) { this.ndir = d; e.preventDefault(); }
+  };
+}
+
+async function endGlobalSnake(reason) {
+  if (!globalSnakeActive) return;
+  globalSnakeActive = false;
+  
+  if (globalSnakeUnsub) { globalSnakeUnsub(); globalSnakeUnsub = null; }
+  if (globalSnakePingTimer) { clearInterval(globalSnakePingTimer); globalSnakePingTimer = null; }
+  
+  // Clean up Firestore session
+  if (globalSnakeStateRef) {
+    try {
+      await globalSnakeStateRef.delete();
+    } catch(e) {}
+    globalSnakeStateRef = null;
+  }
+  
+  if (reason) {
+    const ov = document.getElementById('snake-overlay');
+    ov.style.display = 'flex';
+    ov.innerHTML = `<h2>DISCONNECTED</h2>
+      <div class="subtitle">${escHtml(reason)}</div>
+      <button class="start-btn" onclick="startSnakeGlobalMultiplayer()">[ PLAY AGAIN ]</button>
+      <button class="start-btn" onclick="startSnake()">[ SINGLE PLAYER ]</button>
+      <button class="start-btn" onclick="backToCatalog()" style="margin-top:6px;border-color:var(--pink);color:var(--pink);box-shadow:var(--gpink);">[ BACK TO GAMES ]</button>`;
+  }
+  
+  globalSnakePlayerId = null;
 }
 
 // ============================================================
@@ -2413,6 +3437,7 @@ class Starfighter {
       if (this.powerTime <= 0) this.powerLevel = 1;
     }
 
+    // Bullets, enemies, etc. — same as before
     this.bullets = this.bullets.filter(b => {
       b.mesh.position.z += b.vz * dt;
       if (b.mesh.position.z < -120) {
@@ -2485,6 +3510,7 @@ class Starfighter {
       return true;
     });
 
+    // Collision detection (same as original)
     for (let i = this.bullets.length - 1; i >= 0; i--) {
       const b = this.bullets[i];
       for (let j = this.enemies.length - 1; j >= 0; j--) {
@@ -2528,6 +3554,7 @@ class Starfighter {
       }
     }
 
+    // Player hit detection
     if (this.invincible <= 0) {
       for (let j = this.enemies.length - 1; j >= 0; j--) {
         if (this.shipGroup.position.distanceTo(this.enemies[j].mesh.position) < 1.8) {
@@ -2557,6 +3584,7 @@ class Starfighter {
       }
     }
 
+    // Powerup collection
     for (let j = this.powerups.length - 1; j >= 0; j--) {
       if (this.shipGroup.position.distanceTo(this.powerups[j].mesh.position) < 1.5) {
         this.powerLevel = Math.min(3, this.powerLevel + 1);
@@ -2570,6 +3598,7 @@ class Starfighter {
       }
     }
 
+    // Camera follow
     this.cam.position.x = this.shipGroup.position.x * 0.3;
     this.cam.position.y = this.shipGroup.position.y * 0.3 + 2;
     this.cam.position.z = 10;
@@ -2597,6 +3626,7 @@ class Starfighter {
     if (this.score > this.best) {
       this.best = this.score;
       localStorage.setItem('sfBest', this.best);
+      syncScore('starfighter', this.score);
     }
     const isRec = this.score >= this.best && this.score > 0;
     const ov = document.getElementById('sf-overlay');
@@ -2928,6 +3958,7 @@ class AsteroidDefense {
     if (this.score > this.best) {
       this.best = this.score;
       localStorage.setItem('adBest', this.best);
+      syncScore('asteroid', this.score);
     }
     const isRec = this.score >= this.best && this.score > 0;
     const ov = document.getElementById('ad-overlay');
@@ -2958,14 +3989,13 @@ function startAsteroidDefense() {
 //  INPUT ROUTER
 // ============================================================
 window.addEventListener('keydown', e=>{
-  // ESC — возврат в каталог
   if (e.code === 'Escape' && currentTab !== null) {
     e.preventDefault();
     backToCatalog();
     return;
   }
 
-  // Навигация по картриджам (клавиатурой)
+  // Navigation on cartridge menu
   if (currentTab === null && cartridgeMenu) {
     const count = cartridgeMenu.configs.length;
     if (e.code === 'ArrowRight' || e.code === 'ArrowDown') {
@@ -2983,14 +4013,13 @@ window.addEventListener('keydown', e=>{
       if (cartridgeMenu.selectedIndex >= 0 && !cartridgeMenu.isAnimating) {
         const idx = cartridgeMenu.selectedIndex;
         const cfg = cartridgeMenu.configs[idx];
-        // Вызываем ту же анимацию что и при клике мыши
         cartridgeMenu._ejectAnimation(idx, cfg.game);
       }
     }
     return;
   }
 
-  // Игровые клавиши
+  // Game-specific controls
   if (currentTab==='tetris' && tetrisGame) tetrisGame.handleKey(e);
   if (currentTab==='runner' && runnerGame && (e.code==='Space'||e.code==='ArrowUp')) { e.preventDefault(); runnerGame.jump(); }
   if (currentTab==='snake'  && snakeGame)  snakeGame.handleKey(e);
@@ -3012,10 +4041,18 @@ window.addEventListener('resize', ()=>{
   if(asteroidDefenseGame) asteroidDefenseGame.resize();
 });
 
-// Инициализация
+// ============================================================
+//  🚀 INIT
+// ============================================================
 document.addEventListener('DOMContentLoaded', () => {
+  initFirebase();
   if (!menuScene) menuScene = new MenuScene();
   if (!cartridgeMenu) cartridgeMenu = new CartridgeMenu();
+  
+  // Wait for Firebase then load leaderboard
+  waitForFirebase(() => {
+    loadAllLeaderboards();
+  });
 });
 
 if (document.readyState !== 'loading') {
