@@ -3022,20 +3022,23 @@ function startGlobalGame(sessionRef, isHost) {
     const data = snap.data();
     if (!data) return;
     
-    // Don't process our OWN writes — check if the data has our player
     const remoteKey = globalSnakePlayerId === 'p1' ? 'p2' : 'p1';
     const remote = data[remoteKey];
     const myKey = globalSnakePlayerId;
     
-    if (!remote && globalSnakeActive) {
-      // Only trigger disconnect if we've actually started and they left
-      if (data.status === 'playing' || data[myKey]?.connected) {
-        endGlobalSnake('OPPONENT DISCONNECTED');
-      }
+    // ── ОПРЕДЕЛЕНИЕ ПОБЕДЫ: соперник умер или отключился ──
+    const opponentDead = data.status === 'ended' ||
+      (remote && remote.connected === false) ||
+      (data.status === 'playing' && myKey && data[myKey] && !remote);
+    
+    if (opponentDead && globalSnakeActive) {
+      pendingRemoteData = null; // Очищаем — не рисуем мёртвую змейку
+      // Показываем сообщение о победе
+      endGlobalSnake('🎉 YOU WIN! OPPONENT ELIMINATED');
       return;
     }
     
-    if (remote) {
+    if (remote && remote.connected !== false) {
       // Throttle: store data, process later in game loop
       pendingRemoteData = {
         snake: remote.snake || [],
@@ -3060,6 +3063,7 @@ function startGlobalGame(sessionRef, isHost) {
     }).catch(() => {});
   }
   
+  // ── IMMEDIATE WRITE ON DEATH ──
   // ── THROTTLED READ FUNCTION ──
   function tryApplyRemoteUpdate(now) {
     if (!pendingRemoteData) return;
@@ -3069,27 +3073,42 @@ function startGlobalGame(sessionRef, isHost) {
     const remote = pendingRemoteData;
     pendingRemoteData = null;
     
-    snakeGame.globalOtherSnake = remote.snake;
-    snakeGame.globalOtherScore = remote.score;
-    snakeGame.globalOtherDir = remote.dir || {x:1,y:0};
-    document.getElementById('s2-score').textContent = remote.score || 0;
+    if (remote && remote.snake && remote.snake.length > 0) {
+      snakeGame.globalOtherSnake = remote.snake;
+      snakeGame.globalOtherScore = remote.score || 0;
+      snakeGame.globalOtherDir = remote.dir || {x:1,y:0};
+      document.getElementById('s2-score').textContent = remote.score || 0;
+    } else {
+      snakeGame.globalOtherSnake = [];
+      document.getElementById('s2-score').textContent = '—';
+    }
   }
   
   // ── OVERRIDE _tick: add throttled write ──
   snakeGame._originalTick = snakeGame._tick;
   snakeGame._tick = function() {
     this._originalTick.call(this);
-    // Process remote data and write our data in the game loop (throttled)
     const now = performance.now();
     tryApplyRemoteUpdate(now);
     if (this.running && this.globalSessionRef) {
       tryWriteSnapshot(now);
     }
+    if (!this.running && globalSnakeActive) {
+      endGlobalSnake(null);
+    }
   };
   
-  // Override end to handle global disconnect
+  // ── OVERRIDE _end: write death to Firestore, then show normal game over ──
   snakeGame._originalEnd = snakeGame._end;
   snakeGame._end = function() {
+    const myKey = globalSnakePlayerId;
+    // Fire-and-forget: write death to Firestore (no await needed)
+    sessionRef.update({
+      status: 'ended',
+      endedAt: Date.now(),
+      [`${myKey}.connected`]: false,
+    }).catch(() => {});
+    // Call global cleanup + original end overlay (shows "SIGNAL LOST" etc)
     endGlobalSnake(null);
     this._originalEnd.call(this);
   };
@@ -3134,16 +3153,23 @@ async function endGlobalSnake(reason) {
   if (globalSnakeUnsub) { globalSnakeUnsub(); globalSnakeUnsub = null; }
   if (globalSnakePingTimer) { clearInterval(globalSnakePingTimer); globalSnakePingTimer = null; }
   
+  // Stop the local game if it's still running
+  if (snakeGame) {
+    snakeGame.running = false;
+    if (snakeGame.raf) {
+      cancelAnimationFrame(snakeGame.raf);
+      snakeGame.raf = null;
+    }
+  }
+  
   // Clean up Firestore session
   if (globalSnakeStateRef) {
     try {
-      // Set dead status instead of deleting — so the other player knows
       await globalSnakeStateRef.update({
         status: 'ended',
         endedAt: Date.now(),
         [`${globalSnakePlayerId}.connected`]: false,
       }).catch(() => {});
-      // Small delay then delete
       setTimeout(() => {
         globalSnakeStateRef.delete().catch(() => {});
         globalSnakeStateRef = null;
