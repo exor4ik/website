@@ -2979,11 +2979,10 @@ function startGlobalGame(sessionRef, isHost) {
   globalSnakeStateRef = sessionRef;
   
   // Initialize game locally
-  snakeGame.start(false); // base single player mode
+  snakeGame.start(false);
   snakeGame.running = true;
   
   // Override to global mode
-  snakeGame.isMultiplayer = false; // don't use local 2P controls
   snakeGame.isGlobal = true;
   
   // Set player specific state
@@ -2991,6 +2990,7 @@ function startGlobalGame(sessionRef, isHost) {
   snakeGame.globalSessionRef = sessionRef;
   snakeGame.globalOtherScore = 0;
   snakeGame.globalOtherSnake = [];
+  snakeGame.globalOtherDir = {x:1,y:0};
   
   if (globalSnakePlayerId === 'p1') {
     snakeGame.snake = [{x:12,y:12},{x:11,y:12},{x:10,y:12}];
@@ -3004,47 +3004,86 @@ function startGlobalGame(sessionRef, isHost) {
   document.getElementById('s2-score').textContent = '0';
   document.getElementById('s-p2-score').style.display = '';
   document.querySelector('#panel-snake .hint').textContent =
-    'WASD — MOVE &nbsp;|&nbsp; REAL-TIME GLOBAL MULTIPLAYER &nbsp;|&nbsp; ESC BACK';
+    'WASD — MOVE &nbsp;|&nbsp; GLOBAL MULTIPLAYER &nbsp;|&nbsp; ESC BACK';
   
-  // Listen for remote player updates
+  // ── THROTTLED WRITE: write to Firestore max every 400ms ──
+  let lastWrite = 0;
+  const WRITE_INTERVAL = 400;
+  
+  // ── THROTTLED READ: process remote snapshot max every 300ms ──
+  let lastRemoteUpdate = 0;
+  let pendingRemoteData = null;
+  const REMOTE_INTERVAL = 300;
+  
+  // Listen for remote player updates — throttled processing
   if (globalSnakeUnsub) globalSnakeUnsub();
   globalSnakeUnsub = sessionRef.onSnapshot(snap => {
     if (!snap.exists || !globalSnakeActive) return;
     const data = snap.data();
     if (!data) return;
     
+    // Don't process our OWN writes — check if the data has our player
     const remoteKey = globalSnakePlayerId === 'p1' ? 'p2' : 'p1';
     const remote = data[remoteKey];
     const myKey = globalSnakePlayerId;
-    const me = data[myKey];
     
-    if (remote) {
-      globalSnakeOtherConnected = true;
-      // Update other snake position for drawing
-      snakeGame.globalOtherSnake = remote.snake || [];
-      snakeGame.globalOtherScore = remote.score || 0;
-      document.getElementById('s2-score').textContent = snakeGame.globalOtherScore;
+    if (!remote && globalSnakeActive) {
+      // Only trigger disconnect if we've actually started and they left
+      if (data.status === 'playing' || data[myKey]?.connected) {
+        endGlobalSnake('OPPONENT DISCONNECTED');
+      }
+      return;
     }
     
-    // Check if opponent disconnected
-    if (!remote && globalSnakeActive) {
-      endGlobalSnake('OPPONENT DISCONNECTED');
+    if (remote) {
+      // Throttle: store data, process later in game loop
+      pendingRemoteData = {
+        snake: remote.snake || [],
+        score: remote.score || 0,
+        dir: remote.dir || {x:1,y:0},
+        lastUpdate: remote.lastUpdate || 0,
+      };
     }
   });
   
-  // Send our position periodically
+  // ── THROTTLED WRITE FUNCTION ──
+  function tryWriteSnapshot(now) {
+    if (now - lastWrite < WRITE_INTERVAL) return;
+    lastWrite = now;
+    const myKey = globalSnakePlayerId;
+    sessionRef.update({
+      [`${myKey}.snake`]: snakeGame.snake,
+      [`${myKey}.score`]: snakeGame.score,
+      [`${myKey}.dir`]: snakeGame.dir,
+      [`${myKey}.lastUpdate`]: Date.now(),
+      [`${myKey}.connected`]: true,
+    }).catch(() => {});
+  }
+  
+  // ── THROTTLED READ FUNCTION ──
+  function tryApplyRemoteUpdate(now) {
+    if (!pendingRemoteData) return;
+    if (now - lastRemoteUpdate < REMOTE_INTERVAL) return;
+    lastRemoteUpdate = now;
+    
+    const remote = pendingRemoteData;
+    pendingRemoteData = null;
+    
+    snakeGame.globalOtherSnake = remote.snake;
+    snakeGame.globalOtherScore = remote.score;
+    snakeGame.globalOtherDir = remote.dir || {x:1,y:0};
+    document.getElementById('s2-score').textContent = remote.score || 0;
+  }
+  
+  // ── OVERRIDE _tick: add throttled write ──
   snakeGame._originalTick = snakeGame._tick;
   snakeGame._tick = function() {
     this._originalTick.call(this);
-    // Send our state to Firestore
+    // Process remote data and write our data in the game loop (throttled)
+    const now = performance.now();
+    tryApplyRemoteUpdate(now);
     if (this.running && this.globalSessionRef) {
-      const myKey = this.globalPlayerId;
-      this.globalSessionRef.update({
-        [`${myKey}.snake`]: this.snake,
-        [`${myKey}.score`]: this.score,
-        [`${myKey}.dir`]: this.dir,
-        [`${myKey}.lastUpdate`]: Date.now(),
-      }).catch(() => {});
+      tryWriteSnapshot(now);
     }
   };
   
@@ -3059,7 +3098,6 @@ function startGlobalGame(sessionRef, isHost) {
   snakeGame._originalDraw = snakeGame._draw;
   snakeGame._draw = function() {
     this._originalDraw.call(this);
-    // Draw remote snake (green instead of magenta for online)
     if (this.globalOtherSnake && this.globalOtherSnake.length > 0) {
       const ctx = this.ctx;
       this.globalOtherSnake.forEach((seg, i) => {
@@ -3099,9 +3137,18 @@ async function endGlobalSnake(reason) {
   // Clean up Firestore session
   if (globalSnakeStateRef) {
     try {
-      await globalSnakeStateRef.delete();
+      // Set dead status instead of deleting — so the other player knows
+      await globalSnakeStateRef.update({
+        status: 'ended',
+        endedAt: Date.now(),
+        [`${globalSnakePlayerId}.connected`]: false,
+      }).catch(() => {});
+      // Small delay then delete
+      setTimeout(() => {
+        globalSnakeStateRef.delete().catch(() => {});
+        globalSnakeStateRef = null;
+      }, 2000);
     } catch(e) {}
-    globalSnakeStateRef = null;
   }
   
   if (reason) {
@@ -4048,10 +4095,28 @@ document.addEventListener('DOMContentLoaded', () => {
   initFirebase();
   if (!menuScene) menuScene = new MenuScene();
   if (!cartridgeMenu) cartridgeMenu = new CartridgeMenu();
-  
+
   // Wait for Firebase then load leaderboard
   waitForFirebase(() => {
     loadAllLeaderboards();
+
+    // ── ПРОВЕРКА ПРИГЛАШЕНИЯ НА ЗМЕИНУЮ ДУЭЛЬ ИЗ URL ──
+    const params = new URLSearchParams(window.location.search);
+    const gameParam = params.get('game');
+    const modeParam = params.get('mode');
+    const opponentUid = params.get('opponent');
+    const opponentName = params.get('opponentName');
+
+    if (gameParam === 'snake' && modeParam === 'duel' && opponentUid) {
+      // Автоматически открываем панель змеи и запускаем дуэль
+      setTimeout(() => {
+        openGame('snake');
+        // Сохраняем информацию о сопернике для использования в игре
+        window.snakeDuelOpponent = { uid: opponentUid, name: opponentName || 'Соперник' };
+        // Запускаем глобальную онлайн-дуэль
+        startSnakeGlobalMultiplayer();
+      }, 500);
+    }
   });
 });
 

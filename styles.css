@@ -1873,6 +1873,83 @@ main.container { padding-top: clamp(80px, 12vw, 100px); }
 .chat-send-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(109,213,255,.25); }
 .chat-send-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
+/* Кнопка "+" и контекстное меню */
+.chat-actions-wrapper {
+  display: flex; gap: 6px; align-items: center; flex-shrink: 0;
+  position: relative;
+}
+.chat-actions-btn {
+  padding: 10px 14px; border-radius: 12px;
+  border: 1px solid var(--line); background: rgba(255,255,255,.06);
+  color: var(--muted); font-size: 1.1rem; font-weight: 700;
+  cursor: pointer; transition: all .25s; flex-shrink: 0;
+  line-height: 1;
+}
+.chat-actions-btn:hover {
+  border-color: var(--accent); color: var(--accent);
+  box-shadow: 0 0 12px rgba(109,213,255,.15);
+}
+.chat-actions-menu {
+  position: absolute; bottom: 100%; right: 0;
+  margin-bottom: 8px;
+  background: var(--grad-glass-heavy);
+  border: 1px solid var(--line-bright);
+  border-radius: 12px;
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-lg);
+  min-width: 220px;
+  opacity: 0; visibility: hidden;
+  transform: translateY(8px) scale(.96);
+  transition: all .2s ease;
+  z-index: 100;
+  overflow: hidden;
+}
+.chat-actions-menu.open {
+  opacity: 1; visibility: visible;
+  transform: translateY(0) scale(1);
+}
+.chat-actions-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px;
+  color: var(--text); font-size: .88rem;
+  cursor: pointer; transition: background .15s;
+}
+.chat-actions-item:hover {
+  background: rgba(109,213,255,.1);
+}
+.chat-actions-icon {
+  font-size: 1.2rem;
+}
+
+/* Стили для сообщений-приглашений */
+.msg-invite .msg-bubble {
+  background: linear-gradient(135deg, rgba(204,0,255,.12), rgba(109,213,255,.08));
+  border: 1px solid rgba(204,0,255,.25);
+}
+.msg-invite-content {
+  display: flex; flex-direction: column; gap: 10px;
+}
+.msg-invite-text {
+  color: var(--text); font-size: .9rem;
+}
+.msg-invite-accept-btn {
+  padding: 8px 16px; border-radius: 8px;
+  border: 1px solid var(--purple, #cc00ff);
+  background: linear-gradient(135deg, rgba(204,0,255,.2), rgba(204,0,255,.1));
+  color: #fff; font-family: inherit; font-size: .85rem;
+  cursor: pointer; transition: all .2s;
+  font-weight: 600;
+}
+.msg-invite-accept-btn:hover {
+  background: linear-gradient(135deg, rgba(204,0,255,.35), rgba(204,0,255,.2));
+  box-shadow: 0 0 15px rgba(204,0,255,.3);
+  transform: translateY(-1px);
+}
+.msg-invite-sent {
+  color: var(--muted); font-size: .85rem;
+  font-style: italic;
+}
+
 /* Модалка нового диалога */
 .new-conv-modal {
   position: fixed; inset: 0; z-index: 10000;

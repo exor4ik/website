@@ -425,7 +425,16 @@ async function openConversation(cId, otherId, otherName, otherAvatar) {
     <div class="chat-input-area">
       <textarea class="chat-input" id="chat-input" rows="1"
         placeholder="Написать сообщение..."></textarea>
-      <button class="chat-send-btn" id="chat-send-btn">↑</button>
+      <div class="chat-actions-wrapper">
+        <button class="chat-actions-btn" id="chat-actions-btn" title="Действия">+</button>
+        <div class="chat-actions-menu" id="chat-actions-menu">
+          <div class="chat-actions-item" id="snake-duel-item">
+            <span class="chat-actions-icon">🐍</span>
+            <span>Пригласить на змеиную дуэль</span>
+          </div>
+        </div>
+        <button class="chat-send-btn" id="chat-send-btn">↑</button>
+      </div>
     </div>
   `;
 
@@ -478,15 +487,33 @@ async function openConversation(cId, otherId, otherName, otherAvatar) {
   msgContainer.addEventListener('click', async (e) => {
     const btn = e.target.closest('.msg-delete');
     if (!btn) return;
-    
+
     const msgId = btn.dataset.msgId;
     if (!msgId || !confirm('Удалить сообщение? Это действие нельзя отменить.')) return;
-    
+
     try {
       await window.db.collection('conversations').doc(cId).collection('messages').doc(msgId).delete();
     } catch (err) {
       console.error('❌ Удаление:', err);
     }
+  });
+
+  // ── ДЕЛЕГИРОВАНИЕ ПРИНЯТИЯ ПРИГЛАШЕНИЯ НА ЗМЕИНУЮ ДУЭЛЬ ──
+  msgContainer.addEventListener('click', (e) => {
+    const acceptBtn = e.target.closest('.msg-invite-accept-btn');
+    if (!acceptBtn) return;
+
+    const inviterUid = acceptBtn.dataset.inviter;
+    if (!inviterUid) return;
+
+    // Открываем minis.html с параметрами для змеиной дуэли
+    const params = new URLSearchParams({
+      game: 'snake',
+      mode: 'duel',
+      opponent: inviterUid,
+      opponentName: userCache[inviterUid]?.name || 'Соперник'
+    });
+    window.open(`minis.html?${params.toString()}`, '_blank');
   });
 
   // Отправка
@@ -504,6 +531,32 @@ async function openConversation(cId, otherId, otherName, otherAvatar) {
     inputEl.style.height = 'auto';
     inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
   });
+
+  // ── КНОПКА "+" И КОНТЕКСТНОЕ МЕНЮ ──
+  const actionsBtn = document.getElementById('chat-actions-btn');
+  const actionsMenu = document.getElementById('chat-actions-menu');
+  const snakeDuelItem = document.getElementById('snake-duel-item');
+
+  if (actionsBtn && actionsMenu) {
+    // Открытие/закрытие меню
+    actionsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      actionsMenu.classList.toggle('open');
+    });
+
+    // Закрытие при клике вне меню
+    document.addEventListener('click', () => {
+      actionsMenu.classList.remove('open');
+    });
+
+    // Приглашение на змеиную дуэль
+    if (snakeDuelItem) {
+      snakeDuelItem.addEventListener('click', () => {
+        actionsMenu.classList.remove('open');
+        sendSnakeDuelInvite(cId, otherId, otherName);
+      });
+    }
+  }
 
   // Подписка на сообщения
   subscribeMessages(cId, currentUser.uid);
@@ -558,12 +611,30 @@ function subscribeMessages(cId, myUid) {
         const senderAva  = senderInfo?.avatar || null;
         const senderName = senderInfo?.name || '?';
 
+        // Проверяем, является ли сообщение приглашением на змеиную дуэль
+        const isSnakeDuelInvite = msg._inviteType === 'snake_duel';
+        const canAcceptInvite = !isOwn && isSnakeDuelInvite && msg._inviteeUid === myUid;
+
         const msgEl = document.createElement('div');
-        msgEl.className = `msg ${isOwn ? 'own' : ''}`;
+        msgEl.className = `msg ${isOwn ? 'own' : ''}${isSnakeDuelInvite ? ' msg-invite' : ''}`;
+
+        let bubbleContent = esc(msg.text);
+        if (isSnakeDuelInvite) {
+          if (canAcceptInvite) {
+            bubbleContent = `
+              <div class="msg-invite-content">
+                <div class="msg-invite-text">${esc(msg.text)}</div>
+                <button class="msg-invite-accept-btn" data-inviter="${msg._inviterUid}">Принять вызов 🐍</button>
+              </div>`;
+          } else {
+            bubbleContent = `<div class="msg-invite-sent">🐍 Приглашение на змеиную дуэль отправлено</div>`;
+          }
+        }
+
         msgEl.innerHTML = `
           <div class="msg-avatar">${avatarHtml(senderAva, senderName, 28)}</div>
           <div class="msg-content">
-            <div class="msg-bubble">${esc(msg.text)}</div>
+            <div class="msg-bubble">${bubbleContent}</div>
             <div class="msg-time">${formatMsgTime(msg.createdAt)}</div>
             ${(isOwn && activeConvIsSecret) ? `<button class="msg-delete" data-msg-id="${doc.id}" title="Удалить навсегда">🗑️</button>` : ''}
           </div>
@@ -668,6 +739,61 @@ async function sendMessage(cId, otherId, otherName, otherAvatar) {
   } finally {
     sendBtn.disabled = false;
     inputEl.focus();
+  }
+}
+
+// ─── SNAKE DUEL INVITE ───────────────────────────────────────────────────────
+
+async function sendSnakeDuelInvite(cId, otherId, otherName) {
+  const me = currentUser;
+  if (!me) return;
+
+  try {
+    if (!userCache[me.uid]) await getUser(me.uid);
+    const convRef = window.db.collection('conversations').doc(cId);
+    const msgRef = convRef.collection('messages').doc();
+    const myName = userCache[me.uid]?.name || me.displayName || me.email || 'Вы';
+
+    // Формируем сообщение-приглашение
+    const inviteText = `🐍 Приглашаю тебя на змеиную дуэль! Нажми, чтобы принять вызов.`;
+
+    await window.db.runTransaction(async tx => {
+      const convSnap = await tx.get(convRef);
+      const convData = convSnap.exists ? convSnap.data() : {};
+      const unread = {
+        ...((convData && typeof convData.unread === 'object' && convData.unread) || {}),
+      };
+
+      unread[otherId] = (Number(unread[otherId]) || 0) + 1;
+      unread[me.uid] = 0;
+
+      tx.set(msgRef, {
+        senderUid: me.uid,
+        text: inviteText,
+        _inviteType: 'snake_duel',
+        _inviterUid: me.uid,
+        _inviteeUid: otherId,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        read: false,
+      });
+
+      tx.set(convRef, {
+        participants: [me.uid, otherId],
+        participantNames: {
+          ...((convData && convData.participantNames) || {}),
+          [me.uid]: myName,
+          [otherId]: otherName || 'Пользователь',
+        },
+        unread,
+        lastMessage: inviteText,
+        lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+        createdAt: convData?.createdAt || firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    });
+
+    console.log('✅ Snake duel invite sent');
+  } catch (err) {
+    console.error('❌ Send snake duel invite:', err);
   }
 }
 
