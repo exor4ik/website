@@ -292,6 +292,7 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
 .hud span b{color:var(--cyan);font-size:1em;}
 .hud-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
 
+#t-canvas-duel{display:flex;gap:4px;width:100%;}
 .canvas-wrap{position:relative;border:1px solid var(--dim);overflow:hidden;background:#020209;box-shadow:inset 0 0 40px rgba(0,255,180,.03);}
 .canvas-wrap canvas{display:block;width:100%;}
 
@@ -527,6 +528,7 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
     <button class="mobile-game-btn" onclick="openGame('snake')">CYBER SNAKE</button>
     <button class="mobile-game-btn" onclick="openGame('starfighter')">STARFIGHTER</button>
     <button class="mobile-game-btn" onclick="openGame('asteroid')">ASTEROID DEFENSE</button>
+    <button class="mobile-game-btn" onclick="openGame('varoom')">VAROOM</button>
   </div>
 
   <div class="catalog-hint">
@@ -543,6 +545,7 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
     <button class="lb-tab" data-game="snake" onclick="switchLeaderboard('snake')">SNAKE</button>
     <button class="lb-tab" data-game="starfighter" onclick="switchLeaderboard('starfighter')">STARFIGHTER</button>
     <button class="lb-tab" data-game="asteroid" onclick="switchLeaderboard('asteroid')">ASTEROID</button>
+    <button class="lb-tab" data-game="varoom" onclick="switchLeaderboard('varoom')">VAROOM</button>
   </div>
   <div class="lb-entries" id="lb-entries">
     <div class="lb-loading">LOADING...</div>
@@ -565,7 +568,9 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
       <div class="panel-title">3D TETRIS</div>
       <div style="width:120px"></div>
     </div>
-    <div class="hud">
+    
+    <!-- Single Player HUD -->
+    <div class="hud" id="t-hud-single">
       <span>SCORE:&nbsp;<b id="t-score">0</b></span>
       <span>LEVEL:&nbsp;<b id="t-level">1</b></span>
       <span>LINES:&nbsp;<b id="t-lines">0</b></span>
@@ -576,16 +581,57 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
         <canvas id="t-hold-canvas" width="72" height="72"></canvas>
       </div>
     </div>
-    <div class="canvas-wrap" style="height:560px;">
+    
+    <!-- Duel HUD (hidden by default) -->
+    <div class="hud" id="t-hud-duel" style="display:none;justify-content:space-between;">
+      <span style="color:var(--cyan);">P1 <b id="td-p1-score">0</b> | <b id="td-p1-lines">0</b>L</span>
+      <span id="td-vs" style="color:var(--pink);font-weight:bold;text-shadow:var(--gpink);">VS</span>
+      <span style="color:var(--yellow);">P2 <b id="td-p2-score">0</b> | <b id="td-p2-lines">0</b>L</span>
+    </div>
+    
+    <!-- Single canvas for single player -->
+    <div class="canvas-wrap" id="t-canvas-single" style="height:560px;">
       <canvas id="tetris-canvas"></canvas>
       <div class="overlay" id="tetris-overlay">
         <h2>3D TETRIS</h2>
         <div class="subtitle">CLASSIC GAME IN THREE DIMENSIONS</div>
         <button class="start-btn" onclick="startTetris()">[ START GAME ]</button>
-        <button class="start-btn mp-btn" onclick="startTetrisMultiplayer()" style="display:none;" id="tetris-mp-btn">[ START MULTIPLAYER ]</button>
+        <button class="start-btn mp-btn" onclick="startTetrisMultiplayer()" style="border-color:#cc00ff;color:#cc00ff;">[ LOCAL DUEL (2P) ]</button>
+        <button class="start-btn mp-btn" onclick="startTetrisGlobalMultiplayer()" style="border-color:#00ff88;color:#00ff88;box-shadow:0 0 8px #00ff88,0 0 20px rgba(0,255,136,.3);">[ GLOBAL ONLINE (2P) ]</button>
       </div>
     </div>
-    <div class="hint">← → MOVE &nbsp;|&nbsp; ↑ / Z ROTATE &nbsp;|&nbsp; ↓ SOFT DROP &nbsp;|&nbsp; SPACE HARD DROP &nbsp;|&nbsp; C HOLD PIECE &nbsp;|&nbsp; ESC BACK</div>
+    
+    <!-- Dual canvases for duel mode (hidden by default) -->
+    <div id="t-canvas-duel" style="display:none;gap:4px;width:100%;">
+      <div class="canvas-wrap" style="flex:1;height:520px;">
+        <div style="position:absolute;top:4px;left:8px;z-index:5;color:var(--cyan);font-size:.6rem;text-shadow:0 0 6px #00ffcc;">P1 <span id="td-p1-lines-inline">0</span>L</div>
+        <canvas id="tetris-p1-canvas"></canvas>
+        <div class="overlay" id="tetris-p1-overlay" style="display:none;">
+          <h2 style="font-size:1.6rem;">GAME OVER</h2>
+          <div class="subtitle">P1 ELIMINATED</div>
+        </div>
+      </div>
+      <div class="canvas-wrap" style="flex:1;height:520px;">
+        <div style="position:absolute;top:4px;left:8px;z-index:5;color:var(--yellow);font-size:.6rem;text-shadow:0 0 6px #ffee00;">P2 <span id="td-p2-lines-inline">0</span>L</div>
+        <canvas id="tetris-p2-canvas"></canvas>
+        <div class="overlay" id="tetris-p2-overlay" style="display:none;">
+          <h2 style="font-size:1.6rem;">GAME OVER</h2>
+          <div class="subtitle">P2 ELIMINATED</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Duel Results Overlay -->
+    <div class="overlay" id="tetris-duel-overlay" style="display:none;position:relative;z-index:20;border:1px solid var(--pink);">
+      <h2 id="td-result-title">DUEL OVER</h2>
+      <div class="score-big" id="td-result-text"></div>
+      <div class="subtitle" id="td-result-scores"></div>
+      <button class="start-btn" onclick="startTetrisMultiplayer()">[ DUEL AGAIN ]</button>
+      <button class="start-btn" onclick="startTetris()">[ SINGLE PLAYER ]</button>
+      <button class="start-btn" onclick="backToCatalog()" style="margin-top:6px;border-color:var(--pink);color:var(--pink);box-shadow:var(--gpink);">[ BACK TO GAMES ]</button>
+    </div>
+    
+    <div class="hint">← → MOVE &nbsp;|&nbsp; ↑ / Z ROTATE &nbsp;|&nbsp; ↓ SOFT DROP &nbsp;|&nbsp; SPACE HARD DROP &nbsp;|&nbsp; C HOLD &nbsp;|&nbsp; ESC BACK</div>
   </div>
 
   <div id="panel-runner" class="game-panel">
@@ -680,15 +726,42 @@ header .back-to-index{display:inline-block;margin-top:12px;padding:8px 16px;bord
     </div>
     <div class="hint">MOUSE — AIM TURRET &nbsp;|&nbsp; CLICK / SPACE — FIRE &nbsp;|&nbsp; BIGGER ASTEROIDS = MORE HP &nbsp;|&nbsp; ESC BACK</div>
   </div>
+
+  <div id="panel-varoom" class="game-panel">
+    <div class="panel-nav">
+      <button class="back-btn" onclick="backToCatalog()">◄ BACK TO GAMES</button>
+      <div class="panel-title">VAROOM</div>
+      <div style="width:120px"></div>
+    </div>
+    <div class="hud">
+      <span>SPEED:&nbsp;<b id="v-speed">0 km/h</b></span>
+      <span>DIST:&nbsp;<b id="v-dist">0</b>m</span>
+      <span>SCORE:&nbsp;<b id="v-score">0</b></span>
+      <div class="hud-right"><span>BEST:&nbsp;<b id="v-best">0</b></span></div>
+    </div>
+    <div class="canvas-wrap" style="height:560px;">
+      <canvas id="varoom-canvas"></canvas>
+      <div class="overlay" id="varoom-overlay">
+        <h2>VAROOM</h2>
+        <div class="subtitle">TEMPLE OS STYLE PSEUDO-3D RACER</div>
+        <button class="start-btn" onclick="startVaroom()">[ START ENGINE ]</button>
+      </div>
+    </div>
+    <div class="hint">← → / A D — STEER &nbsp;|&nbsp; ↑ / W — ACCELERATE &nbsp;|&nbsp; ↓ / S — BRAKE &nbsp;|&nbsp; ESC BACK</div>
+  </div>
 </div>
 
+<!-- 1. Библиотеки -->
 <script src="libs/three.min.js"></script>
 <script src="libs/GLTFLoader.js"></script>
 
-<!-- Firebase SDK -->
+<!-- 2. Firebase SDK (БЕЗ defer, чтобы сразу было доступно) -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<!-- 3. Модуль ачивок (С defer, чтобы выполнился после DOM) -->
+<script src="achievements.js" defer></script>
 
 <script>
 'use strict';
@@ -718,6 +791,10 @@ function initFirebase() {
     fbAuth = firebase.auth();
     fbDb = firebase.firestore();
     fbDb.settings({ merge: true });
+
+    window.auth = fbAuth;
+    window.db = fbDb;
+
     isFirebaseReady = true;
     console.log('✅ Firebase initialized for Mini Games');
     
@@ -862,8 +939,8 @@ function setupPresence() {
 // ============================================================
 //  🏆 GLOBAL LEADERBOARD
 // ============================================================
-const LB_GAMES = ['tetris', 'runner', 'snake', 'starfighter', 'asteroid'];
-const LB_KEYS = { tetris:'tBest', runner:'rBest', snake:'sHigh', starfighter:'sfBest', asteroid:'adBest' };
+const LB_KEYS = { tetris:'tBest', runner:'rBest', snake:'sHigh', starfighter:'sfBest', asteroid:'adBest', varoom:'vBest' };
+const LB_GAMES = ['tetris', 'runner', 'snake', 'starfighter', 'asteroid', 'varoom'];
 let currentLB = 'tetris';
 let leaderboardCache = {};
 
@@ -873,18 +950,17 @@ async function saveScore(game, score) {
   const name = currentUser.displayName || currentUser.email || 'Anonymous';
   
   try {
-    // Check if we already have a better score
     const docRef = fbDb.collection('minis_leaderboard').doc(game);
     const doc = await docRef.get();
     let scores = [];
+    let existing = null;
+    
     if (doc.exists) {
       scores = doc.data().scores || [];
-      // Check existing
-      const existing = scores.find(s => s.uid === uid);
-      if (existing && existing.score >= score) return; // not better
+      existing = scores.find(s => s.uid === uid);
+      if (existing && existing.score >= score) return;
     }
     
-    // Update or add
     if (existing) {
       existing.score = score;
       existing.name = name;
@@ -893,14 +969,14 @@ async function saveScore(game, score) {
       scores.push({ uid, name, score, date: Date.now() });
     }
     
-    // Sort and trim
     scores.sort((a, b) => b.score - a.score);
     scores = scores.slice(0, 50);
     
     await docRef.set({ scores, topScore: scores.length > 0 ? scores[0].score : 0 }, { merge: true });
     
-    // Update leaderboard if visible
     if (currentLB === game) renderLeaderboard(game);
+    // Update cache
+    leaderboardCache[game] = scores;
   } catch (e) {
     console.warn('Failed to save score:', e.message);
   }
@@ -988,7 +1064,7 @@ function escHtml(str) {
 //  GLOBALS & NAVIGATION
 // ============================================================
 let currentTab = null;
-let tetrisGame = null, runnerGame = null, snakeGame = null, starfighterGame = null, asteroidDefenseGame = null;
+let tetrisGame = null, runnerGame = null, snakeGame = null, starfighterGame = null, asteroidDefenseGame = null, varoomGame = null;
 let menuScene = null, cartridgeMenu = null;
 
 function openGame(name) {
@@ -1009,15 +1085,21 @@ function openGame(name) {
     if (name === 'runner' && runnerGame) runnerGame.resize();
     if (name === 'starfighter' && starfighterGame) starfighterGame.resize();
     if (name === 'asteroid' && asteroidDefenseGame) asteroidDefenseGame.resize();
+    if (name === 'varoom' && varoomGame) varoomGame.resize();
   }, 80);
 }
 
 function backToCatalog() {
   if (tetrisGame) { tetrisGame.running = false; if (tetrisGame.raf) cancelAnimationFrame(tetrisGame.raf); }
+  if (tetrisDuelP1) { tetrisDuelP1.running = false; if (tetrisDuelP1.raf) cancelAnimationFrame(tetrisDuelP1.raf); }
+  if (tetrisDuelP2) { tetrisDuelP2.running = false; if (tetrisDuelP2.raf) cancelAnimationFrame(tetrisDuelP2.raf); }
+  if (tetrisDuelScoreInterval) { clearInterval(tetrisDuelScoreInterval); tetrisDuelScoreInterval = null; }
+  tetrisDuelActive = false;
   if (runnerGame) { runnerGame.running = false; if (runnerGame.raf) cancelAnimationFrame(runnerGame.raf); }
   if (snakeGame)  { snakeGame.running = false;  if (snakeGame.raf) cancelAnimationFrame(snakeGame.raf); }
   if (starfighterGame) { starfighterGame.running = false; if (starfighterGame.raf) cancelAnimationFrame(starfighterGame.raf); }
   if (asteroidDefenseGame) { asteroidDefenseGame.running = false; if (asteroidDefenseGame.raf) cancelAnimationFrame(asteroidDefenseGame.raf); }
+  if (varoomGame) { varoomGame.running = false; if (varoomGame.raf) cancelAnimationFrame(varoomGame.raf); }
 
   currentTab = null;
   document.querySelectorAll('.game-panel').forEach(p => p.classList.remove('active'));
@@ -1176,6 +1258,12 @@ class CartridgeMenu {
         title: 'ASTEROID\nDEFENSE', subtitle: 'N64-NET', tag: '64-BIT',
         desc: 'ORBITAL TURRET DEFENSE', bestKey: 'adBest',
       },
+      {
+        type: 'atari', game: 'varoom',
+        bodyColor: 0x8b4513, labelColor: '#331100', labelAccent: '#ff8800',
+        title: 'VAROOM', subtitle: 'TEMPLE-NET', tag: '2600',
+        desc: 'PSEUDO-3D HIGHWAY RACER', bestKey: 'vBest',
+      },
     ];
 
     this.cartridges = [];
@@ -1234,6 +1322,7 @@ class CartridgeMenu {
       case 'gameboy': w = 1.3; h = 1.15; d = 0.18; break;
       case 'snes': w = 1.8; h = 1.25; d = 0.24; break;
       case 'n64': w = 1.9; h = 1.45; d = 0.3; break;
+      case 'atari': w = 1.7; h = 1.1; d = 0.22; break;
     }
     bodyGeo = new THREE.BoxGeometry(w, h, d);
 
@@ -2216,105 +2305,782 @@ function startTetris() {
 }
 
 // ============================================================
-//  TETRIS MULTIPLAYER (BATTLE - local 2P sharing same board)
+//  TETRIS LOCAL DUEL (2P side-by-side, real competition)
 // ============================================================
-// In this mode, 2 players take turns controlling pieces.
-// Player 1 controls odd-numbered pieces, Player 2 controls even pieces.
-// The scoring is combined, but we track individual line clears.
+// Two independent Tetris boards. Both play simultaneously.
+// Winner = who survives longer. If both die, more lines wins.
 
-let tetrisBattleActive = false;
+let tetrisDuelActive = false;
+let tetrisP1 = null; // instance for player 1
+let tetrisP2 = null; // instance for player 2
 
-class TetrisBattle extends Tetris3D {
-  constructor() {
-    super();
-    this.player1Score = 0;
-    this.player2Score = 0;
-    this.currentPlayer = 1; // 1 or 2
+class TetrisDuel3D {
+  constructor(canvasId, playerName, accentColor = 0x00ffcc) {
+    this.cv = document.getElementById(canvasId);
+    this.wrap = this.cv.parentElement;
+    this.playerName = playerName;
+    this.accentColor = accentColor;
+
+    this.TC = 10;
+    this.TR = 20;
+
+    this.W = this.wrap.clientWidth || 400;
+    this.H = this.wrap.clientHeight || 520;
+    this.cv.width = this.W;
+    this.cv.height = this.H;
+
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x020209);
+
+    this.cam = new THREE.PerspectiveCamera(52, this.W / this.H, 0.1, 120);
+    this.cam.position.set(5, 9, 22);
+    this.cam.lookAt(5, 9, 0);
+
+    this.rdr = new THREE.WebGLRenderer({ canvas: this.cv, antialias: true });
+    this.rdr.setSize(this.W, this.H);
+    this.rdr.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+
+    this.scene.add(new THREE.AmbientLight(0x112233, 0.7));
+    const dl = new THREE.DirectionalLight(0xffffff, 0.9);
+    dl.position.set(8, 20, 15);
+    this.scene.add(dl);
+    this.glow = new THREE.PointLight(accentColor, 2, 28);
+    this.glow.position.set(5, 9, 6);
+    this.scene.add(this.glow);
+
+    this._buildBorderGrid();
+
+    this.grpBoard  = new THREE.Group(); this.scene.add(this.grpBoard);
+    this.grpActive = new THREE.Group(); this.scene.add(this.grpActive);
+    this.grpGhost  = new THREE.Group(); this.scene.add(this.grpGhost);
+    this.grpFX     = new THREE.Group(); this.scene.add(this.grpFX);
+
+    this.board = null;
+    this.active = null;
+    this.next = null;
+    this.score = 0;
+    this.lines = 0;
+    this.level = 1;
+    this.running = false;
+    this.dead = false;
+    this.raf = null;
+    this.dropTimer = 0;
+    this.dropInterval = 800;
+    this.particles = [];
+    this.lastT = 0;
+
+    this.resize();
+    this.rdr.render(this.scene, this.cam);
+  }
+
+  _buildBorderGrid() {
+    const bMat = new THREE.LineBasicMaterial({ color: this.accentColor, transparent: true, opacity: 0.55 });
+    const bPts = [
+      new THREE.Vector3(-0.5, -0.5, 0),
+      new THREE.Vector3(this.TC - 0.5, -0.5, 0),
+      new THREE.Vector3(this.TC - 0.5, this.TR - 0.5, 0),
+      new THREE.Vector3(-0.5, this.TR - 0.5, 0),
+      new THREE.Vector3(-0.5, -0.5, 0),
+    ];
+    this.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(bPts), bMat));
+
+    const gMat = new THREE.LineBasicMaterial({ color: 0x003322, transparent: true, opacity: 0.22 });
+    const gPts = [];
+    for (let x = 0; x <= this.TC; x++) {
+      gPts.push(new THREE.Vector3(x - 0.5, -0.5, 0));
+      gPts.push(new THREE.Vector3(x - 0.5, this.TR - 0.5, 0));
+    }
+    for (let y = 0; y <= this.TR; y++) {
+      gPts.push(new THREE.Vector3(-0.5, y - 0.5, 0));
+      gPts.push(new THREE.Vector3(this.TC - 0.5, y - 0.5, 0));
+    }
+    this.scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(gPts), gMat));
+  }
+
+  _makeMat(color, emissiveInt = 0.4) {
+    return new THREE.MeshStandardMaterial({
+      color, emissive: color, emissiveIntensity: emissiveInt,
+      roughness: 0.25, metalness: 0.65,
+    });
   }
 
   start() {
-    super.start();
-    this.player1Score = 0;
-    this.player2Score = 0;
-    this.currentPlayer = 1;
-    tetrisBattleActive = true;
-    this._updateBattleHUD();
-    document.querySelector('#panel-tetris .hint').textContent =
-      'P1: A/D MOVE · W ROTATE · S DROP · SPACE HARD DROP | P2: ← → MOVE · ↑ ROTATE · ↓ DROP · 0 HARD DROP | ESC BACK';
+    this.board = Array.from({ length: this.TR }, () => Array(this.TC).fill(0));
+    this.score = 0;
+    this.lines = 0;
+    this.level = 1;
+    this.dead = false;
+    this.running = true;
+    this.particles = [];
+    this.dropTimer = 0;
+    this.dropInterval = 800;
+
+    clearGroup(this.grpBoard);
+    clearGroup(this.grpActive);
+    clearGroup(this.grpGhost);
+    clearGroup(this.grpFX);
+
+    this.next = this._randPiece();
+    this._spawnPiece();
+
+    if (this.raf) cancelAnimationFrame(this.raf);
+    this.lastT = performance.now();
+    this._loop(this.lastT);
+  }
+
+  _randPiece() {
+    const SHAPES = [
+      { s: [[1,1,1,1]],          c: 0x00eeff },
+      { s: [[1,1],[1,1]],        c: 0xffee00 },
+      { s: [[0,1,0],[1,1,1]],    c: 0xcc00ff },
+      { s: [[0,1,1],[1,1,0]],    c: 0x00ff55 },
+      { s: [[1,1,0],[0,1,1]],    c: 0xff2244 },
+      { s: [[1,0,0],[1,1,1]],    c: 0x2255ff },
+      { s: [[0,0,1],[1,1,1]],    c: 0xff8800 },
+    ];
+    const p = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+    return { shape: p.s.map(r => [...r]), color: p.c, x: 3, y: -2 };
+  }
+
+  _rotateCW(m) {
+    const R = m.length, C = m[0].length;
+    const out = Array.from({ length: C }, () => Array(R).fill(0));
+    for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) out[c][R - 1 - r] = m[r][c];
+    return out;
+  }
+
+  _spawnPiece() {
+    this.active = this.next;
+    this.active.x = Math.floor((this.TC - this.active.shape[0].length) / 2);
+    this.active.y = -1;
+    this.next = this._randPiece();
+    if (!this._valid(this.active.shape, this.active.x, this.active.y)) this._die();
+  }
+
+  _valid(shape, px, py) {
+    for (let r = 0; r < shape.length; r++) {
+      for (let c = 0; c < shape[r].length; c++) {
+        if (!shape[r][c]) continue;
+        const bx = px + c, by = py + r;
+        if (bx < 0 || bx >= this.TC || by >= this.TR) return false;
+        if (by >= 0 && this.board[by][bx]) return false;
+      }
+    }
+    return true;
+  }
+
+  _ghostY() {
+    let gy = this.active.y;
+    while (this._valid(this.active.shape, this.active.x, gy + 1)) gy++;
+    return gy;
+  }
+
+  move(dx) {
+    if (!this.running || this.dead) return;
+    if (this._valid(this.active.shape, this.active.x + dx, this.active.y)) {
+      this.active.x += dx;
+      sndMove();
+    }
+  }
+
+  rotate() {
+    if (!this.running || this.dead) return;
+    const rot = this._rotateCW(this.active.shape);
+    for (const k of [0, -1, 1, -2, 2]) {
+      if (this._valid(rot, this.active.x + k, this.active.y)) {
+        this.active.shape = rot;
+        this.active.x += k;
+        sndRotate();
+        return;
+      }
+    }
+  }
+
+  softDrop() {
+    if (!this.running || this.dead) return;
+    if (this._valid(this.active.shape, this.active.x, this.active.y + 1)) {
+      this.active.y++;
+      this.score++;
+      this.dropTimer = 0;
+    } else this._lock();
+  }
+
+  hardDrop() {
+    if (!this.running || this.dead) return;
+    const gy = this._ghostY();
+    this.score += (gy - this.active.y) * 2;
+    this.active.y = gy;
+    this._lock();
   }
 
   _lock() {
-    const prevLines = this.lines;
-    super._lock(); // calls spawnPiece, may trigger gameOver
-    if (!this.running) return;
-    const newLines = this.lines - prevLines;
-    if (newLines > 0) {
-      if (this.currentPlayer === 1) this.player1Score += newLines * 100 * this.level;
-      else this.player2Score += newLines * 100 * this.level;
+    if (this.dead) return;
+    const { shape, x, y, color } = this.active;
+    for (let r = 0; r < shape.length; r++) {
+      for (let c = 0; c < shape[r].length; c++) {
+        if (!shape[r][c]) continue;
+        if (y + r < 0) { this._die(); return; }
+        this.board[y + r][x + c] = color;
+      }
     }
-    // Switch player
-    this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
-    this._updateBattleHUD();
-  }
-
-  _updateBattleHUD() {
-    document.getElementById('t-score').textContent =
-      `P1:${this.player1Score} P2:${this.player2Score}`;
-  }
-
-  handleKey(e) {
-    if (!this.running || !tetrisBattleActive) return;
-    
-    // Player 1 controls: A, W, D, S, Space
-    switch(e.code) {
-      case 'KeyA': this.move(-1); break;
-      case 'KeyD': this.move(1); break;
-      case 'KeyW': this.rotate(); break;
-      case 'KeyS': this.softDrop(); break;
-      case 'Space': this.hardDrop(); break;
-      case 'KeyC': this.holdPiece(); break;
-      // Player 2 controls: Arrows (left/right/up/down)
-      case 'Numpad4': case 'ArrowLeft': if (e.code === 'ArrowLeft') {} break;
-      default: return;
+    sndLock();
+    const cleared = this._clearLines();
+    if (cleared > 0) {
+      const pts = [0, 100, 300, 500, 800][cleared] * this.level;
+      this.score += pts;
+      this.lines += cleared;
+      this.level = Math.floor(this.lines / 10) + 1;
+      this.dropInterval = Math.max(80, 800 - (this.level - 1) * 70);
+      sndClear(cleared);
     }
-    
-    // Arrow keys only for P2, blocked in battle mode from regular Tetris
+    this._rebuildBoard();
+    this._spawnPiece();
   }
 
-  _gameOver() {
+  _clearLines() {
+    let count = 0;
+    for (let r = this.TR - 1; r >= 0; r--) {
+      if (this.board[r].every(v => v !== 0)) {
+        this._spawnClearFX(r);
+        this.board.splice(r, 1);
+        this.board.unshift(Array(this.TC).fill(0));
+        count++; r++;
+      }
+    }
+    return count;
+  }
+
+  _spawnClearFX(row) {
+    for (let c = 0; c < this.TC; c++) {
+      const col = this.board[row][c] || 0x00ffcc;
+      for (let i = 0; i < 4; i++) {
+        const g = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+        const m = new THREE.MeshBasicMaterial({ color: col, transparent: true });
+        const mesh = new THREE.Mesh(g, m);
+        mesh.position.set(c, this.TR - 1 - row, 0.5);
+        const vel = {
+          x: (Math.random() - 0.5) * 0.25,
+          y: Math.random() * 0.35 + 0.08,
+          z: Math.random() * 0.2
+        };
+        this.grpFX.add(mesh);
+        this.particles.push({ mesh, vel, life: 1.0 });
+      }
+    }
+  }
+
+  _rebuildBoard() {
+    clearGroup(this.grpBoard);
+    for (let r = 0; r < this.TR; r++) {
+      for (let c = 0; c < this.TC; c++) {
+        const color = this.board[r][c];
+        if (!color) continue;
+        const mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(0.91, 0.91, 0.91),
+          this._makeMat(color, 0.28)
+        );
+        mesh.position.set(c, this.TR - 1 - r, 0);
+        this.grpBoard.add(mesh);
+      }
+    }
+  }
+
+  _rebuildActive() {
+    clearGroup(this.grpActive);
+    clearGroup(this.grpGhost);
+    if (!this.active || !this.running || this.dead) return;
+    const { shape, x, y, color } = this.active;
+    const gy = this._ghostY();
+    for (let r = 0; r < shape.length; r++) {
+      for (let c = 0; c < shape[r].length; c++) {
+        if (!shape[r][c]) continue;
+        const am = new THREE.Mesh(
+          new THREE.BoxGeometry(0.91, 0.91, 0.91),
+          this._makeMat(color, 0.75)
+        );
+        am.position.set(x + c, this.TR - 1 - (y + r), 0.35);
+        this.grpActive.add(am);
+
+        const gm = new THREE.Mesh(
+          new THREE.BoxGeometry(0.87, 0.87, 0.87),
+          new THREE.MeshBasicMaterial({
+            color, wireframe: true, transparent: true, opacity: 0.22
+          })
+        );
+        gm.position.set(x + c, this.TR - 1 - (gy + r), 0);
+        this.grpGhost.add(gm);
+      }
+    }
+  }
+
+  _die() {
+    this.dead = true;
     this.running = false;
-    tetrisBattleActive = false;
     sndOver();
-    
-    const totalScore = this.player1Score + this.player2Score;
-    if (totalScore > this.best) {
-      this.best = totalScore;
-      localStorage.setItem('tBest', this.best);
-      syncScore('tetris', totalScore);
+    if (this.raf) { cancelAnimationFrame(this.raf); this.raf = null; }
+  }
+
+  handleInput(code) {
+    if (this.dead) return;
+    const actions = {
+      'moveLeft':  () => this.move(-1),
+      'moveRight': () => this.move(1),
+      'rotate':    () => this.rotate(),
+      'softDrop':  () => this.softDrop(),
+      'hardDrop':  () => this.hardDrop(),
+    };
+    if (actions[code]) actions[code]();
+  }
+
+  _loop(t) {
+    if (!this.running && this.dead) return;
+    const dt = Math.min(t - this.lastT, 50);
+    this.lastT = t;
+    if (this.dead) return;
+
+    this.dropTimer += dt;
+    if (this.dropTimer >= this.dropInterval) {
+      this.dropTimer = 0;
+      if (this._valid(this.active.shape, this.active.x, this.active.y + 1)) this.active.y++;
+      else this._lock();
+      if (this.dead) return;
     }
-    
-    const ov = document.getElementById('tetris-overlay');
-    ov.innerHTML = `<h2>BATTLE OVER</h2>
-      <div class="score-big">P1: ${this.player1Score.toLocaleString()} | P2: ${this.player2Score.toLocaleString()}</div>
-      <div class="subtitle">TOTAL: ${totalScore.toLocaleString()} &nbsp;|&nbsp; LINES: ${this.lines}</div>
-      <div class="subtitle">${this.player1Score > this.player2Score ? '🏆 PLAYER 1 WINS!' : this.player2Score > this.player1Score ? '🏆 PLAYER 2 WINS!' : '🤝 DRAW!'}</div>
-      <button class="start-btn" onclick="startTetris()">[ SINGLE PLAYER ]</button>
-      <button class="start-btn mp-btn" onclick="startTetrisMultiplayer()">[ BATTLE AGAIN ]</button>
-      <button class="start-btn" onclick="backToCatalog()" style="margin-top:6px;border-color:var(--pink);color:var(--pink);box-shadow:var(--gpink);">[ BACK TO GAMES ]</button>`;
-    ov.style.display = 'flex';
+
+    this.particles = this.particles.filter(p => {
+      p.life -= 0.025;
+      p.vel.y -= 0.012;
+      p.mesh.position.x += p.vel.x;
+      p.mesh.position.y += p.vel.y;
+      p.mesh.position.z += p.vel.z;
+      p.mesh.material.opacity = Math.max(0, p.life);
+      if (p.life <= 0) {
+        this.grpFX.remove(p.mesh);
+        p.mesh.geometry.dispose();
+        p.mesh.material.dispose();
+        return false;
+      }
+      return true;
+    });
+
+    this.glow.intensity = 1.4 + Math.sin(t * 0.004) * 0.35;
+    this._rebuildActive();
+    this.rdr.render(this.scene, this.cam);
+    this.raf = requestAnimationFrame(tt => this._loop(tt));
+  }
+
+  resize() {
+    const W = this.wrap.clientWidth || 400;
+    const H = this.wrap.clientHeight || 520;
+    this.W = W; this.H = H;
+    this.cv.width = W; this.cv.height = H;
+    this.cam.aspect = W / H;
+    this.cam.updateProjectionMatrix();
+    this.rdr.setSize(W, H);
+  }
+
+  dispose() {
+    this.running = false;
+    if (this.raf) { cancelAnimationFrame(this.raf); this.raf = null; }
+    clearGroup(this.grpBoard);
+    clearGroup(this.grpActive);
+    clearGroup(this.grpGhost);
+    clearGroup(this.grpFX);
+    if (this.rdr) this.rdr.dispose();
   }
 }
 
+let tetrisDuelP1 = null;
+let tetrisDuelP2 = null;
+
 function startTetrisMultiplayer() {
+  // Hide overlays
   document.getElementById('tetris-overlay').style.display = 'none';
-  if (!tetrisGame) {
-    tetrisGame = new TetrisBattle();
-  } else {
-    // Replace with battle version
-    if (tetrisGame.raf) cancelAnimationFrame(tetrisGame.raf);
-    tetrisGame = new TetrisBattle();
+  document.getElementById('tetris-duel-overlay').style.display = 'none';
+
+  // Show duel layout, hide single
+  document.getElementById('t-hud-single').style.display = 'none';
+  document.getElementById('t-hud-duel').style.display = 'flex';
+  document.getElementById('t-canvas-single').style.display = 'none';
+  document.getElementById('t-canvas-duel').style.display = 'flex';
+
+  // Update hint
+  document.querySelector('#panel-tetris .hint').textContent =
+    'P1: A/D/W/S/SPACE &nbsp;|&nbsp; P2: ← → ↑ ↓ / NUMPAD0 &nbsp;|&nbsp; FIRST TO DIE LOSES!';
+
+  tetrisDuelActive = true;
+
+  // Dispose old 3D instances (canvas gets reused, need fresh WebGL context)
+  if (tetrisDuelP1) { tetrisDuelP1.dispose(); tetrisDuelP1 = null; }
+  if (tetrisDuelP2) { tetrisDuelP2.dispose(); tetrisDuelP2 = null; }
+
+  // Create 3D players — wrapper is already visible so resize() picks up correct size
+  tetrisDuelP1 = new TetrisDuel3D('tetris-p1-canvas', 'P1', 0x00ffcc);
+  tetrisDuelP2 = new TetrisDuel3D('tetris-p2-canvas', 'P2', 0xffee00);
+
+  tetrisDuelP1.start();
+  tetrisDuelP2.start();
+
+  // Reset death overlays
+  document.getElementById('tetris-p1-overlay').style.display = 'none';
+  document.getElementById('tetris-p2-overlay').style.display = 'none';
+
+  // Update scores periodically and detect death
+  if (tetrisDuelScoreInterval) clearInterval(tetrisDuelScoreInterval);
+  tetrisDuelScoreInterval = setInterval(() => {
+    if (!tetrisDuelActive) { clearInterval(tetrisDuelScoreInterval); return; }
+
+    document.getElementById('td-p1-score').textContent = tetrisDuelP1 ? tetrisDuelP1.score : 0;
+    document.getElementById('td-p1-lines').textContent = tetrisDuelP1 ? tetrisDuelP1.lines : 0;
+    document.getElementById('td-p2-score').textContent = tetrisDuelP2 ? tetrisDuelP2.score : 0;
+    document.getElementById('td-p2-lines').textContent = tetrisDuelP2 ? tetrisDuelP2.lines : 0;
+    document.getElementById('td-p1-lines-inline').textContent = tetrisDuelP1 ? tetrisDuelP1.lines : 0;
+    document.getElementById('td-p2-lines-inline').textContent = tetrisDuelP2 ? tetrisDuelP2.lines : 0;
+
+    const p1Dead = tetrisDuelP1 && tetrisDuelP1.dead;
+    const p2Dead = tetrisDuelP2 && tetrisDuelP2.dead;
+
+    if (p1Dead) document.getElementById('tetris-p1-overlay').style.display = 'flex';
+    if (p2Dead) document.getElementById('tetris-p2-overlay').style.display = 'flex';
+
+    if ((p1Dead || p2Dead) && tetrisDuelActive) {
+      const p1Score = tetrisDuelP1 ? tetrisDuelP1.score : 0;
+      const p2Score = tetrisDuelP2 ? tetrisDuelP2.score : 0;
+      const p1Lines = tetrisDuelP1 ? tetrisDuelP1.lines : 0;
+      const p2Lines = tetrisDuelP2 ? tetrisDuelP2.lines : 0;
+
+      setTimeout(() => {
+        if (!tetrisDuelActive) return;
+        tetrisDuelActive = false;
+        clearInterval(tetrisDuelScoreInterval);
+
+        let winner = '';
+        if (p1Dead && p2Dead) {
+          winner = p1Lines > p2Lines ? '🏆 PLAYER 1 WINS!' :
+                   p2Lines > p1Lines ? '🏆 PLAYER 2 WINS!' : '🤝 DRAW!';
+        } else if (p1Dead) {
+          winner = '🏆 PLAYER 2 WINS!';
+        } else {
+          winner = '🏆 PLAYER 1 WINS!';
+        }
+
+        const ov = document.getElementById('tetris-duel-overlay');
+        ov.style.display = 'flex';
+        document.getElementById('td-result-title').textContent = 'DUEL OVER';
+        document.getElementById('td-result-text').textContent = winner;
+        document.getElementById('td-result-scores').textContent =
+          `P1: ${p1Score} (${p1Lines}L)  |  P2: ${p2Score} (${p2Lines}L)`;
+
+        const best = Math.max(p1Score, p2Score);
+        const curBest = parseInt(localStorage.getItem('tBest') || '0');
+        if (best > curBest) {
+          localStorage.setItem('tBest', best);
+          syncScore('tetris', best);
+        }
+      }, 800);
+    }
+  }, 100);
+}
+
+let tetrisDuelScoreInterval = null;
+
+// Handle input router for duel mode
+function handleDuelKey(e) {
+  if (!tetrisDuelActive || !currentTab === 'tetris') return;
+  
+  // P1: WASD + Space + C
+  const p1Map = {
+    'KeyA': 'moveLeft', 'KeyD': 'moveRight',
+    'KeyW': 'rotate',
+    'KeyS': 'softDrop',
+    'Space': 'hardDrop',
+    'KeyC': 'hold',
+  };
+  
+  // P2: Arrows + Numpad 0/1
+  const p2Map = {
+    'ArrowLeft': 'moveLeft', 'ArrowRight': 'moveRight',
+    'ArrowUp': 'rotate',
+    'ArrowDown': 'softDrop',
+    'Numpad0': 'hardDrop',
+    'Numpad1': 'hold',
+  };
+  
+  const p1Action = p1Map[e.code];
+  const p2Action = p2Map[e.code];
+  
+  if (p1Action) {
+    e.preventDefault();
+    if (tetrisDuelP1 && !tetrisDuelP1.dead) tetrisDuelP1.handleInput(p1Action);
   }
+  if (p2Action) {
+    e.preventDefault();
+    if (tetrisDuelP2 && !tetrisDuelP2.dead) tetrisDuelP2.handleInput(p2Action);
+  }
+}
+
+// ============================================================
+//  GLOBAL TETRIS (ONLINE MULTIPLAYER VIA FIREBASE)
+// ============================================================
+// Each player plays on their own board simultaneously.
+// Winner is determined by lines cleared when someone dies.
+
+let globalTetrisActive = false;
+let globalTetrisUnsub = null;
+let globalTetrisStateRef = null;
+let globalTetrisPingTimer = null;
+let globalTetrisPlayerId = null;
+
+async function startTetrisGlobalMultiplayer() {
+  if (!currentUser || !fbDb) {
+    alert('❌ Пожалуйста, войдите в аккаунт для онлайн-игры!');
+    toggleAuthModal();
+    return;
+  }
+  
+  document.getElementById('tetris-overlay').style.display='none';
+  
+  const ov = document.getElementById('tetris-overlay');
+  ov.style.display = 'flex';
+  ov.innerHTML = `<h2>SEARCHING...</h2>
+    <div class="subtitle">CONNECTING TO GLOBAL SERVER</div>
+    <div class="subtitle" id="gt-status" style="color:var(--cyan);">WAITING FOR OPPONENT...</div>
+    <div class="subtitle" style="color:var(--dim);font-size:.6rem;" id="gt-game-id"></div>
+    <button class="start-btn" onclick="cancelGlobalTetris()" style="border-color:var(--pink);color:var(--pink);box-shadow:var(--gpink);">[ CANCEL ]</button>`;
+  
+  try {
+    await initGlobalTetrisSession();
+  } catch (e) {
+    console.error('Global tetris error:', e);
+    ov.innerHTML = `<h2>CONNECTION ERROR</h2>
+      <div class="subtitle">${escHtml(e.message || 'Failed to connect')}</div>
+      <button class="start-btn" onclick="startTetrisGlobalMultiplayer()">[ RETRY ]</button>
+      <button class="start-btn" onclick="backToCatalog()" style="margin-top:6px;border-color:var(--pink);color:var(--pink);box-shadow:var(--gpink);">[ BACK TO GAMES ]</button>`;
+  }
+}
+
+function cancelGlobalTetris() {
+  if (globalTetrisUnsub) { globalTetrisUnsub(); globalTetrisUnsub = null; }
+  if (globalTetrisPingTimer) { clearInterval(globalTetrisPingTimer); globalTetrisPingTimer = null; }
+  if (globalTetrisStateRef) {
+    globalTetrisStateRef.delete().catch(() => {});
+    globalTetrisStateRef = null;
+  }
+  globalTetrisActive = false;
+  globalTetrisPlayerId = null;
+  document.getElementById('tetris-overlay').style.display = 'none';
+  if (tetrisGame) { tetrisGame.running = false; if (tetrisGame.raf) cancelAnimationFrame(tetrisGame.raf); }
+}
+
+async function initGlobalTetrisSession() {
+  const uid = currentUser.uid;
+  const name = currentUser.displayName || currentUser.email || 'Anonymous';
+  const lobbiesRef = fbDb.collection('tetris_global');
+  
+  const query = await lobbiesRef.where('status', '==', 'waiting').limit(1).get();
+  
+  let sessionRef;
+  
+  if (!query.empty) {
+    // Join as P2
+    const doc = query.docs[0];
+    sessionRef = doc.ref;
+    globalTetrisPlayerId = 'p2';
+    
+    await sessionRef.update({
+      status: 'playing',
+      p2: { uid, name, score: 0, lines: 0, level: 1 },
+      startTime: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    
+    document.getElementById('gt-status').textContent = 'OPPONENT FOUND! STARTING...';
+    document.getElementById('gt-game-id').textContent = '';
+    
+    setTimeout(() => {
+      document.getElementById('tetris-overlay').style.display = 'none';
+      startGlobalTetrisGame(sessionRef, false);
+    }, 800);
+  } else {
+    // Create lobby as P1
+    globalTetrisPlayerId = 'p1';
+    
+    sessionRef = await lobbiesRef.add({
+      status: 'waiting',
+      p1: { uid, name, score: 0, lines: 0, level: 1 },
+      p2: null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    
+    globalTetrisStateRef = sessionRef;
+    document.getElementById('gt-game-id').textContent = 'ROOM: ' + sessionRef.id.slice(0, 8);
+    
+    globalTetrisUnsub = sessionRef.onSnapshot(snap => {
+      if (!snap.exists) return;
+      const data = snap.data();
+      if (data.p2 && data.status === 'playing' && !globalTetrisActive) {
+        document.getElementById('gt-status').textContent = 'OPPONENT JOINED! STARTING...';
+        setTimeout(() => {
+          document.getElementById('tetris-overlay').style.display = 'none';
+          startGlobalTetrisGame(sessionRef, true);
+        }, 800);
+      }
+    });
+    
+    globalTetrisPingTimer = setInterval(async () => {
+      try { if (sessionRef) await sessionRef.update({ ping: Date.now() }); } catch(e) {}
+    }, 3000);
+  }
+}
+
+function startGlobalTetrisGame(sessionRef, isHost) {
+  globalTetrisActive = true;
+  globalTetrisStateRef = sessionRef;
+  
+  // Init game (single player mode but with sync)
+  document.getElementById('tetris-overlay').style.display = 'none';
+  if (!tetrisGame) tetrisGame = new Tetris3D();
   tetrisGame.start();
+  
+  // Override: mark as global
+  tetrisGame.isGlobalTetris = true;
+  tetrisGame.globalSessionRef = sessionRef;
+  tetrisGame.globalPlayerId = globalTetrisPlayerId;
+  tetrisGame.globalOtherLines = 0;
+  tetrisGame.globalOtherLevel = 1;
+  tetrisGame.globalOtherScore = 0;
+  
+  document.querySelector('#panel-tetris .hint').textContent =
+    '← → MOVE &nbsp;|&nbsp; ↑ / Z ROTATE &nbsp;|&nbsp; ↓ SOFT DROP &nbsp;|&nbsp; SPACE HARD DROP &nbsp;|&nbsp; C HOLD &nbsp;|&nbsp; GLOBAL VS';
+  
+  // Show opponent info in HUD
+  let oppEl = document.getElementById('t-opponent-info');
+  if (!oppEl) {
+    oppEl = document.createElement('span');
+    oppEl.id = 't-opponent-info';
+    oppEl.style.color = 'var(--pink)';
+    document.querySelector('#panel-tetris .hud-right').prepend(oppEl);
+  }
+  oppEl.innerHTML = 'OPP: <b id="t-opp-lines">0</b>L';
+  
+  // ── THROTTLED WRITE: send score every 500ms ──
+  let lastWrite = 0;
+  const WRITE_INTERVAL = 500;
+  
+  function tryWriteState(now) {
+    if (now - lastWrite < WRITE_INTERVAL) return;
+    lastWrite = now;
+    const pk = globalTetrisPlayerId;
+    sessionRef.update({
+      [`${pk}.score`]: tetrisGame.score,
+      [`${pk}.lines`]: tetrisGame.lines,
+      [`${pk}.level`]: tetrisGame.level,
+      [`${pk}.connected`]: true,
+      [`${pk}.lastUpdate`]: Date.now(),
+    }).catch(() => {});
+  }
+  
+  // Listen for opponent updates
+  if (globalTetrisUnsub) globalTetrisUnsub();
+  globalTetrisUnsub = sessionRef.onSnapshot(snap => {
+    if (!snap.exists || !globalTetrisActive) return;
+    const data = snap.data();
+    if (!data) return;
+    
+    const rk = globalTetrisPlayerId === 'p1' ? 'p2' : 'p1';
+    const remote = data[rk];
+    const mk = globalTetrisPlayerId;
+    
+    // Check if opponent died
+    const oppDead = data.status === 'ended' ||
+      (remote && remote.connected === false) ||
+      (data.status === 'playing' && mk && data[mk] && !remote);
+    
+    if (oppDead && globalTetrisActive) {
+      endGlobalTetris('🎉 YOU WIN! OPPONENT ELIMINATED');
+      return;
+    }
+    
+    if (remote && remote.connected !== false) {
+      tetrisGame.globalOtherLines = remote.lines || 0;
+      tetrisGame.globalOtherLevel = remote.level || 1;
+      tetrisGame.globalOtherScore = remote.score || 0;
+      const el = document.getElementById('t-opp-lines');
+      if (el) el.textContent = remote.lines || 0;
+    }
+  });
+  
+  // Override _loop to add throttled write
+  tetrisGame._originalLoop = tetrisGame._loop;
+  tetrisGame._loop = function(t) {
+    this._originalLoop.call(this, t);
+    const now = performance.now();
+    tryWriteState(now);
+    // If we died, notify opponent
+    if (!this.running && globalTetrisActive) {
+      endGlobalTetris(null);
+    }
+  };
+  
+  // Override game over
+  tetrisGame._originalGameOver = tetrisGame._gameOver;
+  tetrisGame._gameOver = function() {
+    // Write death immediately
+    const pk = globalTetrisPlayerId;
+    sessionRef.update({
+      status: 'ended',
+      endedAt: Date.now(),
+      [`${pk}.connected`]: false,
+      [`${pk}.score`]: this.score,
+      [`${pk}.lines`]: this.lines,
+    }).catch(() => {});
+    endGlobalTetris(null);
+    this._originalGameOver.call(this);
+  };
+}
+
+async function endGlobalTetris(reason) {
+  if (!globalTetrisActive) return;
+  globalTetrisActive = false;
+  
+  if (globalTetrisUnsub) { globalTetrisUnsub(); globalTetrisUnsub = null; }
+  if (globalTetrisPingTimer) { clearInterval(globalTetrisPingTimer); globalTetrisPingTimer = null; }
+  
+  // Stop game
+  if (tetrisGame) {
+    tetrisGame.running = false;
+    if (tetrisGame.raf) { cancelAnimationFrame(tetrisGame.raf); tetrisGame.raf = null; }
+  }
+  
+  // Clean up Firestore
+  if (globalTetrisStateRef) {
+    try {
+      await globalTetrisStateRef.update({
+        status: 'ended',
+        endedAt: Date.now(),
+        [`${globalTetrisPlayerId}.connected`]: false,
+      }).catch(() => {});
+      setTimeout(() => {
+        globalTetrisStateRef.delete().catch(() => {});
+        globalTetrisStateRef = null;
+      }, 2000);
+    } catch(e) {}
+  }
+  
+  // Clean up HUD
+  const oppEl = document.getElementById('t-opponent-info');
+  if (oppEl) oppEl.remove();
+  
+  if (reason) {
+    const ov = document.getElementById('tetris-overlay');
+    ov.style.display = 'flex';
+    ov.innerHTML = `<h2>VICTORY!</h2>
+      <div class="score-big">${escHtml(reason)}</div>
+      <div class="subtitle">YOU: ${tetrisGame ? tetrisGame.score.toLocaleString() : 0} | OPP: ${tetrisGame ? tetrisGame.globalOtherScore.toLocaleString() : 0}</div>
+      <button class="start-btn" onclick="startTetrisGlobalMultiplayer()">[ PLAY AGAIN ]</button>
+      <button class="start-btn" onclick="startTetris()">[ SINGLE PLAYER ]</button>
+      <button class="start-btn" onclick="backToCatalog()" style="margin-top:6px;border-color:var(--pink);color:var(--pink);box-shadow:var(--gpink);">[ BACK TO GAMES ]</button>`;
+  }
+  
+  globalTetrisPlayerId = null;
 }
 
 // ============================================================
@@ -4059,6 +4825,501 @@ function startAsteroidDefense() {
 }
 
 // ============================================================
+//  VAROOM (Temple OS style pseudo-3D racer)
+// ============================================================
+class VaroomGame {
+  constructor() {
+    this.cv = document.getElementById('varoom-canvas');
+    this.wrap = this.cv.parentElement;
+    this.W = this.wrap.clientWidth; this.H = this.wrap.clientHeight || 560;
+    this.cv.width = this.W; this.cv.height = this.H;
+
+    this.segmentLength = 200;
+    this.roadWidth = 2000;
+    this.lanes = 3;
+    this.drawDistance = 180;
+    this.cameraHeight = 1000;
+    this.cameraDepth = 1 / Math.tan((100 / 2) * Math.PI / 180);
+    this.fogDensity = 5;
+
+    this.segments = [];
+    this.cars = [];
+    this.trackLength = 0;
+
+    this.position = 0;
+    this.playerX = 0;
+    this.speed = 0;
+    this.maxSpeed = this.segmentLength * 60;
+    this.accel = this.maxSpeed / 5;
+    this.brake = -this.maxSpeed;
+    this.decel = -this.maxSpeed / 5;
+    this.offRoadDecel = -this.maxSpeed / 2;
+    this.offRoadLimit = this.maxSpeed / 4;
+    this.centripetal = 0.3;
+
+    this.keys = { left: false, right: false, up: false, down: false };
+    this.running = false;
+    this.raf = null;
+    this.lastT = 0;
+    this.score = 0;
+    this.distance = 0;
+    this.best = parseInt(localStorage.getItem('vBest') || '0');
+    document.getElementById('v-best').textContent = this.best;
+
+    this._buildTrack();
+    this.resize();
+    this._render();
+  }
+
+  _buildTrack() {
+    this.segments = [];
+    const addSeg = (curve, y) => {
+      const n = this.segments.length;
+      const dark = Math.floor(n / 3) % 2 === 0;
+      this.segments.push({
+        index: n,
+        p1: { world: { y: lastY(), z: n * this.segmentLength }, camera: {}, screen: {} },
+        p2: { world: { y: y, z: (n + 1) * this.segmentLength }, camera: {}, screen: {} },
+        curve: curve,
+        color: dark ? {
+          road: '#2a2a2a', grass: '#0a2a0a', rumble: '#aa0000', lane: '#ffffff'
+        } : {
+          road: '#333333', grass: '#0e350e', rumble: '#cccccc', lane: '#333333'
+        },
+        cars: [],
+      });
+    };
+    const lastY = () => this.segments.length === 0 ? 0 : this.segments[this.segments.length - 1].p2.world.y;
+
+    const addRoad = (enter, hold, leave, curve, yDelta) => {
+      const startY = lastY();
+      const endY = startY + yDelta * this.segmentLength;
+      const total = enter + hold + leave;
+      for (let n = 0; n < enter; n++) addSeg(curve * this._easeIn(0, curve, n / enter), this._easeInOut(startY, endY, n / total));
+      for (let n = 0; n < hold; n++) addSeg(curve, this._easeInOut(startY, endY, (enter + n) / total));
+      for (let n = 0; n < leave; n++) addSeg(curve * this._easeInOut(curve, 0, n / leave), this._easeInOut(startY, endY, (enter + hold + n) / total));
+    };
+
+    const STRAIGHT = 0, EASY = 2, MEDIUM = 4, HARD = 6;
+    const addStraight = (n = 50) => addRoad(n, n, n, 0, 0);
+    const addCurve = (n = 50, c = EASY, h = 0) => addRoad(n, n, n, c, h);
+    const addHill = (n = 50, h = 20) => addRoad(n, n, n, 0, h);
+    const addSCurves = () => {
+      addRoad(25, 25, 25, -EASY, 0);
+      addRoad(25, 25, 25, MEDIUM, 10);
+      addRoad(25, 25, 25, EASY, -10);
+      addRoad(25, 25, 25, -MEDIUM, 0);
+    };
+
+    addStraight(25);
+    addHill(25, 15);
+    addCurve(30, EASY, 0);
+    addHill(30, -20);
+    addCurve(40, -HARD, 5);
+    addSCurves();
+    addStraight(50);
+    addCurve(40, HARD, -10);
+    addHill(40, 30);
+    addCurve(30, -MEDIUM, -20);
+    addStraight(60);
+    addCurve(50, -HARD, 15);
+    addHill(30, -25);
+
+    this.trackLength = this.segments.length * this.segmentLength;
+
+    // Spawn AI cars
+    this.cars = [];
+    const totalCars = 80;
+    const colors = ['#ff3366', '#ffcc00', '#00ccff', '#cc00ff', '#00ff88', '#ff8800'];
+    for (let i = 0; i < totalCars; i++) {
+      const segIdx = Math.floor(Math.random() * this.segments.length);
+      this.cars.push({
+        offset: (Math.random() * 1.6 - 0.8),
+        z: segIdx * this.segmentLength + Math.random() * this.segmentLength,
+        speed: this.maxSpeed / 6 + Math.random() * this.maxSpeed / 3,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        w: 300,
+      });
+    }
+  }
+
+  _easeIn(a, b, p) { return a + (b - a) * Math.pow(p, 2); }
+  _easeInOut(a, b, p) { return a + (b - a) * ((-Math.cos(p * Math.PI) / 2) + 0.5); }
+
+  _findSegment(z) {
+    return this.segments[Math.floor(z / this.segmentLength) % this.segments.length];
+  }
+
+  _project(p, cameraX, cameraY, cameraZ) {
+    p.camera.x = (p.world.x || 0) - cameraX;
+    p.camera.y = (p.world.y || 0) - cameraY;
+    p.camera.z = (p.world.z || 0) - cameraZ;
+    p.screen.scale = this.cameraDepth / p.camera.z;
+    p.screen.x = Math.round(this.W / 2 + p.screen.scale * p.camera.x * this.W / 2);
+    p.screen.y = Math.round(this.H / 2 - p.screen.scale * p.camera.y * this.H / 2);
+    p.screen.w = Math.round(p.screen.scale * this.roadWidth * this.W / 2);
+  }
+
+  start() {
+    this.position = 0;
+    this.playerX = 0;
+    this.speed = 0;
+    this.score = 0;
+    this.distance = 0;
+    this.running = true;
+    if (this.raf) cancelAnimationFrame(this.raf);
+    this.lastT = performance.now();
+    this._loop(this.lastT);
+    beep(220, 0.1, 'square', 0.15); setTimeout(()=>beep(440, 0.1, 'square', 0.15), 120);
+    setTimeout(()=>beep(660, 0.2, 'sawtooth', 0.15), 240);
+  }
+
+  _update(dt) {
+    const playerSeg = this._findSegment(this.position + this.cameraHeight);
+    const speedPct = this.speed / this.maxSpeed;
+    const dx = dt * 2 * speedPct;
+
+    if (this.keys.left) this.playerX -= dx;
+    if (this.keys.right) this.playerX += dx;
+
+    // Centrifugal force from curves
+    this.playerX -= dx * speedPct * playerSeg.curve * this.centripetal * 0.005;
+
+    if (this.keys.up) this.speed += this.accel * dt;
+    else if (this.keys.down) this.speed += this.brake * dt;
+    else this.speed += this.decel * dt;
+
+    // Off-road penalty
+    if ((this.playerX < -1 || this.playerX > 1) && this.speed > this.offRoadLimit) {
+      this.speed += this.offRoadDecel * dt;
+      // Rumble sound occasionally
+      if (Math.random() < 0.1) beep(80, 0.05, 'sawtooth', 0.05);
+    }
+
+    this.playerX = Math.max(-2.5, Math.min(2.5, this.playerX));
+    this.speed = Math.max(0, Math.min(this.maxSpeed, this.speed));
+
+    this.position += this.speed * dt;
+    while (this.position >= this.trackLength) this.position -= this.trackLength;
+    while (this.position < 0) this.position += this.trackLength;
+
+    this.distance += this.speed * dt;
+    this.score = Math.floor(this.distance / 100);
+
+    // AI cars
+    for (const car of this.cars) {
+      car.z += car.speed * dt;
+      while (car.z >= this.trackLength) car.z -= this.trackLength;
+
+      const dz = (car.z - this.position + this.trackLength) % this.trackLength;
+      if (dz < 400 && dz > 0) {
+        const pX = this.playerX * this.roadWidth / 2;
+        const cX = car.offset * this.roadWidth / 2;
+        if (Math.abs(pX - cX) < car.w * 0.6) {
+          // Collision!
+          this.speed = car.speed * 0.8;
+          car.z = (car.z + 800) % this.trackLength;
+          beep(150, 0.3, 'sawtooth', 0.25, 40);
+          beep(80, 0.4, 'square', 0.15);
+        }
+      }
+    }
+
+    // Engine sound
+    if (this.speed > 0 && Math.random() < 0.05) {
+      const f = 60 + speedPct * 180;
+      beep(f, 0.03, 'sawtooth', 0.02);
+    }
+
+    if (this.distance > 6)
+    {
+      Achievements.unlock('varoom');
+    }
+  }
+
+  _render() {
+    const ctx = this.cv.getContext('2d');
+    const W = this.W, H = this.H;
+
+    // Sky gradient (Temple OS-ish dusk)
+    const sky = ctx.createLinearGradient(0, 0, 0, H / 2);
+    sky.addColorStop(0, '#000010');
+    sky.addColorStop(0.5, '#1a0033');
+    sky.addColorStop(1, '#442255');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H / 2);
+
+    // Stars
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 60; i++) {
+      const sx = (i * 137 + Math.floor(this.position * 0.001)) % W;
+      const sy = (i * 53) % (H / 2.5);
+      ctx.fillRect(sx, sy, 1, 1);
+    }
+
+    // Sun/moon
+    const sunX = W / 2 - (this.playerX * 30);
+    ctx.fillStyle = '#ff8844';
+    ctx.shadowColor = '#ff4400';
+    ctx.shadowBlur = 30;
+    ctx.beginPath();
+    ctx.arc(sunX, H / 2 - 40, 35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Ground base
+    ctx.fillStyle = '#0a2a0a';
+    ctx.fillRect(0, H / 2, W, H / 2);
+
+    const baseSeg = this._findSegment(this.position);
+    const basePct = (this.position % this.segmentLength) / this.segmentLength;
+    const playerSeg = this._findSegment(this.position + this.cameraHeight);
+    const playerPct = ((this.position + this.cameraHeight) % this.segmentLength) / this.segmentLength;
+    const nextSeg = this.segments[(playerSeg.index + 1) % this.segments.length];
+    const playerY = playerSeg.p1.world.y + (nextSeg.p1.world.y - playerSeg.p1.world.y) * playerPct;
+
+    let maxY = H;
+    let x = 0, dx = -(baseSeg.curve * basePct);
+
+    // Render road strips back-to-front
+    const visible = [];
+    for (let n = 0; n < this.drawDistance; n++) {
+      const seg = this.segments[(baseSeg.index + n) % this.segments.length];
+      seg.looped = seg.index < baseSeg.index;
+      seg.clip = maxY;
+
+      this._project(seg.p1, this.playerX * this.roadWidth - x, playerY + this.cameraHeight,
+        this.position - (seg.looped ? this.trackLength : 0));
+      this._project(seg.p2, this.playerX * this.roadWidth - x - dx, playerY + this.cameraHeight,
+        this.position - (seg.looped ? this.trackLength : 0));
+
+      x += dx;
+      dx += seg.curve;
+
+      if (seg.p1.camera.z <= this.cameraDepth || seg.p2.screen.y >= seg.p1.screen.y || seg.p2.screen.y >= maxY) continue;
+
+      visible.push(seg);
+      maxY = seg.p2.screen.y;
+    }
+
+    // Draw back-to-front
+    for (let i = visible.length - 1; i >= 0; i--) {
+      const seg = visible[i];
+      const p1 = seg.p1.screen, p2 = seg.p2.screen;
+
+      // Grass
+      ctx.fillStyle = seg.color.grass;
+      ctx.fillRect(0, p2.y, W, p1.y - p2.y);
+
+      // Rumble strips
+      this._poly(ctx, p1.x - p1.w * 1.2, p1.y, p1.x + p1.w * 1.2, p1.y,
+        p2.x + p2.w * 1.2, p2.y, p2.x - p2.w * 1.2, p2.y, seg.color.rumble);
+      // Road
+      this._poly(ctx, p1.x - p1.w, p1.y, p1.x + p1.w, p1.y,
+        p2.x + p2.w, p2.y, p2.x - p2.w, p2.y, seg.color.road);
+      // Lane markers
+      if (seg.color.lane === '#ffffff') {
+        const lw1 = (p1.w * 2) / this.lanes * 0.05;
+        const lw2 = (p2.w * 2) / this.lanes * 0.05;
+        for (let lane = 1; lane < this.lanes; lane++) {
+          const lx1 = p1.x - p1.w + (p1.w * 2 * lane / this.lanes);
+          const lx2 = p2.x - p2.w + (p2.w * 2 * lane / this.lanes);
+          this._poly(ctx, lx1 - lw1, p1.y, lx1 + lw1, p1.y,
+            lx2 + lw2, p2.y, lx2 - lw2, p2.y, '#ffffff');
+        }
+      }
+
+      // Fog overlay
+      const fogAlpha = Math.pow(1 - (i / this.drawDistance), 2) * 0.0; // optional
+      if (fogAlpha > 0.01) {
+        ctx.fillStyle = `rgba(0,0,16,${1 - fogAlpha})`;
+        ctx.fillRect(0, p2.y, W, p1.y - p2.y);
+      }
+    }
+
+    // Draw cars (AI)
+    const carsToDraw = [];
+    for (const car of this.cars) {
+      const relZ = (car.z - this.position + this.trackLength) % this.trackLength;
+      if (relZ > this.drawDistance * this.segmentLength || relZ < 0) continue;
+      const segIdx = Math.floor(car.z / this.segmentLength) % this.segments.length;
+      const seg = this.segments[segIdx];
+      if (!seg.p1.screen.scale) continue;
+      carsToDraw.push({ car, relZ, seg });
+    }
+    carsToDraw.sort((a, b) => b.relZ - a.relZ);
+
+    for (const { car, seg } of carsToDraw) {
+      const scale = seg.p1.screen.scale;
+      const sprW = car.w * scale * W / 2;
+      const sprH = sprW * 0.6;
+      const sprX = seg.p1.screen.x + (scale * car.offset * this.roadWidth * W / 2);
+      const sprY = seg.p1.screen.y - sprH;
+      if (sprY > H || sprY + sprH < 0) continue;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.beginPath();
+      ctx.ellipse(sprX, sprY + sprH + 2, sprW * 0.5, sprH * 0.15, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Body
+      ctx.fillStyle = car.color;
+      ctx.fillRect(sprX - sprW / 2, sprY, sprW, sprH);
+      // Roof
+      ctx.fillStyle = '#111';
+      ctx.fillRect(sprX - sprW * 0.35, sprY + sprH * 0.1, sprW * 0.7, sprH * 0.35);
+      // Wheels
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(sprX - sprW / 2 - 2, sprY + sprH * 0.7, sprW * 0.15, sprH * 0.3);
+      ctx.fillRect(sprX + sprW / 2 - sprW * 0.15 + 2, sprY + sprH * 0.7, sprW * 0.15, sprH * 0.3);
+      // Taillights
+      ctx.fillStyle = '#ff2222';
+      ctx.shadowColor = '#ff0000';
+      ctx.shadowBlur = 6;
+      ctx.fillRect(sprX - sprW * 0.45, sprY + sprH * 0.8, sprW * 0.1, sprH * 0.12);
+      ctx.fillRect(sprX + sprW * 0.35, sprY + sprH * 0.8, sprW * 0.1, sprH * 0.12);
+      ctx.shadowBlur = 0;
+    }
+
+    // Player car
+    this._drawPlayer(ctx, W, H);
+
+    // Speed lines when fast
+    const speedPct = this.speed / this.maxSpeed;
+    if (speedPct > 0.6) {
+      ctx.strokeStyle = `rgba(0,255,204,${(speedPct - 0.6) * 1.5})`;
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 8; i++) {
+        const lx = (i * 127 + Math.floor(this.position * 0.1)) % W;
+        const ly = H * 0.6 + (i * 47) % (H * 0.3);
+        ctx.beginPath();
+        ctx.moveTo(lx, ly);
+        ctx.lineTo(lx - 20, ly + 40);
+        ctx.stroke();
+      }
+    }
+
+    // HUD update
+    const kmh = Math.round(this.speed / 50);
+    document.getElementById('v-speed').textContent = kmh + ' km/h';
+    document.getElementById('v-dist').textContent = Math.floor(this.distance / 100);
+    document.getElementById('v-score').textContent = this.score;
+  }
+
+  _drawPlayer(ctx, W, H) {
+    const carW = 170;
+    const carH = 95;
+    const x = W / 2;
+    const y = H - 70;
+    const steer = (this.keys.left ? 1 : 0) - (this.keys.right ? 1 : 0);
+    const bounce = Math.sin(this.position * 0.05) * (this.speed / this.maxSpeed) * 3;
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + carH * 0.55, carW * 0.58, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.save();
+    ctx.translate(x + steer * 8, y + bounce);
+    ctx.rotate(steer * -0.08);
+
+    // Body
+    const bodyG = ctx.createLinearGradient(0, -carH / 2, 0, carH / 2);
+    bodyG.addColorStop(0, '#00ffcc');
+    bodyG.addColorStop(1, '#006655');
+    ctx.fillStyle = bodyG;
+    this._roundRect(ctx, -carW / 2, -carH / 2, carW, carH, 18);
+    ctx.fill();
+
+    // Hood line
+    ctx.strokeStyle = '#00aa88';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-carW * 0.3, -carH * 0.1);
+    ctx.lineTo(carW * 0.3, -carH * 0.1);
+    ctx.stroke();
+
+    // Windshield
+    ctx.fillStyle = '#001a15';
+    this._roundRect(ctx, -carW * 0.35, -carH * 0.4, carW * 0.7, carH * 0.35, 8);
+    ctx.fill();
+
+    // Wheels
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(-carW / 2 - 5, -carH * 0.3, 14, 28);
+    ctx.fillRect(carW / 2 - 9, -carH * 0.3, 14, 28);
+    ctx.fillRect(-carW / 2 - 5, carH * 0.1, 14, 28);
+    ctx.fillRect(carW / 2 - 9, carH * 0.1, 14, 28);
+
+    // Headlights
+    ctx.fillStyle = '#ffffaa';
+    ctx.shadowColor = '#ffcc00';
+    ctx.shadowBlur = 12;
+    ctx.fillRect(-carW * 0.4, -carH / 2 - 3, 18, 8);
+    ctx.fillRect(carW * 0.4 - 18, -carH / 2 - 3, 18, 8);
+    ctx.shadowBlur = 0;
+
+    // Taillights
+    ctx.fillStyle = '#ff2244';
+    ctx.shadowColor = '#ff0022';
+    ctx.shadowBlur = 10;
+    ctx.fillRect(-carW * 0.4, carH / 2 - 5, 18, 6);
+    ctx.fillRect(carW * 0.4 - 18, carH / 2 - 5, 18, 6);
+    ctx.shadowBlur = 0;
+
+    ctx.restore();
+  }
+
+  _poly(ctx, x1, y1, x2, y2, x3, y3, x4, y4, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.lineTo(x4, y4);
+    ctx.closePath(); ctx.fill();
+  }
+
+  _roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  _loop(t) {
+    if (!this.running) return;
+    const dt = Math.min((t - this.lastT) / 1000, 0.05);
+    this.lastT = t;
+    this._update(dt);
+    this._render();
+    this.raf = requestAnimationFrame(tt => this._loop(tt));
+  }
+
+  handleKey(e, down) {
+    if (!this.running) return;
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') { this.keys.left = down; e.preventDefault(); }
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') { this.keys.right = down; e.preventDefault(); }
+    if (e.code === 'ArrowUp' || e.code === 'KeyW') { this.keys.up = down; e.preventDefault(); }
+    if (e.code === 'ArrowDown' || e.code === 'KeyS') { this.keys.down = down; e.preventDefault(); }
+  }
+
+  resize() {
+    const W = this.wrap.clientWidth;
+    const H = this.wrap.clientHeight || 560;
+    this.W = W; this.H = H;
+    this.cv.width = W; this.cv.height = H;
+  }
+}
+
+function startVaroom() {
+  document.getElementById('varoom-overlay').style.display = 'none';
+  if (!varoomGame) varoomGame = new VaroomGame();
+  varoomGame.start();
+}
+
+// ============================================================
 //  INPUT ROUTER
 // ============================================================
 window.addEventListener('keydown', e=>{
@@ -4092,12 +5353,20 @@ window.addEventListener('keydown', e=>{
     return;
   }
 
+  // Tetris duel mode has its own input routing
+  if (currentTab==='tetris' && tetrisDuelActive) {
+    handleDuelKey(e);
+    if (['KeyA','KeyD','KeyW','KeyS','Space','KeyC','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Numpad0','Numpad1','Numpad4'].includes(e.code)) e.preventDefault();
+    return;
+  }
+  
   // Game-specific controls
   if (currentTab==='tetris' && tetrisGame) tetrisGame.handleKey(e);
   if (currentTab==='runner' && runnerGame && (e.code==='Space'||e.code==='ArrowUp')) { e.preventDefault(); runnerGame.jump(); }
   if (currentTab==='snake'  && snakeGame)  snakeGame.handleKey(e);
   if (currentTab==='starfighter' && starfighterGame) starfighterGame.handleKey(e);
   if (currentTab==='asteroid' && asteroidDefenseGame) asteroidDefenseGame.handleKey(e);
+  if (currentTab==='varoom' && varoomGame) varoomGame.handleKey(e, true);
   
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) {
     if (['tetris','runner','snake','starfighter','asteroid'].includes(currentTab)) e.preventDefault();
@@ -4112,7 +5381,15 @@ window.addEventListener('resize', ()=>{
   if(runnerGame) runnerGame.resize();
   if(starfighterGame) starfighterGame.resize();
   if(asteroidDefenseGame) asteroidDefenseGame.resize();
+  if(tetrisDuelP1) tetrisDuelP1.resize();
+  if(tetrisDuelP2) tetrisDuelP2.resize();
+  if(varoomGame) varoomGame.resize();
 });
+
+window.addEventListener('keyup', e => {
+  if (currentTab==='varoom' && varoomGame) varoomGame.handleKey(e, false);
+});
+
 
 // ============================================================
 //  🚀 INIT
