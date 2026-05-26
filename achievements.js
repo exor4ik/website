@@ -27,6 +27,7 @@
     help_all:         { title: "I can't help to all people",  desc: 'Мне не хватит сил помочь всем.',    icon: '🆘' },
     nothing_free:     { title: 'Nothing is Free',             desc: 'Ничто не является бесплатным',      icon: '💸' },
     varoom:           { title: 'Varoom!',                     desc: 'Пройти 6000м в Varoom',             icon: '🏎️' },
+    space_warrior:    { title: 'Space Warrior',               desc: 'Пройти 5 волн в Cosmic Defender',   icon: '🚀' },
   };
 
   var STORAGE_KEY  = 'egornet_achievements';
