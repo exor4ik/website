@@ -51,13 +51,13 @@ function waitForFirebase(cb, max = 25) {
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 
-let activeConvIsSecret = false;
-let activeConvDocUnsub = null;
 let currentUser    = null;
 let activeConvId   = null;
 let messagesUnsub  = null;
 let convsUnsub     = null;
 let userCache      = {};
+let cachedMyKeys   = null;
+let didSyncKeysThisSession = false;
 
 // ═══════════════════════════════════════════════════════════
 // 🔐 END-TO-END ENCRYPTION (Web Crypto API)
@@ -65,196 +65,357 @@ let userCache      = {};
 
 const KEY_ALGO = { name: 'RSA-OAEP', modulusLength: 2048, publicExponent: new Uint8Array([1,0,1]), hash: 'SHA-256' };
 const AES_ALGO = { name: 'AES-GCM', length: 256 };
+const E2EE_LOCAL_KEY = 'e2ee_keys_v2';
+const E2EE_LEGACY_LOCAL_KEY = 'e2ee_keys';
+const E2EE_SYNC_KDF_ITERS = 310000;
 
 async function generateKeyPair() {
   return crypto.subtle.generateKey(KEY_ALGO, true, ['encrypt', 'decrypt']);
 }
 
+function bytesToBase64(bytes) {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(base64) {
+  return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+}
+
+function textToBase64(text) {
+  return bytesToBase64(new TextEncoder().encode(text));
+}
+
+function base64ToText(base64) {
+  return new TextDecoder().decode(base64ToBytes(base64));
+}
+
+function parseJsonSafe(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 async function exportPublicKey(key) {
   const exported = await crypto.subtle.exportKey('spki', key);
-  return btoa(String.fromCharCode(...new Uint8Array(exported)));
+  return bytesToBase64(new Uint8Array(exported));
 }
 
 async function importPublicKey(base64) {
-  const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  const binary = base64ToBytes(base64);
   return crypto.subtle.importKey('spki', binary, KEY_ALGO, false, ['encrypt']);
 }
 
 async function importPrivateKey(base64) {
-  const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  const binary = base64ToBytes(base64);
   return crypto.subtle.importKey('pkcs8', binary, KEY_ALGO, false, ['decrypt']);
 }
 
+async function exportPrivateKey(key) {
+  const exported = await crypto.subtle.exportKey('pkcs8', key);
+  return bytesToBase64(new Uint8Array(exported));
+}
+
+function getAuthSyncMaterial(user) {
+  const createdAt = user?.metadata?.creationTime || '';
+  const email = (user?.email || '').toLowerCase();
+  const providers = (user?.providerData || [])
+    .map(p => p?.providerId || '')
+    .filter(Boolean)
+    .sort()
+    .join(',');
+  return `${user.uid}|${createdAt}|${email}|${providers}|EgorNetwork:e2ee:v2`;
+}
+
+async function deriveSyncKey(user, salt, usage, iterations = E2EE_SYNC_KDF_ITERS) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(getAuthSyncMaterial(user)),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt,
+      iterations,
+      hash: 'SHA-256',
+    },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    [usage]
+  );
+}
+
+async function makeCloudBackup(privateKeyB64, user) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const wrapKey = await deriveSyncKey(user, salt, 'encrypt');
+  const payload = new TextEncoder().encode(privateKeyB64);
+  const wrapped = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, wrapKey, payload);
+  return {
+    version: 2,
+    kdf: 'PBKDF2-SHA256',
+    iterations: E2EE_SYNC_KDF_ITERS,
+    iv: bytesToBase64(iv),
+    salt: bytesToBase64(salt),
+    wrappedPrivateKey: bytesToBase64(new Uint8Array(wrapped)),
+  };
+}
+
+async function unwrapCloudBackup(backup, user) {
+  const iv = base64ToBytes(backup.iv);
+  const salt = base64ToBytes(backup.salt);
+  const ciphertext = base64ToBytes(backup.wrappedPrivateKey);
+  const unwrapKey = await deriveSyncKey(user, salt, 'decrypt', backup.iterations || E2EE_SYNC_KDF_ITERS);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, unwrapKey, ciphertext);
+  return new TextDecoder().decode(decrypted);
+}
+
+async function importPairFromBase64(publicKeyB64, privateKeyB64) {
+  return {
+    publicKey: await importPublicKey(publicKeyB64),
+    privateKey: await importPrivateKey(privateKeyB64),
+  };
+}
+
+async function exportPairToBase64(pair) {
+  return {
+    publicKey: await exportPublicKey(pair.publicKey),
+    privateKey: await exportPrivateKey(pair.privateKey),
+  };
+}
+
+function readLocalV2Keys() {
+  const parsed = parseJsonSafe(localStorage.getItem(E2EE_LOCAL_KEY) || '');
+  if (!parsed?.publicKey || !parsed?.privateKey) return null;
+  return { publicKey: parsed.publicKey, privateKey: parsed.privateKey };
+}
+
+function writeLocalV2Keys(publicKey, privateKey) {
+  localStorage.setItem(E2EE_LOCAL_KEY, JSON.stringify({
+    version: 2,
+    publicKey,
+    privateKey,
+  }));
+}
+
+function readLegacyLocalKeys() {
+  const parsed = parseJsonSafe(localStorage.getItem(E2EE_LEGACY_LOCAL_KEY) || '');
+  if (!parsed?.publicKey || !parsed?.privateKey) return null;
+  return { publicKey: parsed.publicKey, privateKey: parsed.privateKey };
+}
+
+async function saveKeysEverywhere(user, publicKeyB64, privateKeyB64) {
+  writeLocalV2Keys(publicKeyB64, privateKeyB64);
+  localStorage.removeItem(E2EE_LEGACY_LOCAL_KEY);
+
+  const backup = await makeCloudBackup(privateKeyB64, user);
+  await window.db.collection('users').doc(user.uid).set({
+    publicKey: publicKeyB64,
+    _hasE2EE: true,
+    _e2eeVersion: 2,
+    e2eeV2: {
+      ...backup,
+      publicKey: publicKeyB64,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    },
+  }, { merge: true }).catch(() => {});
+  didSyncKeysThisSession = true;
+}
+
 async function getOrCreateKeys() {
-  const stored = localStorage.getItem('e2ee_keys');
-  if (stored) {
-    const { publicKey, privateKey } = JSON.parse(stored);
-    return {
-      publicKey: await importPublicKey(publicKey),
-      privateKey: await importPrivateKey(privateKey)
-    };
-  }
-  
-  const pair = await generateKeyPair();
-  const pubB64 = await exportPublicKey(pair.publicKey);
-  const privExported = await crypto.subtle.exportKey('pkcs8', pair.privateKey);
-  const privB64 = btoa(String.fromCharCode(...new Uint8Array(privExported)));
-  
-  localStorage.setItem('e2ee_keys', JSON.stringify({ publicKey: pubB64, privateKey: privB64 }));
-  
+  if (cachedMyKeys) return cachedMyKeys;
+
   const me = window.auth.currentUser;
-  if (me) {
-    await window.db.collection('users').doc(me.uid).update({ 
-      publicKey: pubB64,
-      _hasE2EE: true 
-    }).catch(() => {});
+  if (!me) throw new Error('Требуется авторизация для E2EE');
+
+  const localV2 = readLocalV2Keys();
+  if (localV2) {
+    try {
+      cachedMyKeys = await importPairFromBase64(localV2.publicKey, localV2.privateKey);
+      if (!didSyncKeysThisSession) {
+        saveKeysEverywhere(me, localV2.publicKey, localV2.privateKey).catch(() => {});
+      }
+      return cachedMyKeys;
+    } catch (e) {
+      console.warn('⚠️ Локальные e2ee_v2 ключи повреждены, пробуем восстановить из облака', e);
+    }
   }
-  
+
+  const legacy = readLegacyLocalKeys();
+  if (legacy) {
+    try {
+      cachedMyKeys = await importPairFromBase64(legacy.publicKey, legacy.privateKey);
+      await saveKeysEverywhere(me, legacy.publicKey, legacy.privateKey);
+      return cachedMyKeys;
+    } catch (e) {
+      console.warn('⚠️ Локальные legacy-ключи повреждены, пробуем восстановить из облака', e);
+    }
+  }
+
+  try {
+    const doc = await window.db.collection('users').doc(me.uid).get();
+    if (doc.exists) {
+      const data = doc.data() || {};
+      const backup = data.e2eeV2;
+      const cloudPublicKey = backup?.publicKey || data.publicKey;
+
+      if (backup?.wrappedPrivateKey && backup?.iv && backup?.salt && cloudPublicKey) {
+        const restoredPrivateB64 = await unwrapCloudBackup(backup, me);
+        cachedMyKeys = await importPairFromBase64(cloudPublicKey, restoredPrivateB64);
+        writeLocalV2Keys(cloudPublicKey, restoredPrivateB64);
+        return cachedMyKeys;
+      }
+    }
+  } catch (e) {
+    console.warn('⚠️ Не удалось восстановить ключи из облака, создаём новую пару', e);
+  }
+
+  const pair = await generateKeyPair();
+  const exported = await exportPairToBase64(pair);
+  await saveKeysEverywhere(me, exported.publicKey, exported.privateKey);
+  cachedMyKeys = pair;
   return pair;
 }
 
 async function getPublicKey(uid) {
+  if (currentUser && uid === currentUser.uid) {
+    const myKeys = await getOrCreateKeys();
+    return myKeys.publicKey;
+  }
+
   if (userCache[uid]?.publicKey) return userCache[uid].publicKey;
-  
+  if (userCache[uid]?.publicKeyB64) {
+    const key = await importPublicKey(userCache[uid].publicKeyB64);
+    userCache[uid].publicKey = key;
+    return key;
+  }
+
   const doc = await window.db.collection('users').doc(uid).get();
-  if (!doc.exists || !doc.data().publicKey) return null;
-  
-  const key = await importPublicKey(doc.data().publicKey);
-  if (userCache[uid]) userCache[uid].publicKey = key;
+  const rawPublicKey = doc.exists ? (doc.data().e2eeV2?.publicKey || doc.data().publicKey) : null;
+  if (!rawPublicKey) return null;
+
+  const key = await importPublicKey(rawPublicKey);
+  if (userCache[uid]) {
+    userCache[uid].publicKey = key;
+    userCache[uid].publicKeyB64 = rawPublicKey;
+  }
   return key;
 }
 
-async function encryptE2EE(text, recipientPublicKey) {
+async function encryptE2EE(text, senderUid, senderPublicKey, recipientUid, recipientPublicKey) {
   const aesKey = await crypto.subtle.generateKey(AES_ALGO, true, ['encrypt', 'decrypt']);
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  
+
   const enc = new TextEncoder();
   const ciphertext = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
     aesKey,
     enc.encode(text)
   );
-  
+
   const aesRaw = await crypto.subtle.exportKey('raw', aesKey);
-  const encryptedKey = await crypto.subtle.encrypt(
+
+  const encryptedSenderKey = await crypto.subtle.encrypt(
+    { name: 'RSA-OAEP' },
+    senderPublicKey,
+    aesRaw
+  );
+
+  const encryptedRecipientKey = await crypto.subtle.encrypt(
     { name: 'RSA-OAEP' },
     recipientPublicKey,
     aesRaw
   );
-  
-  return [
-    btoa(String.fromCharCode(...new Uint8Array(encryptedKey))),
-    btoa(String.fromCharCode(...iv)),
-    btoa(String.fromCharCode(...new Uint8Array(ciphertext)))
-  ].join(':');
-}
 
-async function decryptE2EE(encrypted, privateKey) {
-  try {
-    const [keyB64, ivB64, cipherB64] = encrypted.split(':');
-    if (!keyB64 || !ivB64 || !cipherB64) return encrypted;
-    
-    const encryptedKey = Uint8Array.from(atob(keyB64), c => c.charCodeAt(0));
-    const aesRaw = await crypto.subtle.decrypt(
-      { name: 'RSA-OAEP' },
-      privateKey,
-      encryptedKey
-    );
-    
-    const aesKey = await crypto.subtle.importKey('raw', aesRaw, AES_ALGO, false, ['decrypt']);
-    const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
-    const ciphertext = Uint8Array.from(atob(cipherB64), c => c.charCodeAt(0));
-    
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv },
-      aesKey,
-      ciphertext
-    );
-    
-    return new TextDecoder().decode(decrypted);
-  } catch (e) {
-    console.error('❌ E2EE decrypt failed:', e);
-    return '[Ошибка расшифровки — возможно, ключи устарели]';
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-// 🔑 BACKUP / RESTORE KEYS
-// ═══════════════════════════════════════════════════════════
-
-async function exportKeysBackup(password) {
-  const stored = localStorage.getItem('e2ee_keys');
-  if (!stored) throw new Error('Ключи не найдены. Откройте сообщения для генерации.');
-  
-  const { privateKey } = JSON.parse(stored);
-  
-  const enc = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw', enc.encode(password),
-    'PBKDF2', false, ['deriveKey']
-  );
-  const aesKey = await crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: enc.encode('EgorNetwork_backup_salt'), iterations: 200000, hash: 'SHA-256' },
-    keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false, ['encrypt']
-  );
-  
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
-    aesKey,
-    enc.encode(privateKey)
-  );
-  
-  const backup = {
-    version: 1,
-    publicKey: JSON.parse(stored).publicKey,
-    iv: btoa(String.fromCharCode(...iv)),
-    encryptedPrivateKey: btoa(String.fromCharCode(...new Uint8Array(encrypted)))
+  const payload = {
+    v: 2,
+    iv: bytesToBase64(iv),
+    c: bytesToBase64(new Uint8Array(ciphertext)),
+    k: {
+      [senderUid]: bytesToBase64(new Uint8Array(encryptedSenderKey)),
+      [recipientUid]: bytesToBase64(new Uint8Array(encryptedRecipientKey)),
+    },
   };
-  
-  return btoa(JSON.stringify(backup));
+
+  return `v2:${textToBase64(JSON.stringify(payload))}`;
 }
 
-async function importKeysBackup(backupBase64, password) {
-  const backup = JSON.parse(atob(backupBase64));
-  if (backup.version !== 1) throw new Error('Неподдерживаемая версия бэкапа');
-  
-  const enc = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw', enc.encode(password),
-    'PBKDF2', false, ['deriveKey']
+async function decryptE2EELegacy(encrypted, privateKey) {
+  const [keyB64, ivB64, cipherB64] = String(encrypted || '').split(':');
+  if (!keyB64 || !ivB64 || !cipherB64) return encrypted;
+
+  const encryptedKey = base64ToBytes(keyB64);
+  const aesRaw = await crypto.subtle.decrypt(
+    { name: 'RSA-OAEP' },
+    privateKey,
+    encryptedKey
   );
-  const aesKey = await crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: enc.encode('EgorNetwork_backup_salt'), iterations: 200000, hash: 'SHA-256' },
-    keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false, ['decrypt']
-  );
-  
-  const iv = Uint8Array.from(atob(backup.iv), c => c.charCodeAt(0));
-  const encryptedPriv = Uint8Array.from(atob(backup.encryptedPrivateKey), c => c.charCodeAt(0));
-  
+
+  const aesKey = await crypto.subtle.importKey('raw', aesRaw, AES_ALGO, false, ['decrypt']);
+  const iv = base64ToBytes(ivB64);
+  const ciphertext = base64ToBytes(cipherB64);
   const decrypted = await crypto.subtle.decrypt(
     { name: 'AES-GCM', iv },
     aesKey,
-    encryptedPriv
+    ciphertext
   );
-  
-  const privateKey = new TextDecoder().decode(decrypted);
-  const keys = { publicKey: backup.publicKey, privateKey };
-  localStorage.setItem('e2ee_keys', JSON.stringify(keys));
-  
-  const me = window.auth.currentUser;
-  if (me) {
-    await window.db.collection('users').doc(me.uid).update({ 
-      publicKey: backup.publicKey,
-      _hasE2EE: true 
-    }).catch(() => {});
+  return new TextDecoder().decode(decrypted);
+}
+
+async function decryptE2EEv2(encrypted, myUid, privateKey) {
+  const encodedPayload = String(encrypted || '').slice(3);
+  const payload = parseJsonSafe(base64ToText(encodedPayload));
+  if (!payload || payload.v !== 2 || !payload.iv || !payload.c || !payload.k) {
+    throw new Error('Неверный формат шифрования v2');
   }
-  
-  return true;
+
+  const wrappedKeyB64 = payload.k[myUid];
+  if (!wrappedKeyB64) {
+    throw new Error('Ключ для этого пользователя не найден');
+  }
+
+  const aesRaw = await crypto.subtle.decrypt(
+    { name: 'RSA-OAEP' },
+    privateKey,
+    base64ToBytes(wrappedKeyB64)
+  );
+  const aesKey = await crypto.subtle.importKey('raw', aesRaw, AES_ALGO, false, ['decrypt']);
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: base64ToBytes(payload.iv) },
+    aesKey,
+    base64ToBytes(payload.c)
+  );
+  return new TextDecoder().decode(decrypted);
+}
+
+function isEncryptedMessage(rawMsg) {
+  if (!rawMsg) return false;
+  if (rawMsg._encrypted || rawMsg._e2ee || rawMsg._cryptoVersion === 2) return true;
+  return typeof rawMsg.text === 'string' && rawMsg.text.startsWith('v2:');
+}
+
+async function decryptE2EE(encrypted, myUid, privateKey) {
+  try {
+    if (typeof encrypted === 'string' && encrypted.startsWith('v2:')) {
+      return await decryptE2EEv2(encrypted, myUid, privateKey);
+    }
+    return await decryptE2EELegacy(encrypted, privateKey);
+  } catch (e) {
+    console.error('❌ E2EE decrypt failed:', e);
+    throw e;
+  }
 }
 
 // ─── USER CACHE ───────────────────────────────────────────────────────────────
@@ -264,7 +425,11 @@ async function getUser(uid) {
   try {
     const doc = await window.db.collection('users').doc(uid).get();
     const data = doc.exists ? doc.data() : { name: 'Неизвестный', avatar: null };
-    userCache[uid] = { name: data.name || 'Неизвестный', avatar: data.avatar || null };
+    userCache[uid] = {
+      name: data.name || 'Неизвестный',
+      avatar: data.avatar || null,
+      publicKeyB64: data.e2eeV2?.publicKey || data.publicKey || null,
+    };
     return userCache[uid];
   } catch {
     return { name: 'Неизвестный', avatar: null };
@@ -276,8 +441,6 @@ async function getUser(uid) {
 function renderConvItem(conv, convIdStr, myUid) {
   const otherId   = conv.participants.find(u => u !== myUid);
   const otherName = conv.participantNames?.[otherId] || 'Пользователь';
-  const isSecret  = conv.isSecret || false;
-  const lockIcon  = isSecret ? '<span class="conv-secret-icon">🔒</span>' : '';
   const otherAva  = conv.participantAvatars?.[otherId] || null;
   const unread    = conv.unread?.[myUid] || 0;
   const isEncrypted = conv._encrypted || conv._e2ee;
@@ -294,7 +457,7 @@ function renderConvItem(conv, convIdStr, myUid) {
   li.innerHTML = `
     <div class="conv-avatar">${avatarHtml(otherAva, otherName, 38)}</div>
     <div class="conv-info">
-      <div class="conv-name">${lockIcon}${esc(otherName)}</div>
+      <div class="conv-name">${esc(otherName)}</div>
       <div class="conv-preview">${esc(preview)}</div>
     </div>
     ${unread > 0 ? `<div class="conv-unread">${unread}</div>` : ''}
@@ -333,7 +496,6 @@ async function ensureConversationExists(cId, myUid, otherId, otherName, otherAva
     },
     lastMessage: '',
     lastMessageAt: now,
-    isSecret: false,
     createdAt: now,
   }, { merge: true });
 
@@ -346,7 +508,7 @@ async function ensureConversationExists(cId, myUid, otherId, otherName, otherAva
       ref: convRef,
       snap: {
         exists: true,
-        data: () => ({ isSecret: false }),
+        data: () => ({}),
       },
     };
   }
@@ -382,15 +544,17 @@ function initConvList(myUid) {
 
 async function openConversation(cId, otherId, otherName, otherAvatar) {
   activeConvId = cId;
-  
+
   // ── E2EE: убеждаемся что свои ключи есть ──
   await getOrCreateKeys();
-  
+
   // ── E2EE: проверяем что у собеседника есть ключ ──
   const otherPublicKey = await getPublicKey(otherId);
   if (!otherPublicKey) {
     console.warn('⚠️ Собеседник не имеет E2EE ключей');
   }
+
+  await ensureConversationExists(cId, currentUser.uid, otherId, otherName, otherAvatar);
 
   // Подсветка в сайдбаре
   document.querySelectorAll('.conv-item').forEach(el => {
@@ -415,10 +579,6 @@ async function openConversation(cId, otherId, otherName, otherAvatar) {
       <div>
         <div class="chat-header-name">${esc(otherName)}</div>
       </div>
-      <div class="chat-mode-switch">
-        <span class="chat-mode-label" id="chat-mode-label">Обычный</span>
-        <button class="chat-mode-btn" id="chat-mode-toggle" title="Переключить режим чата">🔓</button>
-      </div>
       <a class="chat-header-link" href="profile.html?uid=${encodeURIComponent(otherId)}">👤 Профиль</a>
     </div>
     <div class="chat-messages" id="chat-messages"></div>
@@ -438,67 +598,8 @@ async function openConversation(cId, otherId, otherName, otherAvatar) {
     </div>
   `;
 
-  // ── РЕЖИМ ЧАТА (секретный / обычный) ──
-  const modeBtn   = document.getElementById('chat-mode-toggle');
-  const modeLabel = document.getElementById('chat-mode-label');
-
-  function updateModeUI(secret) {
-    activeConvIsSecret = secret;
-    if (secret) {
-      modeBtn.textContent = '🔒';
-      modeLabel.textContent = 'Секретный';
-      modeLabel.classList.add('secret');
-    } else {
-      modeBtn.textContent = '🔓';
-      modeLabel.textContent = 'Обычный';
-      modeLabel.classList.remove('secret');
-    }
-  }
-
-  // Загружаем текущий режим
-  const { ref: convRef, snap: convSnap } = await ensureConversationExists(
-    cId,
-    currentUser.uid,
-    otherId,
-    otherName,
-    otherAvatar
-  );
-  updateModeUI(convSnap.exists ? (convSnap.data().isSecret || false) : false);
-
-  // Слушаем изменения режима
-  activeConvDocUnsub?.();
-  activeConvDocUnsub = convRef.onSnapshot(doc => {
-    if (doc.exists) updateModeUI(doc.data().isSecret || false);
-  });
-
-  // Переключение по клику
-  modeBtn.addEventListener('click', async () => {
-    const newMode = !activeConvIsSecret;
-    try {
-      await convRef.set({ isSecret: newMode }, { merge: true });
-      updateModeUI(newMode);
-    } catch (e) {
-      console.error('❌ Ошибка смены режима:', e);
-    }
-  });
-
-  // ── ДЕЛЕГИРОВАНИЕ УДАЛЕНИЯ СООБЩЕНИЙ (только для секретного чата) ──
-  const msgContainer = document.getElementById('chat-messages');
-  msgContainer.addEventListener('click', async (e) => {
-    const btn = e.target.closest('.msg-delete');
-    if (!btn) return;
-
-    const msgId = btn.dataset.msgId;
-    if (!msgId || !confirm('Удалить сообщение? Это действие нельзя отменить.')) return;
-
-    try {
-      await window.db.collection('conversations').doc(cId).collection('messages').doc(msgId).delete();
-    } catch (err) {
-      console.error('❌ Удаление:', err);
-    }
-  });
-
   // ── ДЕЛЕГИРОВАНИЕ ПРИНЯТИЯ ПРИГЛАШЕНИЯ НА ЗМЕИНУЮ ДУЭЛЬ ──
+  const msgContainer = document.getElementById('chat-messages');
   msgContainer.addEventListener('click', (e) => {
     const acceptBtn = e.target.closest('.msg-invite-accept-btn');
     if (!acceptBtn) return;
@@ -574,6 +675,7 @@ function subscribeMessages(cId, myUid) {
   if (!container) return;
 
   let lastDate = null;
+  let safetyDividerShown = false;
 
   messagesUnsub = window.db
     .collection('conversations').doc(cId).collection('messages')
@@ -581,6 +683,8 @@ function subscribeMessages(cId, myUid) {
     .onSnapshot(async snap => {
       container.innerHTML = '';
       lastDate = null;
+      safetyDividerShown = false;
+      let myKeys = null;
 
       // Используем for...of вместо forEach, чтобы await работал
       for (const doc of snap.docs) {
@@ -589,9 +693,19 @@ function subscribeMessages(cId, myUid) {
 
         // ── E2EE: расшифровка ──
         let msgText = rawMsg.text;
-        if ((rawMsg._encrypted || rawMsg._e2ee) && !isOwn) {
-          const myKeys = await getOrCreateKeys();
-          msgText = await decryptE2EE(rawMsg.text, myKeys.privateKey);
+        if (isEncryptedMessage(rawMsg)) {
+          try {
+            if (!myKeys) myKeys = await getOrCreateKeys();
+            msgText = await decryptE2EE(rawMsg.text, myUid, myKeys.privateKey);
+          } catch (e) {
+            console.error('❌ Message decrypt error:', e);
+            const isLegacyOwnEncrypted = isOwn
+              && typeof rawMsg.text === 'string'
+              && !rawMsg.text.startsWith('v2:');
+            msgText = isLegacyOwnEncrypted
+              ? '🔐 Вы отправили защищённое сообщение (старый формат).'
+              : '[Не удалось расшифровать сообщение]';
+          }
         }
 
         const msg = { ...rawMsg, text: msgText };
@@ -604,6 +718,16 @@ function subscribeMessages(cId, myUid) {
           div.className = 'msg-date-divider';
           div.textContent = dateStr;
           container.appendChild(div);
+        }
+
+        const isV2Message = rawMsg._cryptoVersion === 2
+          || (typeof rawMsg.text === 'string' && rawMsg.text.startsWith('v2:'));
+        if (!safetyDividerShown && isV2Message) {
+          safetyDividerShown = true;
+          const secDiv = document.createElement('div');
+          secDiv.className = 'msg-security-divider';
+          secDiv.textContent = '🔐 Чат стал безопаснее: теперь используется шифрование с синхронизацией между устройствами.';
+          container.appendChild(secDiv);
         }
 
         // Получаем аватар отправителя из кэша
@@ -636,7 +760,6 @@ function subscribeMessages(cId, myUid) {
           <div class="msg-content">
             <div class="msg-bubble">${bubbleContent}</div>
             <div class="msg-time">${formatMsgTime(msg.createdAt)}</div>
-            ${(isOwn && activeConvIsSecret) ? `<button class="msg-delete" data-msg-id="${doc.id}" title="Удалить навсегда">🗑️</button>` : ''}
           </div>
         `;
         container.appendChild(msgEl);
@@ -663,20 +786,27 @@ async function sendMessage(cId, otherId, otherName, otherAvatar) {
   const text = inputEl.value.trim();
   if (!text) return;
 
-  // Шифруем только в секретном режиме
+  // Все текстовые сообщения шифруем в новом режиме (v2)
   let encryptedText = text;
   let isEncrypted   = false;
+  let cryptoVersion = 0;
 
-  if (activeConvIsSecret) {
+  try {
+    const myKeys = await getOrCreateKeys();
     const otherPublicKey = await getPublicKey(otherId);
-    if (otherPublicKey) {
-      try {
-        encryptedText = await encryptE2EE(text, otherPublicKey);
-        isEncrypted = true;
-      } catch (e) {
-        console.error('❌ Encrypt failed:', e);
-      }
+
+    if (!otherPublicKey) {
+      alert('Пользователь ещё не инициализировал защищённый чат. Попросите его открыть сообщения и повторите отправку.');
+      return;
     }
+
+    encryptedText = await encryptE2EE(text, currentUser.uid, myKeys.publicKey, otherId, otherPublicKey);
+    isEncrypted = true;
+    cryptoVersion = 2;
+  } catch (e) {
+    console.error('❌ Encrypt failed:', e);
+    alert('Не удалось зашифровать сообщение. Попробуйте ещё раз.');
+    return;
   }
 
   sendBtn.disabled = true;
@@ -709,6 +839,7 @@ async function sendMessage(cId, otherId, otherName, otherAvatar) {
         text: encryptedText,
         _encrypted: isEncrypted,
         _e2ee: isEncrypted,
+        _cryptoVersion: cryptoVersion,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         read: false,
       });
@@ -726,10 +857,11 @@ async function sendMessage(cId, otherId, otherName, otherAvatar) {
           [otherId]: safeOtherAvatar,
         },
         unread,
-        lastMessage: text,
+        lastMessage: isEncrypted ? '🔐 Зашифрованное сообщение' : text,
         lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
         _encrypted: isEncrypted,
         _e2ee: isEncrypted,
+        _cryptoVersion: cryptoVersion,
         createdAt: convData?.createdAt || firebase.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
     });
@@ -755,7 +887,19 @@ async function sendSnakeDuelInvite(cId, otherId, otherName) {
     const myName = userCache[me.uid]?.name || me.displayName || me.email || 'Вы';
 
     // Формируем сообщение-приглашение
-    const inviteText = `🐍 Приглашаю тебя на змеиную дуэль! Нажми, чтобы принять вызов.`;
+    const invitePlainText = '🐍 Приглашаю тебя на змеиную дуэль! Нажми, чтобы принять вызов.';
+    let inviteText = invitePlainText;
+    let isEncrypted = false;
+    let cryptoVersion = 0;
+
+    const myKeys = await getOrCreateKeys();
+    const otherPublicKey = await getPublicKey(otherId);
+    if (!otherPublicKey) {
+      throw new Error('Собеседник ещё не инициализировал защищённый чат');
+    }
+    inviteText = await encryptE2EE(invitePlainText, me.uid, myKeys.publicKey, otherId, otherPublicKey);
+    isEncrypted = true;
+    cryptoVersion = 2;
 
     await window.db.runTransaction(async tx => {
       const convSnap = await tx.get(convRef);
@@ -770,6 +914,9 @@ async function sendSnakeDuelInvite(cId, otherId, otherName) {
       tx.set(msgRef, {
         senderUid: me.uid,
         text: inviteText,
+        _encrypted: isEncrypted,
+        _e2ee: isEncrypted,
+        _cryptoVersion: cryptoVersion,
         _inviteType: 'snake_duel',
         _inviterUid: me.uid,
         _inviteeUid: otherId,
@@ -785,8 +932,11 @@ async function sendSnakeDuelInvite(cId, otherId, otherName) {
           [otherId]: otherName || 'Пользователь',
         },
         unread,
-        lastMessage: inviteText,
+        lastMessage: isEncrypted ? '🔐 Зашифрованное сообщение' : invitePlainText,
         lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+        _encrypted: isEncrypted,
+        _e2ee: isEncrypted,
+        _cryptoVersion: cryptoVersion,
         createdAt: convData?.createdAt || firebase.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
     });
