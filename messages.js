@@ -49,6 +49,65 @@ function waitForFirebase(cb, max = 25) {
   }, 300);
 }
 
+const MSG_IMAGE_MAX_SIDE = 764;
+const MSG_IMAGE_MAX_BYTES = 360 * 1024;
+
+function estimateDataUrlBytes(dataUrl) {
+  const base64 = String(dataUrl || '').split(',')[1] || '';
+  if (!base64) return 0;
+  const padding = (base64.endsWith('==') ? 2 : (base64.endsWith('=') ? 1 : 0));
+  return Math.floor((base64.length * 3) / 4) - padding;
+}
+
+function resizeImageForMessage(file, maxSide = MSG_IMAGE_MAX_SIDE, maxBytes = MSG_IMAGE_MAX_BYTES) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Canvas недоступен'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        let quality = 0.9;
+        let dataUrl = canvas.toDataURL('image/jpeg', quality);
+        while (estimateDataUrlBytes(dataUrl) > maxBytes && quality > 0.46) {
+          quality -= 0.08;
+          dataUrl = canvas.toDataURL('image/jpeg', quality);
+        }
+
+        if (estimateDataUrlBytes(dataUrl) > maxBytes) {
+          reject(new Error('Изображение слишком большое даже после сжатия.'));
+          return;
+        }
+
+        resolve({
+          dataUrl,
+          width,
+          height,
+          mime: 'image/jpeg',
+          bytes: estimateDataUrlBytes(dataUrl),
+        });
+      };
+      img.onerror = () => reject(new Error('Не удалось обработать изображение'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('Ошибка чтения файла'));
+    reader.readAsDataURL(file);
+  });
+}
+
 // ─── STATE ────────────────────────────────────────────────────────────────────
 
 let currentUser    = null;
@@ -123,7 +182,11 @@ async function exportPrivateKey(key) {
   return bytesToBase64(new Uint8Array(exported));
 }
 
-function getAuthSyncMaterial(user) {
+function getAuthSyncMaterialV2(user) {
+  return `${user.uid}|EgorNetwork:e2ee:v2`;
+}
+
+function getAuthSyncMaterialLegacy(user) {
   const createdAt = user?.metadata?.creationTime || '';
   const email = (user?.email || '').toLowerCase();
   const providers = (user?.providerData || [])
@@ -134,11 +197,11 @@ function getAuthSyncMaterial(user) {
   return `${user.uid}|${createdAt}|${email}|${providers}|EgorNetwork:e2ee:v2`;
 }
 
-async function deriveSyncKey(user, salt, usage, iterations = E2EE_SYNC_KDF_ITERS) {
+async function deriveSyncKeyFromMaterial(material, salt, usage, iterations = E2EE_SYNC_KDF_ITERS) {
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
-    enc.encode(getAuthSyncMaterial(user)),
+    enc.encode(material),
     'PBKDF2',
     false,
     ['deriveKey']
@@ -160,7 +223,7 @@ async function deriveSyncKey(user, salt, usage, iterations = E2EE_SYNC_KDF_ITERS
 async function makeCloudBackup(privateKeyB64, user) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const wrapKey = await deriveSyncKey(user, salt, 'encrypt');
+  const wrapKey = await deriveSyncKeyFromMaterial(getAuthSyncMaterialV2(user), salt, 'encrypt');
   const payload = new TextEncoder().encode(privateKeyB64);
   const wrapped = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, wrapKey, payload);
   return {
@@ -177,9 +240,23 @@ async function unwrapCloudBackup(backup, user) {
   const iv = base64ToBytes(backup.iv);
   const salt = base64ToBytes(backup.salt);
   const ciphertext = base64ToBytes(backup.wrappedPrivateKey);
-  const unwrapKey = await deriveSyncKey(user, salt, 'decrypt', backup.iterations || E2EE_SYNC_KDF_ITERS);
-  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, unwrapKey, ciphertext);
-  return new TextDecoder().decode(decrypted);
+  const iters = backup.iterations || E2EE_SYNC_KDF_ITERS;
+  const candidates = [
+    getAuthSyncMaterialV2(user),
+    getAuthSyncMaterialLegacy(user),
+  ];
+
+  let lastError = null;
+  for (const material of candidates) {
+    try {
+      const unwrapKey = await deriveSyncKeyFromMaterial(material, salt, 'decrypt', iters);
+      const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, unwrapKey, ciphertext);
+      return new TextDecoder().decode(decrypted);
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError || new Error('Не удалось восстановить ключ из облачного бэкапа');
 }
 
 async function importPairFromBase64(publicKeyB64, privateKeyB64) {
@@ -289,14 +366,15 @@ async function getOrCreateKeys() {
   return pair;
 }
 
-async function getPublicKey(uid) {
+async function getPublicKey(uid, options = {}) {
+  const forceRefresh = !!options.forceRefresh;
   if (currentUser && uid === currentUser.uid) {
     const myKeys = await getOrCreateKeys();
     return myKeys.publicKey;
   }
 
-  if (userCache[uid]?.publicKey) return userCache[uid].publicKey;
-  if (userCache[uid]?.publicKeyB64) {
+  if (!forceRefresh && userCache[uid]?.publicKey) return userCache[uid].publicKey;
+  if (!forceRefresh && userCache[uid]?.publicKeyB64) {
     const key = await importPublicKey(userCache[uid].publicKeyB64);
     userCache[uid].publicKey = key;
     return key;
@@ -588,6 +666,10 @@ async function openConversation(cId, otherId, otherName, otherAvatar) {
       <div class="chat-actions-wrapper">
         <button class="chat-actions-btn" id="chat-actions-btn" title="Действия">+</button>
         <div class="chat-actions-menu" id="chat-actions-menu">
+          <div class="chat-actions-item" id="attach-image-item">
+            <span class="chat-actions-icon">🖼️</span>
+            <span>Прикрепить изображение</span>
+          </div>
           <div class="chat-actions-item" id="snake-duel-item">
             <span class="chat-actions-icon">🐍</span>
             <span>Пригласить на змеиную дуэль</span>
@@ -596,6 +678,7 @@ async function openConversation(cId, otherId, otherName, otherAvatar) {
         <button class="chat-send-btn" id="chat-send-btn">↑</button>
       </div>
     </div>
+    <input type="file" id="chat-image-input" accept="image/*" style="display:none;">
   `;
 
   // ── ДЕЛЕГИРОВАНИЕ ПРИНЯТИЯ ПРИГЛАШЕНИЯ НА ЗМЕИНУЮ ДУЭЛЬ ──
@@ -637,6 +720,8 @@ async function openConversation(cId, otherId, otherName, otherAvatar) {
   const actionsBtn = document.getElementById('chat-actions-btn');
   const actionsMenu = document.getElementById('chat-actions-menu');
   const snakeDuelItem = document.getElementById('snake-duel-item');
+  const attachImageItem = document.getElementById('attach-image-item');
+  const imageInput = document.getElementById('chat-image-input');
 
   if (actionsBtn && actionsMenu) {
     // Открытие/закрытие меню
@@ -655,6 +740,29 @@ async function openConversation(cId, otherId, otherName, otherAvatar) {
       snakeDuelItem.addEventListener('click', () => {
         actionsMenu.classList.remove('open');
         sendSnakeDuelInvite(cId, otherId, otherName);
+      });
+    }
+
+    if (attachImageItem && imageInput) {
+      attachImageItem.addEventListener('click', () => {
+        actionsMenu.classList.remove('open');
+        imageInput.click();
+      });
+      imageInput.addEventListener('change', async () => {
+        const file = imageInput.files?.[0];
+        imageInput.value = '';
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+          alert('Можно прикреплять только изображения.');
+          return;
+        }
+        try {
+          const preparedImage = await resizeImageForMessage(file);
+          await sendMessage(cId, otherId, otherName, otherAvatar, preparedImage);
+        } catch (e) {
+          console.error('❌ Image attach failed:', e);
+          alert(e.message || 'Не удалось прикрепить изображение.');
+        }
       });
     }
   }
@@ -693,10 +801,14 @@ function subscribeMessages(cId, myUid) {
 
         // ── E2EE: расшифровка ──
         let msgText = rawMsg.text;
+        let msgImage = rawMsg.image || null;
         if (isEncryptedMessage(rawMsg)) {
           try {
             if (!myKeys) myKeys = await getOrCreateKeys();
             msgText = await decryptE2EE(rawMsg.text, myUid, myKeys.privateKey);
+            if (rawMsg.image) {
+              msgImage = await decryptE2EE(rawMsg.image, myUid, myKeys.privateKey);
+            }
           } catch (e) {
             console.error('❌ Message decrypt error:', e);
             const isLegacyOwnEncrypted = isOwn
@@ -705,10 +817,11 @@ function subscribeMessages(cId, myUid) {
             msgText = isLegacyOwnEncrypted
               ? '🔐 Вы отправили защищённое сообщение (старый формат).'
               : '[Не удалось расшифровать сообщение]';
+            msgImage = null;
           }
         }
 
-        const msg = { ...rawMsg, text: msgText };
+        const msg = { ...rawMsg, text: msgText, image: msgImage };
 
         // Разделитель по дате
         const dateStr = formatMsgDate(msg.createdAt);
@@ -742,7 +855,7 @@ function subscribeMessages(cId, myUid) {
         const msgEl = document.createElement('div');
         msgEl.className = `msg ${isOwn ? 'own' : ''}${isSnakeDuelInvite ? ' msg-invite' : ''}`;
 
-        let bubbleContent = esc(msg.text);
+        let bubbleContent = '';
         if (isSnakeDuelInvite) {
           if (canAcceptInvite) {
             bubbleContent = `
@@ -753,6 +866,12 @@ function subscribeMessages(cId, myUid) {
           } else {
             bubbleContent = `<div class="msg-invite-sent">🐍 Приглашение на змеиную дуэль отправлено</div>`;
           }
+        } else {
+          const hasImage = !!msg.image;
+          const hasText = !!String(msg.text || '').trim();
+          const imageHtml = hasImage ? `<img class="msg-image" src="${esc(msg.image)}" alt="Изображение из чата" loading="lazy">` : '';
+          const textHtml = hasText ? `<div class="msg-text">${esc(msg.text)}</div>` : '';
+          bubbleContent = `${imageHtml}${textHtml}`;
         }
 
         msgEl.innerHTML = `
@@ -778,29 +897,43 @@ function subscribeMessages(cId, myUid) {
 
 // ─── SEND MESSAGE ─────────────────────────────────────────────────────────────
 
-async function sendMessage(cId, otherId, otherName, otherAvatar) {
+async function sendMessage(cId, otherId, otherName, otherAvatar, attachment = null) {
   const inputEl = document.getElementById('chat-input');
   const sendBtn = document.getElementById('chat-send-btn');
   if (!inputEl) return;
 
   const text = inputEl.value.trim();
-  if (!text) return;
+  const imageDataUrl = attachment?.dataUrl || null;
+  if (!text && !imageDataUrl) return;
 
   // Все текстовые сообщения шифруем в новом режиме (v2)
   let encryptedText = text;
+  let encryptedImage = imageDataUrl;
   let isEncrypted   = false;
   let cryptoVersion = 0;
 
   try {
     const myKeys = await getOrCreateKeys();
-    const otherPublicKey = await getPublicKey(otherId);
+    const otherPublicKey = await getPublicKey(otherId, { forceRefresh: true });
 
     if (!otherPublicKey) {
       alert('Пользователь ещё не инициализировал защищённый чат. Попросите его открыть сообщения и повторите отправку.');
       return;
     }
 
-    encryptedText = await encryptE2EE(text, currentUser.uid, myKeys.publicKey, otherId, otherPublicKey);
+    if (text) {
+      encryptedText = await encryptE2EE(text, currentUser.uid, myKeys.publicKey, otherId, otherPublicKey);
+    }
+    if (imageDataUrl) {
+      encryptedImage = await encryptE2EE(imageDataUrl, currentUser.uid, myKeys.publicKey, otherId, otherPublicKey);
+    }
+
+    const approxCipherSize = (encryptedText?.length || 0) + (encryptedImage?.length || 0);
+    if (approxCipherSize > 930000) {
+      alert('Изображение получилось слишком большим для отправки. Попробуйте файл поменьше.');
+      return;
+    }
+
     isEncrypted = true;
     cryptoVersion = 2;
   } catch (e) {
@@ -837,6 +970,11 @@ async function sendMessage(cId, otherId, otherName, otherAvatar) {
       tx.set(msgRef, {
         senderUid: me.uid,
         text: encryptedText,
+        image: encryptedImage || null,
+        _hasImage: !!imageDataUrl,
+        imageW: attachment?.width || null,
+        imageH: attachment?.height || null,
+        imageMime: attachment?.mime || null,
         _encrypted: isEncrypted,
         _e2ee: isEncrypted,
         _cryptoVersion: cryptoVersion,
@@ -857,7 +995,9 @@ async function sendMessage(cId, otherId, otherName, otherAvatar) {
           [otherId]: safeOtherAvatar,
         },
         unread,
-        lastMessage: isEncrypted ? '🔐 Зашифрованное сообщение' : text,
+        lastMessage: imageDataUrl
+          ? (text ? '🖼️ Изображение и текст' : '🖼️ Изображение')
+          : (isEncrypted ? '🔐 Зашифрованное сообщение' : text),
         lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
         _encrypted: isEncrypted,
         _e2ee: isEncrypted,
@@ -893,7 +1033,7 @@ async function sendSnakeDuelInvite(cId, otherId, otherName) {
     let cryptoVersion = 0;
 
     const myKeys = await getOrCreateKeys();
-    const otherPublicKey = await getPublicKey(otherId);
+    const otherPublicKey = await getPublicKey(otherId, { forceRefresh: true });
     if (!otherPublicKey) {
       throw new Error('Собеседник ещё не инициализировал защищённый чат');
     }

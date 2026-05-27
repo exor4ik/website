@@ -1818,6 +1818,21 @@ main.container { padding-top: clamp(80px, 12vw, 100px); }
   word-break: break-word;
   white-space: pre-wrap;
 }
+.msg-text {
+  white-space: pre-wrap;
+}
+.msg-image {
+  display: block;
+  width: min(320px, 62vw);
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.22);
+}
+.msg-image + .msg-text {
+  margin-top: 8px;
+}
 
 .msg:not(.own) .msg-bubble {
   background: rgba(255,255,255,.07);
