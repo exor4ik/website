@@ -108,6 +108,44 @@ function resizeImageForMessage(file, maxSide = MSG_IMAGE_MAX_SIDE, maxBytes = MS
   });
 }
 
+function scrollChatToBottom(container) {
+  if (!container) return;
+
+  const prevScrollBehavior = container.style.scrollBehavior;
+  container.style.scrollBehavior = 'auto';
+
+  const snapToBottom = () => {
+    container.scrollTop = container.scrollHeight;
+  };
+
+  snapToBottom();
+  requestAnimationFrame(() => {
+    snapToBottom();
+    requestAnimationFrame(() => {
+      snapToBottom();
+    });
+  });
+
+  const images = Array.from(container.querySelectorAll('img'));
+  if (images.length) {
+    Promise.all(images.map(img => {
+      if (img.complete) return Promise.resolve();
+      return new Promise(resolve => {
+        const done = () => resolve();
+        img.addEventListener('load', done, { once: true });
+        img.addEventListener('error', done, { once: true });
+      });
+    })).then(() => {
+      requestAnimationFrame(snapToBottom);
+    });
+  }
+
+  setTimeout(() => {
+    if (!container.isConnected) return;
+    container.style.scrollBehavior = prevScrollBehavior || '';
+  }, 0);
+}
+
 // ─── STATE ────────────────────────────────────────────────────────────────────
 
 let currentUser    = null;
@@ -116,7 +154,7 @@ let messagesUnsub  = null;
 let convsUnsub     = null;
 let userCache      = {};
 let cachedMyKeys   = null;
-let didSyncKeysThisSession = false;
+let cachedMyKeysUid = null;
 
 // ═══════════════════════════════════════════════════════════
 // 🔐 END-TO-END ENCRYPTION (Web Crypto API)
@@ -124,8 +162,8 @@ let didSyncKeysThisSession = false;
 
 const KEY_ALGO = { name: 'RSA-OAEP', modulusLength: 2048, publicExponent: new Uint8Array([1,0,1]), hash: 'SHA-256' };
 const AES_ALGO = { name: 'AES-GCM', length: 256 };
-const E2EE_LOCAL_KEY = 'e2ee_keys_v2';
-const E2EE_LEGACY_LOCAL_KEY = 'e2ee_keys';
+const E2EE_LOCAL_PREFIX = 'e2ee_keys_v2';
+const E2EE_LEGACY_LOCAL_PREFIX = 'e2ee_keys';
 const E2EE_SYNC_KDF_ITERS = 310000;
 
 async function generateKeyPair() {
@@ -273,96 +311,173 @@ async function exportPairToBase64(pair) {
   };
 }
 
-function readLocalV2Keys() {
-  const parsed = parseJsonSafe(localStorage.getItem(E2EE_LOCAL_KEY) || '');
-  if (!parsed?.publicKey || !parsed?.privateKey) return null;
-  return { publicKey: parsed.publicKey, privateKey: parsed.privateKey };
+function getLocalV2KeyName(uid) {
+  return `${E2EE_LOCAL_PREFIX}:${uid}`;
 }
 
-function writeLocalV2Keys(publicKey, privateKey) {
-  localStorage.setItem(E2EE_LOCAL_KEY, JSON.stringify({
+function getLegacyLocalKeyName(uid) {
+  return `${E2EE_LEGACY_LOCAL_PREFIX}:${uid}`;
+}
+
+function readLocalV2Keys(uid) {
+  const parsed = parseJsonSafe(localStorage.getItem(getLocalV2KeyName(uid)) || '');
+  if (parsed?.uid === uid && parsed?.publicKey && parsed?.privateKey) {
+    return { publicKey: parsed.publicKey, privateKey: parsed.privateKey };
+  }
+  return null;
+}
+
+function readGlobalLocalV2Keys() {
+  const parsed = parseJsonSafe(localStorage.getItem(E2EE_LOCAL_PREFIX) || '');
+  if (parsed?.publicKey && parsed?.privateKey) {
+    return { publicKey: parsed.publicKey, privateKey: parsed.privateKey };
+  }
+  return null;
+}
+
+function writeLocalV2Keys(uid, publicKey, privateKey) {
+  localStorage.setItem(getLocalV2KeyName(uid), JSON.stringify({
     version: 2,
+    uid,
     publicKey,
     privateKey,
   }));
+  localStorage.removeItem(E2EE_LOCAL_PREFIX);
+  localStorage.removeItem(E2EE_LEGACY_LOCAL_PREFIX);
 }
 
-function readLegacyLocalKeys() {
-  const parsed = parseJsonSafe(localStorage.getItem(E2EE_LEGACY_LOCAL_KEY) || '');
-  if (!parsed?.publicKey || !parsed?.privateKey) return null;
-  return { publicKey: parsed.publicKey, privateKey: parsed.privateKey };
+function readLegacyLocalKeys(uid) {
+  const parsed = parseJsonSafe(localStorage.getItem(getLegacyLocalKeyName(uid)) || '');
+  if (parsed?.uid === uid && parsed?.publicKey && parsed?.privateKey) {
+    return { publicKey: parsed.publicKey, privateKey: parsed.privateKey };
+  }
+  return null;
 }
 
-async function saveKeysEverywhere(user, publicKeyB64, privateKeyB64) {
-  writeLocalV2Keys(publicKeyB64, privateKeyB64);
-  localStorage.removeItem(E2EE_LEGACY_LOCAL_KEY);
+function readGlobalLegacyKeys() {
+  const parsed = parseJsonSafe(localStorage.getItem(E2EE_LEGACY_LOCAL_PREFIX) || '');
+  if (parsed?.publicKey && parsed?.privateKey) {
+    return { publicKey: parsed.publicKey, privateKey: parsed.privateKey };
+  }
+  return null;
+}
 
+async function saveKeysToCloud(user, publicKeyB64, privateKeyB64) {
   const backup = await makeCloudBackup(privateKeyB64, user);
-  await window.db.collection('users').doc(user.uid).set({
-    publicKey: publicKeyB64,
-    _hasE2EE: true,
-    _e2eeVersion: 2,
-    e2eeV2: {
-      ...backup,
-      publicKey: publicKeyB64,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    },
-  }, { merge: true }).catch(() => {});
-  didSyncKeysThisSession = true;
+  const userRef = window.db.collection('users').doc(user.uid);
+
+  try {
+    // ИСПОЛЬЗУЕМ ТРАНЗАКЦИЮ, чтобы избежать Race Condition
+    await window.db.runTransaction(async (tx) => {
+      const doc = await tx.get(userRef);
+      const data = doc.exists ? doc.data() : {};
+      
+      // 🚨 КРИТИЧЕСКИЙ ФИКС: Если в облаке УЖЕ есть валидный бэкап, 
+      // мы НЕ перезаписываем его. Это спасет твои чаты при логине с нового домена.
+      if (data.e2eeV2?.wrappedPrivateKey && data.publicKey) {
+        console.warn('⚠️ В облаке уже есть бэкап ключей. Пропускаем перезапись, чтобы не потерять доступ к старым чатам.');
+        return; // Выходим из транзакции без изменений в БД
+      }
+
+      tx.set(userRef, {
+        publicKey: publicKeyB64,
+        _hasE2EE: true,
+        _e2eeVersion: 2,
+        e2eeV2: {
+          ...backup,
+          publicKey: publicKeyB64,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        },
+      }, { merge: true });
+    });
+  } catch (e) {
+    console.error('❌ Ошибка транзакции сохранения ключей:', e);
+    // Не пробрасываем ошибку дальше, чтобы не заблокировать работу клиента,
+    // но в консоли будет видно, что синхронизация не прошла.
+  }
+}
+
+function clearLocalKeyCopies(uid) {
+  localStorage.removeItem(E2EE_LOCAL_PREFIX);
+  localStorage.removeItem(E2EE_LEGACY_LOCAL_PREFIX);
+  localStorage.removeItem(getLocalV2KeyName(uid));
+  localStorage.removeItem(getLegacyLocalKeyName(uid));
+}
+
+async function persistKeys(uid, user, publicKeyB64, privateKeyB64) {
+  writeLocalV2Keys(uid, publicKeyB64, privateKeyB64);
+  await saveKeysToCloud(user, publicKeyB64, privateKeyB64).catch(err => {
+    console.warn('⚠️ Не удалось синхронизировать ключи в облако, остаёмся на локальном кэше:', err);
+  });
 }
 
 async function getOrCreateKeys() {
-  if (cachedMyKeys) return cachedMyKeys;
-
   const me = window.auth.currentUser;
   if (!me) throw new Error('Требуется авторизация для E2EE');
+  if (cachedMyKeys && cachedMyKeysUid === me.uid) return cachedMyKeys;
 
-  const localV2 = readLocalV2Keys();
-  if (localV2) {
-    try {
-      cachedMyKeys = await importPairFromBase64(localV2.publicKey, localV2.privateKey);
-      if (!didSyncKeysThisSession) {
-        saveKeysEverywhere(me, localV2.publicKey, localV2.privateKey).catch(() => {});
-      }
-      return cachedMyKeys;
-    } catch (e) {
-      console.warn('⚠️ Локальные e2ee_v2 ключи повреждены, пробуем восстановить из облака', e);
-    }
-  }
-
-  const legacy = readLegacyLocalKeys();
-  if (legacy) {
-    try {
-      cachedMyKeys = await importPairFromBase64(legacy.publicKey, legacy.privateKey);
-      await saveKeysEverywhere(me, legacy.publicKey, legacy.privateKey);
-      return cachedMyKeys;
-    } catch (e) {
-      console.warn('⚠️ Локальные legacy-ключи повреждены, пробуем восстановить из облака', e);
-    }
-  }
+  const uid = me.uid;
+  const localV2 = readLocalV2Keys(uid);
+  const legacy = localV2 ? null : readLegacyLocalKeys(uid);
 
   try {
     const doc = await window.db.collection('users').doc(me.uid).get();
-    if (doc.exists) {
-      const data = doc.data() || {};
-      const backup = data.e2eeV2;
-      const cloudPublicKey = backup?.publicKey || data.publicKey;
+    const data = doc.exists ? (doc.data() || {}) : {};
+    const backup = data.e2eeV2;
+    const cloudPublicKey = backup?.publicKey || data.publicKey || null;
+    const cloudHasBackup = !!(backup?.wrappedPrivateKey && backup?.iv && backup?.salt && cloudPublicKey);
 
-      if (backup?.wrappedPrivateKey && backup?.iv && backup?.salt && cloudPublicKey) {
+    if (cloudHasBackup) {
+      try {
         const restoredPrivateB64 = await unwrapCloudBackup(backup, me);
-        cachedMyKeys = await importPairFromBase64(cloudPublicKey, restoredPrivateB64);
-        writeLocalV2Keys(cloudPublicKey, restoredPrivateB64);
-        return cachedMyKeys;
+        const cloudPair = await importPairFromBase64(cloudPublicKey, restoredPrivateB64);
+        writeLocalV2Keys(uid, cloudPublicKey, restoredPrivateB64);
+        cachedMyKeys = cloudPair;
+        cachedMyKeysUid = uid;
+        return cloudPair;
+      } catch (e) {
+        console.error('❌ КРИТИЧЕСКАЯ ОШИБКА: Не удалось расшифровать облачный бэкап приватного ключа!', e);
+        // 🚨 ФИКС: Если бэкап есть, но мы не можем его расшифровать, 
+        // мы НЕ генерируем новый ключ. Иначе мы навсегда потеряем старые чаты.
+        throw new Error('Не удалось восстановить приватный ключ из облака. Возможно, поврежден бэкап.');
       }
     }
+
+    // 🚨 ФИКС: Если в базе есть публичный ключ, но НЕТ приватного бэкапа.
+    if (cloudPublicKey) {
+       throw new Error('В базе найден публичный ключ, но нет зашифрованного приватного бэкапа. Восстановление невозможно. Обратитесь к администратору.');
+    }
+
+    const migratableGlobalV2 = !localV2 && !legacy ? readGlobalLocalV2Keys() : null;
+    const migratableGlobalLegacy = !localV2 && !legacy ? readGlobalLegacyKeys() : null;
+    const matchingGlobal = [migratableGlobalV2, migratableGlobalLegacy].find(candidate =>
+      candidate && cloudPublicKey && candidate.publicKey === cloudPublicKey
+    ) || null;
+
+    const localCandidate = localV2 || legacy || matchingGlobal;
+    if (localCandidate) {
+      const localPair = await importPairFromBase64(localCandidate.publicKey, localCandidate.privateKey);
+      await persistKeys(uid, me, localCandidate.publicKey, localCandidate.privateKey);
+      cachedMyKeys = localPair;
+      cachedMyKeysUid = uid;
+      return localPair;
+    }
+
   } catch (e) {
-    console.warn('⚠️ Не удалось восстановить ключи из облака, создаём новую пару', e);
+    // Пробрасываем критические ошибки, чтобы не сгенерировался новый ключ
+    if (e.message.includes('Не удалось восстановить') || e.message.includes('Восстановление невозможно')) {
+        throw e;
+    }
+    console.warn('⚠️ Не удалось восстановить ключи из облака, пробуем локальные или создаём новую пару', e);
   }
 
+  // Генерация НОВОЙ пары происходит ТОЛЬКО если мы дошли до сюда.
+  // Это значит, что в базе вообще нет публичного ключа (пользователь абсолютно новый).
   const pair = await generateKeyPair();
   const exported = await exportPairToBase64(pair);
-  await saveKeysEverywhere(me, exported.publicKey, exported.privateKey);
+  await persistKeys(uid, me, exported.publicKey, exported.privateKey);
   cachedMyKeys = pair;
+  cachedMyKeysUid = uid;
   return pair;
 }
 
@@ -782,20 +897,21 @@ function subscribeMessages(cId, myUid) {
   const container = document.getElementById('chat-messages');
   if (!container) return;
 
-  let lastDate = null;
-  let safetyDividerShown = false;
+  let renderToken = 0;
 
   messagesUnsub = window.db
     .collection('conversations').doc(cId).collection('messages')
     .orderBy('createdAt', 'asc')
     .onSnapshot(async snap => {
-      container.innerHTML = '';
-      lastDate = null;
-      safetyDividerShown = false;
+      const token = ++renderToken;
+      const fragment = document.createDocumentFragment();
+      let localLastDate = null;
+      let localSafetyDividerShown = false;
       let myKeys = null;
 
-      // Используем for...of вместо forEach, чтобы await работал
       for (const doc of snap.docs) {
+        if (token !== renderToken) return;
+
         const rawMsg = doc.data();
         const isOwn = rawMsg.senderUid === myUid;
 
@@ -805,6 +921,7 @@ function subscribeMessages(cId, myUid) {
         if (isEncryptedMessage(rawMsg)) {
           try {
             if (!myKeys) myKeys = await getOrCreateKeys();
+            if (token !== renderToken) return;
             msgText = await decryptE2EE(rawMsg.text, myUid, myKeys.privateKey);
             if (rawMsg.image) {
               msgImage = await decryptE2EE(rawMsg.image, myUid, myKeys.privateKey);
@@ -823,32 +940,29 @@ function subscribeMessages(cId, myUid) {
 
         const msg = { ...rawMsg, text: msgText, image: msgImage };
 
-        // Разделитель по дате
         const dateStr = formatMsgDate(msg.createdAt);
-        if (dateStr !== lastDate) {
-          lastDate = dateStr;
+        if (dateStr !== localLastDate) {
+          localLastDate = dateStr;
           const div = document.createElement('div');
           div.className = 'msg-date-divider';
           div.textContent = dateStr;
-          container.appendChild(div);
+          fragment.appendChild(div);
         }
 
         const isV2Message = rawMsg._cryptoVersion === 2
           || (typeof rawMsg.text === 'string' && rawMsg.text.startsWith('v2:'));
-        if (!safetyDividerShown && isV2Message) {
-          safetyDividerShown = true;
+        if (!localSafetyDividerShown && isV2Message) {
+          localSafetyDividerShown = true;
           const secDiv = document.createElement('div');
           secDiv.className = 'msg-security-divider';
           secDiv.textContent = '🔐 Чат стал безопаснее: теперь используется шифрование с синхронизацией между устройствами.';
-          container.appendChild(secDiv);
+          fragment.appendChild(secDiv);
         }
 
-        // Получаем аватар отправителя из кэша
         const senderInfo = userCache[msg.senderUid];
         const senderAva  = senderInfo?.avatar || null;
         const senderName = senderInfo?.name || '?';
 
-        // Проверяем, является ли сообщение приглашением на змеиную дуэль
         const isSnakeDuelInvite = msg._inviteType === 'snake_duel';
         const canAcceptInvite = !isOwn && isSnakeDuelInvite && msg._inviteeUid === myUid;
 
@@ -881,15 +995,13 @@ function subscribeMessages(cId, myUid) {
             <div class="msg-time">${formatMsgTime(msg.createdAt)}</div>
           </div>
         `;
-        container.appendChild(msgEl);
+        fragment.appendChild(msgEl);
       }
 
-      // Скролл вниз
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          container.scrollTop = container.scrollHeight;
-        });
-      });
+      if (token !== renderToken) return;
+      container.innerHTML = '';
+      container.appendChild(fragment);
+      scrollChatToBottom(container);
     }, err => {
       console.error('❌ Messages:', err);
     });
