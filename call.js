@@ -6,10 +6,10 @@
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 const CALL_CONFIG = {
-  customServer: {
+   customServer: {
     host: 'egor-peerjs.onrender.com',
     port: 443,
-    path: '/peerjs',  // ← Было '/', стало '/peerjs'
+    path: '/',  // ← Строго '/', без peerjs
     secure: true,
   },
   publicServers: [
