@@ -9,11 +9,10 @@ const CALL_CONFIG = {
   customServer: {
     host: 'egor-peerjs.onrender.com',
     port: 443,
-    path: '/',
+    path: '/peerjs',  // ← ВАЖНО: именно '/peerjs'
     secure: true,
-},
+  },
   publicServers: [
-    // На всякий случай оставляем fallback, но твой сервер должен работать первым
     { host: '0.peerjs.com', port: 443, path: '/', secure: true },
   ],
   audioConstraints: {
