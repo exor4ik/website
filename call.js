@@ -1,21 +1,17 @@
 /**
  * 🔊 Voice Calls for EgorNetwork DMs
- * WebRTC + PeerJS + Web Audio API (FIXED)
+ * WebRTC + PeerJS + Web Audio API (FIXED for Render.com)
  */
 'use strict';
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 const CALL_CONFIG = {
-  customServer: 
-  {
+  customServer: {
     host: 'egor-peerjs.onrender.com',
     port: 443,
     path: '/myapp',
     secure: true,
   },
-  publicServers: [
-    { host: '0.peerjs.com', port: 443, path: '/', secure: true },
-  ],
   audioConstraints: {
     echoCancellation: true,
     noiseSuppression: true,
@@ -31,6 +27,21 @@ const CALL_CONFIG = {
     settingsSave: 'sound/call_settings_save.ogg',
   },
   settingsKey: 'egor_call_settings_v1',
+  // Без TURN звонки не пробьют NAT. Это публичные серверы Open Relay.
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+  ]
 };
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
@@ -42,8 +53,6 @@ let callAudioContext = null;
 let callSoundBuffers = {};
 let callCurrentOverlay = null;
 let callCurrentTimerInterval = null;
-let callReconnectAttempts = 0;
-const MAX_RECONNECT_ATTEMPTS = 3;
 
 let callSettings = {
   inputDeviceId: null,
@@ -76,7 +85,6 @@ function playSound(name, { loop = false, volume = 1.0 } = {}) {
   if (!callAudioContext) initAudioContext();
   const buffer = callSoundBuffers[name];
   if (!buffer) return null;
-
   try {
     const source = callAudioContext.createBufferSource();
     source.buffer = buffer;
@@ -122,93 +130,94 @@ async function enumerateAudioDevices() {
   }
 }
 
-// ─── PEER INIT WITH FALLBACK ─────────────────────────────────────────────────
-function tryConnectPeer(serverList, index = 0) {
+// ─── PEER INIT ──────────────────────────────────────────────────────────────
+function createPeer() {
   return new Promise((resolve, reject) => {
-    if (index >= serverList.length) {
-      reject(new Error('Все серверы недоступны'));
-      return;
+    if (callPeer) {
+      try { callPeer.destroy(); } catch (e) {}
+      callPeer = null;
     }
 
-    const server = serverList[index];
-    console.log(`🔌 Попытка подключения к ${server.host}...`);
+    const options = {
+      host: CALL_CONFIG.customServer.host,
+      port: CALL_CONFIG.customServer.port,
+      path: CALL_CONFIG.customServer.path,
+      secure: CALL_CONFIG.customServer.secure,
+      debug: 3, // Пока не заработает — не снижай, смотри в консоль
+      config: {
+        iceServers: CALL_CONFIG.iceServers,
+        sdpSemantics: 'unified-plan'
+      },
+      // 25 сек — чтобы Render не рвал WebSocket по idle
+      pingInterval: 25000,
+    };
 
-    const peer = new Peer(null, {
-      host: server.host,
-      port: server.port,
-      path: server.path,
-      secure: server.secure,
-      debug: 1,
-    });
+    console.log('🔌 Creating Peer:', options);
+    const peer = new Peer(undefined, options);
 
-    const timeout = setTimeout(() => {
-      try { peer.destroy(); } catch (e) {}
-      reject(new Error(`Timeout на ${server.host}`));
-    }, 8000);
+    const onOpen = (id) => {
+      console.log('✅ Peer open, ID:', id);
+      callPeer = peer;
+      resolve(peer);
+    };
 
-    peer.on('open', id => {
-      clearTimeout(timeout);
-      console.log(`✅ Подключено к ${server.host}, ID: ${id}`);
-      resolve({ peer, server });
-    });
+    const onError = (err) => {
+      console.error('❌ Peer error:', err.type, err.message);
+      // Критические ошибки приводят к reject
+      if (['invalid-id', 'invalid-key', 'ssl-unavailable', 'server-error'].includes(err.type)) {
+        peer.destroy();
+        reject(err);
+      }
+    };
 
-    peer.on('error', err => {
-      clearTimeout(timeout);
-      try { peer.destroy(); } catch (e) {}
-      reject(new Error(`${server.host}: ${err.type}`));
-    });
+    const onDisconnected = () => {
+      console.warn('⚠️ Peer disconnected from server');
+      // PeerJS сам пытается переподключиться несколько раз
+    };
+
+    const onClose = () => {
+      console.log('🔚 Peer closed');
+      callPeer = null;
+    };
+
+    peer.on('open', onOpen);
+    peer.on('error', onError);
+    peer.on('disconnected', onDisconnected);
+    peer.on('close', onClose);
+    peer.on('call', handleIncomingCall);
+
+    // Если за 10 секунд не подключились — не reject, но предупредим
+    setTimeout(() => {
+      if (!peer.open) {
+        console.warn('⏱️ Peer not open after 10s, check server/WSS');
+      }
+    }, 10000);
   });
 }
 
 async function initCallSystem() {
   loadCallSettings();
 
-  // Загрузка звуков
   for (const [name, url] of Object.entries(CALL_CONFIG.sounds)) {
     loadSound(name, url).catch(e => console.warn(`⚠️ Звук ${name} не загружен:`, e.message));
   }
 
-  // Пробуем свой сервер, потом публичные
-  const servers = [CALL_CONFIG.customServer, ...CALL_CONFIG.publicServers];
-
   try {
-    const { peer, server } = await tryConnectPeer(servers);
-    callPeer = peer;
-    callReconnectAttempts = 0;
-
-    callPeer.on('call', handleIncomingCall);
-    callPeer.on('disconnected', () => {
-      console.warn('⚠️ Peer отключён, переподключение...');
-      setTimeout(reconnectPeer, 2000);
-    });
-    callPeer.on('close', () => {
-      console.log('🔚 Peer закрыт');
-      callPeer = null;
-    });
-
+    await createPeer();
+    console.log('🎙️ Call system ready');
   } catch (e) {
-    console.error('❌ Не удалось подключиться ни к одному серверу:', e);
-    alert('Не удалось подключиться к серверу звонков. Попробуй позже или проверь интернет.');
+    console.error('❌ Failed to init call system:', e);
+    alert('Сервер звонков недоступен. Попробуй позже.');
+    return;
   }
 
   injectCallButton();
 }
 
-async function reconnectPeer() {
-  if (!callPeer) {
-    console.log('🔄 Переподключение PeerJS...');
-    callReconnectAttempts++;
-    if (callReconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
-      console.error('❌ Слишком много попыток, остановка');
-      return;
-    }
-    await initCallSystem();
-  }
-}
-
 // ─── INCOMING CALL ───────────────────────────────────────────────────────────
 async function handleIncomingCall(call) {
   if (callCurrent) {
+    console.log('📴 Already in call, rejecting');
     call.reject();
     playSound('busy', { volume: callSettings.ringVolume });
     return;
@@ -222,19 +231,28 @@ async function handleIncomingCall(call) {
     try { ringSound?.source?.stop(); } catch (e) {}
   };
 
-  overlay.querySelector('#call-answer')?.addEventListener('click', async () => {
-    stopRing();
-    await acceptCall(call, overlay);
-  }, { once: true });
+  const answerBtn = overlay.querySelector('#call-answer');
+  const declineBtn = overlay.querySelector('#call-decline');
 
-  overlay.querySelector('#call-decline')?.addEventListener('click', () => {
+  const onAnswer = async () => {
     stopRing();
+    answerBtn?.removeEventListener('click', onAnswer);
+    declineBtn?.removeEventListener('click', onDecline);
+    await acceptCall(call, overlay);
+  };
+
+  const onDecline = () => {
+    stopRing();
+    answerBtn?.removeEventListener('click', onAnswer);
+    declineBtn?.removeEventListener('click', onDecline);
     call.reject();
     hideCallUI();
     playSound('disconnected', { volume: 0.6 });
-  }, { once: true });
+  };
 
-  // Авто-отклонение через 30 сек
+  answerBtn?.addEventListener('click', onAnswer);
+  declineBtn?.addEventListener('click', onDecline);
+
   const autoDecline = setTimeout(() => {
     stopRing();
     try { call.reject(); } catch (e) {}
@@ -251,13 +269,16 @@ async function startOutgoingCall() {
     alert('Сначала выбери собеседника');
     return;
   }
-  if (!callPeer || callPeer.disconnected) {
+  if (!callPeer || !callPeer.open) {
     alert('Сервер звонков недоступен. Подожди или перезагрузи страницу.');
     return;
   }
 
   const otherId = activeConvId.split('_').find(uid => uid !== currentUser.uid);
-  if (!otherId) return;
+  if (!otherId) {
+    alert('Не удалось определить собеседника');
+    return;
+  }
 
   try {
     callLocalStream = await navigator.mediaDevices.getUserMedia({
@@ -277,32 +298,20 @@ async function startOutgoingCall() {
     const ringSound = playSound('outgoing', { loop: true, volume: callSettings.ringVolume });
     window._callRingSound = ringSound;
 
-    // ❗ КРИТИЧЕСКАЯ ПРОВЕРКА: вызываем call только если peer жив
-    try {
-      callCurrent = callPeer.call(otherId, callLocalStream);
-    } catch (e) {
-      console.error('❌ PeerJS call() выбросил исключение:', e);
-      ringSound?.source?.stop();
-      hideCallUI();
-      alert('Не удалось начать звонок. Попробуй позже.');
-      return;
-    }
+    callCurrent = callPeer.call(otherId, callLocalStream, {
+      metadata: { caller: currentUser.uid }
+    });
 
-    // ❗ Если call вернул undefined/невалидный объект
-    if (!callCurrent || typeof callCurrent.on !== 'function') {
-      console.error('❌ callPeer.call() вернул невалидный объект:', callCurrent);
-      ringSound?.source?.stop();
-      hideCallUI();
-      alert('Ошибка инициализации звонка. Перезагрузи страницу.');
-      return;
+    if (!callCurrent) {
+      throw new Error('callPeer.call() returned null');
     }
 
     setupCallHandlers(callCurrent, overlay, otherId);
 
   } catch (e) {
-    console.error('❌ Микрофон недоступен:', e);
+    console.error('❌ Ошибка звонка:', e);
     hideCallUI();
-    alert('Разреши доступ к микрофону для звонков');
+    alert(e.name === 'NotAllowedError' ? 'Разреши доступ к микрофону' : 'Не удалось начать звонок. Попробуй позже.');
   }
 }
 
@@ -327,6 +336,7 @@ async function acceptCall(call, overlay) {
     console.error('❌ Ошибка при ответе:', e);
     call.reject();
     hideCallUI();
+    alert('Не удалось ответить. Проверь микрофон.');
   }
 }
 
@@ -341,7 +351,9 @@ function setupCallHandlers(call, overlay, otherId) {
     callRemoteStream = remoteStream;
     setupRemoteAudio(remoteStream);
 
-    document.getElementById('call-status').textContent = 'Разговор';
+    const status = document.getElementById('call-status');
+    if (status) status.textContent = 'Разговор';
+
     const timerEl = document.getElementById('call-timer');
     if (timerEl) {
       timerEl.style.display = 'block';
@@ -354,18 +366,22 @@ function setupCallHandlers(call, overlay, otherId) {
       }, 1000);
     }
 
-    getUser(otherId).then(u => {
+    try {
+      const u = await getUser(otherId);
       const ava = document.getElementById('call-avatar');
       const name = document.getElementById('call-name');
       if (ava) ava.innerHTML = avatarHtml(u.avatar, u.name, 56);
       if (name) name.textContent = u.name;
-    });
+    } catch (e) {
+      console.warn('Не удалось загрузить инфу о пользователе:', e);
+    }
   });
 
   call.on('close', () => endCallCleanup());
+
   call.on('error', err => {
-    console.error('❌ Call stream error:', err);
-    showCallError(err.type);
+    console.error('❌ Call error:', err);
+    showCallError(err.type || 'unknown');
     endCallCleanup();
   });
 
@@ -373,6 +389,8 @@ function setupCallHandlers(call, overlay, otherId) {
 }
 
 function setupRemoteAudio(stream) {
+  document.getElementById('call-remote-audio')?.remove();
+
   const audio = document.createElement('audio');
   audio.id = 'call-remote-audio';
   audio.srcObject = stream;
@@ -381,7 +399,6 @@ function setupRemoteAudio(stream) {
   audio.volume = callSettings.callVolume;
   document.body.appendChild(audio);
 
-  // Пытаемся применить выбранный output device
   if (callSettings.outputDeviceId && audio.setSinkId) {
     audio.setSinkId(callSettings.outputDeviceId).catch(e => {
       console.warn('⚠️ setSinkId не сработал:', e);
@@ -416,6 +433,7 @@ async function populateAudioDevices() {
   const { inputs, outputs } = await enumerateAudioDevices();
   const inputSel = document.getElementById('settings-input-device');
   const outputSel = document.getElementById('settings-output-device');
+  if (!inputSel || !outputSel) return;
 
   inputSel.innerHTML = '<option value="">По умолчанию</option>';
   inputs.forEach(d => {
@@ -435,8 +453,10 @@ async function populateAudioDevices() {
     outputSel.appendChild(opt);
   });
 
-  document.getElementById('settings-ring-volume').value = callSettings.ringVolume;
-  document.getElementById('settings-call-volume').value = callSettings.callVolume;
+  const ringVol = document.getElementById('settings-ring-volume');
+  const callVol = document.getElementById('settings-call-volume');
+  if (ringVol) ringVol.value = callSettings.ringVolume;
+  if (callVol) callVol.value = callSettings.callVolume;
 }
 
 function endCallCleanup() {
@@ -465,7 +485,6 @@ function showCallUI(type, otherId = null) {
     document.body.appendChild(overlay);
   }
 
-  // Очистка старых динамических кнопок
   overlay.querySelector('#call-answer')?.remove();
   overlay.querySelector('#call-decline')?.remove();
 
@@ -495,7 +514,7 @@ function showCallUI(type, otherId = null) {
       const name = document.getElementById('call-name');
       if (ava) ava.innerHTML = avatarHtml(u.avatar, u.name, 56);
       if (name) name.textContent = u.name;
-    });
+    }).catch(() => {});
   }
 
   return overlay;
@@ -508,7 +527,10 @@ function hideCallUI() {
     overlay.querySelector('#call-answer')?.remove();
     overlay.querySelector('#call-decline')?.remove();
     const status = document.getElementById('call-status');
-    if (status) status.classList.remove('error');
+    if (status) {
+      status.textContent = 'Звонок завершён';
+      status.classList.remove('error');
+    }
     const timer = document.getElementById('call-timer');
     if (timer) { timer.style.display = 'none'; timer.textContent = '00:00'; }
   }
@@ -524,6 +546,8 @@ function showCallError(type) {
     'browser-incompatible': 'Браузер не поддерживает звонки',
     'network': 'Ошибка сети',
     'peer-unavailable': 'Собеседник не в сети',
+    'disconnected': 'Соединение разорвано',
+    'server-error': 'Ошибка сервера',
   };
   status.textContent = errors[type] || 'Ошибка соединения';
   status.classList.add('error');
