@@ -11,7 +11,6 @@ const CALL_CONFIG = {
     port: 443,
     path: '/peer/',
     secure: true,
-    key: 'peerjs',
   },
   publicServers: [
     { host: '0.peerjs.com', port: 443, path: '/', secure: true },
