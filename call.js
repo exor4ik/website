@@ -163,7 +163,6 @@ function createPeer() {
 
     const onError = (err) => {
       console.error('❌ Peer error:', err.type, err.message);
-      // Критические ошибки приводят к reject
       if (['invalid-id', 'invalid-key', 'ssl-unavailable', 'server-error'].includes(err.type)) {
         peer.destroy();
         reject(err);
@@ -172,7 +171,6 @@ function createPeer() {
 
     const onDisconnected = () => {
       console.warn('⚠️ Peer disconnected from server');
-      // PeerJS сам пытается переподключиться несколько раз
     };
 
     const onClose = () => {
@@ -186,7 +184,6 @@ function createPeer() {
     peer.on('close', onClose);
     peer.on('call', handleIncomingCall);
 
-    // Если за 10 секунд не подключились — не reject, но предупредим
     setTimeout(() => {
       if (!peer.open) {
         console.warn('⏱️ Peer not open after 10s, check server/WSS');
