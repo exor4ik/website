@@ -1785,52 +1785,57 @@ class CallManager {
   }
 
   subscribeToCallDoc(callId) {
-    this.signalListener?.();
+  this.signalListener?.();
 
-    this.signalListener = window.db.collection('calls').doc(callId)
-      .onSnapshot(async (doc) => {
-        if (!doc.exists || this.isEnding) return;
-        
-        const data = doc.data();
-        
-        // 🆕 Обработка answer (только один раз)
-        if (data.answer && this.currentCall?.isInitiator && !this.answerProcessed) {
-          if (this.peerConnection.signalingState !== 'stable') {
-            try {
-              await this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-              this.answerProcessed = true; // 🆕 Помечаем как обработанный
-              clearTimeout(this.callTimeout);
-              console.log('✅ Answer set successfully');
-            } catch (e) {
-              console.warn('Set answer failed:', e);
-            }
+  this.signalListener = window.db.collection('calls').doc(callId)
+    .onSnapshot(async (doc) => {
+      if (!doc.exists || this.isEnding) return;
+      
+      const data = doc.data();
+      
+      // 🎯 Обработка answer (только ОДИН раз для инициатора)
+      if (data.answer && this.currentCall?.isInitiator) {
+        // Проверяем состояние ДО попытки установки
+        if (this.peerConnection && this.peerConnection.signalingState === 'have-local-offer') {
+          try {
+            await this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+            console.log('✅ Answer установлен успешно');
+            clearTimeout(this.callTimeout);
+          } catch (e) {
+            console.error('❌ Ошибка установки answer:', e.message);
+          }
+        } else {
+          // Answer уже установлен или состояние неправильное — просто логируем
+          console.log('ℹ️ Answer уже установлен или состояние:', this.peerConnection?.signalingState);
+        }
+      }
+
+      // Обработка ICE candidates
+      if (data.iceCandidates && Array.isArray(data.iceCandidates)) {
+        for (const ice of data.iceCandidates) {
+          if (ice.from === currentUser.uid) continue;
+          
+          const iceKey = `${ice.from}-${JSON.stringify(ice.candidate)}`;
+          if (this.processedIceCandidates.has(iceKey)) continue;
+          
+          try {
+            const candidate = new RTCIceCandidate(ice.candidate);
+            await this.peerConnection.addIceCandidate(candidate);
+            this.processedIceCandidates.add(iceKey);
+            console.log('✅ ICE candidate добавлен от', ice.from);
+          } catch (e) {
+            console.warn('⚠️ Не удалось добавить ICE candidate:', e.message);
           }
         }
+      }
 
-        // Обработка ICE candidates
-        if (data.iceCandidates && Array.isArray(data.iceCandidates)) {
-          for (const ice of data.iceCandidates) {
-            if (ice.from === currentUser.uid) continue;
-            
-            const iceKey = `${ice.from}-${JSON.stringify(ice.candidate)}`;
-            if (this.processedIceCandidates.has(iceKey)) continue;
-            
-            try {
-              const candidate = new RTCIceCandidate(ice.candidate);
-              await this.peerConnection.addIceCandidate(candidate);
-              this.processedIceCandidates.add(iceKey);
-            } catch (e) {
-              console.warn('Add ICE failed:', e);
-            }
-          }
-        }
-
-        // Обработка завершения звонка другой стороной
-        if (['ended', 'rejected', 'busy', 'missed', 'canceled'].includes(data.status) && !this.isEnding) {
-          this.endCall(data.status);
-        }
-      }, err => console.error('Call doc listener error:', err));
-  }
+      // Обработка завершения звонка другой стороной
+      if (['ended', 'rejected', 'busy', 'missed', 'canceled'].includes(data.status) && !this.isEnding) {
+        console.log('📞 Звонок завершён другой стороной:', data.status);
+        this.endCall(data.status);
+      }
+    }, err => console.error('❌ Call doc listener error:', err));
+}
 
   // ── ПОДПИСКА НА ВХОДЯЩИЕ ЗВОНКИ ─────────────────────────
   subscribeIncoming(myUid) {
