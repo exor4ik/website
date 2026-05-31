@@ -773,6 +773,7 @@ async function openConversation(cId, otherId, otherName, otherAvatar) {
         <div class="chat-header-name">${esc(otherName)}</div>
       </div>
       <a class="chat-header-link" href="profile.html?uid=${encodeURIComponent(otherId)}">👤 Профиль</a>
+      <button class="chat-header-call-btn" id="chat-call-btn" title="Позвонить">📞</button>
     </div>
     <div class="chat-messages" id="chat-messages"></div>
     <div class="chat-input-area">
@@ -795,6 +796,14 @@ async function openConversation(cId, otherId, otherName, otherAvatar) {
     </div>
     <input type="file" id="chat-image-input" accept="image/*" style="display:none;">
   `;
+  
+  // ── КНОПКА ЗВОНКА В ШАПКЕ ──
+  const callBtn = document.getElementById('chat-call-btn');
+  if (callBtn) {
+    callBtn.addEventListener('click', () => {
+      callManager.startCall(otherId, otherName, otherAvatar, cId);
+    });
+  }
 
   // ── ДЕЛЕГИРОВАНИЕ ПРИНЯТИЯ ПРИГЛАШЕНИЯ НА ЗМЕИНУЮ ДУЭЛЬ ──
   const msgContainer = document.getElementById('chat-messages');
@@ -1372,6 +1381,7 @@ function init() {
       }
 
       renderMessagesUI(user.uid);
+      callManager.subscribeIncoming(user.uid);
     });
   });
 }
@@ -1421,3 +1431,549 @@ if (document.readyState === 'loading') {
 } else {
   blockChatScrollPropagation();
 }
+
+// ═══════════════════════════════════════════════════════════
+// 📞 CALLS — WebRTC (оптимизированный для Firestore)
+// ═══════════════════════════════════════════════════════════
+
+class CallManager {
+  constructor() {
+    this.currentCall = null;
+    this.peerConnection = null;
+    this.localStream = null;
+    this.remoteStream = null;
+    this.signalListener = null;
+    this.incomingListener = null;
+    this.callTimeout = null;
+    this.sounds = {};
+    this.soundsLoaded = false;
+    this.callStartTime = null;
+    this.callTimerInterval = null;
+    this.processedIceCandidates = new Set(); // Кэш обработанных ICE
+  }
+
+  loadSounds() {
+    if (this.soundsLoaded) return;
+    this.sounds = {
+      outgoing:     new Audio('sound/call_outgoing.ogg'),
+      incoming:     new Audio('sound/call_incoming.ogg'),
+      connected:    new Audio('sound/call_connected.ogg'),
+      disconnected: new Audio('sound/call_disconnected.ogg'),
+      busy:         new Audio('sound/call_busy.ogg'),
+      mute:         new Audio('sound/call_mute_toggle.ogg'),
+    };
+    this.sounds.outgoing.loop = true;
+    this.sounds.incoming.loop = true;
+    this.soundsLoaded = true;
+  }
+
+  playSound(name) {
+    this.loadSounds();
+    const s = this.sounds[name];
+    if (!s) return;
+    s.currentTime = 0;
+    s.play().catch(e => console.warn('Audio play blocked:', e));
+  }
+
+  stopSound(name) {
+    const s = this.sounds[name];
+    if (!s) return;
+    s.pause();
+    s.currentTime = 0;
+  }
+
+  stopAllSounds() {
+    Object.keys(this.sounds).forEach(k => this.stopSound(k));
+  }
+
+  getIceConfig() {
+    return {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' },
+      ]
+    };
+  }
+
+  // ── ИСХОДЯЩИЙ ЗВОНОК ─────────────────────────────────────
+  async startCall(otherUid, otherName, otherAvatar, convId) {
+    if (this.currentCall) {
+      alert('У вас уже идёт звонок. Завершите текущий.');
+      return;
+    }
+
+    try {
+      this.localStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: false,
+      });
+    } catch (err) {
+      alert('Не удалось получить доступ к микрофону: ' + err.message);
+      return;
+    }
+
+    const callId = window.db.collection('calls').doc().id;
+
+    this.peerConnection = new RTCPeerConnection(this.getIceConfig());
+    this.currentCall = { callId, otherUid, otherName, otherAvatar, convId, isInitiator: true };
+    this.processedIceCandidates.clear();
+
+    this.localStream.getTracks().forEach(track => {
+      this.peerConnection.addTrack(track, this.localStream);
+    });
+
+    this.peerConnection.ontrack = (event) => {
+      this.remoteStream = event.streams[0];
+      this.playRemoteAudio();
+      this.stopSound('outgoing');
+      this.playSound('connected');
+      this.startCallTimer();
+      this.showActiveCallUI(this.currentCall.otherName, this.currentCall.otherAvatar, true);
+    };
+
+    // ICE candidates → сохраняем в массив внутри документа звонка
+    this.peerConnection.onicecandidate = async (event) => {
+      if (event.candidate) {
+        try {
+          await window.db.collection('calls').doc(callId).update({
+            iceCandidates: firebase.firestore.FieldValue.arrayUnion({
+              from: currentUser.uid,
+              candidate: event.candidate.toJSON(),
+            }),
+          });
+        } catch (e) {
+          console.warn('Failed to send ICE:', e);
+        }
+      }
+    };
+
+    this.peerConnection.onconnectionstatechange = () => {
+      const state = this.peerConnection.connectionState;
+      if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+        this.endCall();
+      }
+    };
+
+    this.peerConnection.oniceconnectionstatechange = () => {
+      if (this.peerConnection.iceConnectionState === 'failed') {
+        this.peerConnection?.restartIce();
+      }
+    };
+
+    try {
+      const offer = await this.peerConnection.createOffer();
+      await this.peerConnection.setLocalDescription(offer);
+
+      // Создаём документ звонка (ОДИН документ, без subcollection)
+      await window.db.collection('calls').doc(callId).set({
+        status: 'ringing',
+        type: 'audio',
+        initiatorUid: currentUser.uid,
+        initiatorName: userCache[currentUser.uid]?.name || currentUser.displayName || 'Звонок',
+        initiatorAvatar: userCache[currentUser.uid]?.avatar || null,
+        receiverUid: otherUid,
+        receiverName: otherName,
+        receiverAvatar: otherAvatar,
+        conversationId: convId,
+        startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        offer: { type: offer.type, sdp: offer.sdp },
+        iceCandidates: [], // Массив ICE candidates
+      });
+
+      // Подписываемся на изменения документа (включая ICE и answer)
+      this.subscribeToCallDoc(callId);
+
+      this.showOutgoingCallUI(otherName, otherAvatar);
+      this.playSound('outgoing');
+
+      this.callTimeout = setTimeout(() => {
+        if (this.currentCall && this.currentCall.callId === callId) {
+          this.endCall('missed');
+        }
+      }, 30000);
+
+    } catch (err) {
+      console.error('Create offer failed:', err);
+      this.cleanup();
+      alert('Не удалось установить соединение: ' + err.message);
+    }
+  }
+
+  // ── ВХОДЯЩИЙ ЗВОНОК (ответ) ──────────────────────────────
+  async answerCall(callId, callData) {
+    if (this.currentCall) {
+      await this.rejectCall(callId, 'busy');
+      return;
+    }
+
+    try {
+      this.localStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: false,
+      });
+    } catch (err) {
+      alert('Не удалось получить доступ к микрофону: ' + err.message);
+      await this.rejectCall(callId, 'no-permission');
+      return;
+    }
+
+    this.peerConnection = new RTCPeerConnection(this.getIceConfig());
+    this.currentCall = {
+      callId,
+      otherUid: callData.initiatorUid,
+      otherName: callData.initiatorName,
+      otherAvatar: callData.initiatorAvatar,
+      convId: callData.conversationId,
+      isInitiator: false,
+    };
+    this.processedIceCandidates.clear();
+
+    this.localStream.getTracks().forEach(track => {
+      this.peerConnection.addTrack(track, this.localStream);
+    });
+
+    this.peerConnection.ontrack = (event) => {
+      this.remoteStream = event.streams[0];
+      this.playRemoteAudio();
+      this.stopSound('incoming');
+      this.playSound('connected');
+      this.startCallTimer();
+      this.showActiveCallUI(this.currentCall.otherName, this.currentCall.otherAvatar, false);
+    };
+
+    this.peerConnection.onicecandidate = async (event) => {
+      if (event.candidate) {
+        try {
+          await window.db.collection('calls').doc(callId).update({
+            iceCandidates: firebase.firestore.FieldValue.arrayUnion({
+              from: currentUser.uid,
+              candidate: event.candidate.toJSON(),
+            }),
+          });
+        } catch (e) {
+          console.warn('Failed to send ICE:', e);
+        }
+      }
+    };
+
+    this.peerConnection.onconnectionstatechange = () => {
+      const state = this.peerConnection.connectionState;
+      if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+        this.endCall();
+      }
+    };
+
+    this.peerConnection.oniceconnectionstatechange = () => {
+      if (this.peerConnection.iceConnectionState === 'failed') {
+        this.peerConnection?.restartIce();
+      }
+    };
+
+    try {
+      await this.peerConnection.setRemoteDescription(new RTCSessionDescription(callData.offer));
+      const answer = await this.peerConnection.createAnswer();
+      await this.peerConnection.setLocalDescription(answer);
+
+      // Обновляем документ звонка (добавляем answer)
+      await window.db.collection('calls').doc(callId).update({
+        status: 'answered',
+        connectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        answer: { type: answer.type, sdp: answer.sdp },
+      });
+
+      // Подписываемся на изменения (получим ICE от инициатора)
+      this.subscribeToCallDoc(callId);
+
+      this.hideIncomingCallUI();
+      this.stopSound('incoming');
+      this.showActiveCallUI(callData.initiatorName, callData.initiatorAvatar, false);
+
+    } catch (err) {
+      console.error('Answer failed:', err);
+      this.cleanup();
+    }
+  }
+
+  // ── ОТКЛОНИТЬ ЗВОНОК ─────────────────────────────────────
+  async rejectCall(callId, reason = 'rejected') {
+    try {
+      await window.db.collection('calls').doc(callId).update({
+        status: reason === 'busy' ? 'busy' : 'rejected',
+        endedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      console.warn('Reject update failed:', e);
+    }
+    this.hideIncomingCallUI();
+    if (reason === 'busy') this.playSound('busy');
+    else this.playSound('disconnected');
+  }
+
+  // ── ЗАВЕРШИТЬ ЗВОНОК ─────────────────────────────────────
+  async endCall(reason = 'ended') {
+    if (!this.currentCall) return;
+
+    const { callId, convId, otherUid, otherName } = this.currentCall;
+
+    clearTimeout(this.callTimeout);
+    this.stopAllSounds();
+    this.playSound('disconnected');
+    this.stopCallTimer();
+
+    const duration = this.callStartTime ? Math.floor((Date.now() - this.callStartTime) / 1000) : 0;
+
+    try {
+      // Обновляем документ звонка
+      await window.db.collection('calls').doc(callId).update({
+        status: reason,
+        endedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        duration: duration,
+      });
+
+      // Переносим звонок в историю conversation
+      if (convId && reason !== 'rejected' && reason !== 'missed' && this.callStartTime) {
+        const convRef = window.db.collection('conversations').doc(convId);
+        const minutes = Math.floor(duration / 60);
+        const seconds = duration % 60;
+        const durationText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        const callRecord = {
+          callId: callId,
+          type: 'audio',
+          initiatorUid: this.currentCall.isInitiator ? currentUser.uid : otherUid,
+          status: reason,
+          startedAt: firebase.firestore.Timestamp.fromDate(new Date(Date.now() - duration * 1000)),
+          duration: duration,
+          durationText: durationText,
+        };
+
+        await convRef.set({
+          lastMessage: `📞 Звонок (${durationText})`,
+          lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+          // Добавляем в массив последних 50 звонков
+          calls: firebase.firestore.FieldValue.arrayUnion(callRecord),
+        }, { merge: true });
+
+        // Обрезаем массив до последних 50 звонков (опционально)
+        const convSnap = await convRef.get();
+        const calls = convSnap.data()?.calls || [];
+        if (calls.length > 50) {
+          const recentCalls = calls.slice(-50);
+          await convRef.update({ calls: recentCalls });
+        }
+      }
+
+      // Удаляем документ звонка (экономим место)
+      await window.db.collection('calls').doc(callId).delete();
+
+    } catch (e) {
+      console.warn('End call error:', e);
+    }
+
+    this.cleanup();
+    this.hideCallUI();
+  }
+
+  // ── ПОДПИСКА НА ДОКУМЕНТ ЗВОНКА ──────────────────────────
+  subscribeToCallDoc(callId) {
+    this.signalListener?.();
+
+    this.signalListener = window.db.collection('calls').doc(callId)
+      .onSnapshot(async (doc) => {
+        if (!doc.exists) return;
+        
+        const data = doc.data();
+        
+        // Обработка answer (для инициатора)
+        if (data.answer && this.currentCall?.isInitiator && this.peerConnection.signalingState !== 'stable') {
+          try {
+            await this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+            clearTimeout(this.callTimeout);
+          } catch (e) {
+            console.warn('Set answer failed:', e);
+          }
+        }
+
+        // Обработка ICE candidates
+        if (data.iceCandidates && Array.isArray(data.iceCandidates)) {
+          for (const ice of data.iceCandidates) {
+            if (ice.from === currentUser.uid) continue; // Своё игнорируем
+            
+            const iceKey = `${ice.from}-${JSON.stringify(ice.candidate)}`;
+            if (this.processedIceCandidates.has(iceKey)) continue;
+            
+            try {
+              const candidate = new RTCIceCandidate(ice.candidate);
+              await this.peerConnection.addIceCandidate(candidate);
+              this.processedIceCandidates.add(iceKey);
+            } catch (e) {
+              console.warn('Add ICE failed:', e);
+            }
+          }
+        }
+
+        // Обработка завершения звонка другой стороной
+        if (['ended', 'rejected', 'busy', 'missed', 'canceled'].includes(data.status) && this.currentCall) {
+          this.endCall(data.status);
+        }
+      }, err => console.error('Call doc listener error:', err));
+  }
+
+  // ── ПОДПИСКА НА ВХОДЯЩИЕ ЗВОНКИ ─────────────────────────
+  subscribeIncoming(myUid) {
+    this.incomingListener?.();
+
+    this.incomingListener = window.db.collection('calls')
+      .where('receiverUid', '==', myUid)
+      .where('status', '==', 'ringing')
+      .onSnapshot(async (snap) => {
+        for (const doc of snap.docs) {
+          const data = doc.data();
+          if (data._shown) continue;
+          try {
+            await doc.ref.update({ _shown: true });
+          } catch (e) {}
+          this.showIncomingCallUI(doc.id, data);
+          this.playSound('incoming');
+        }
+      }, err => console.error('Incoming calls error:', err));
+  }
+
+  // ── УПРАВЛЕНИЕ АУДИО ─────────────────────────────────────
+  toggleMute() {
+    if (!this.localStream) return;
+    const audioTrack = this.localStream.getAudioTracks()[0];
+    if (!audioTrack) return;
+    audioTrack.enabled = !audioTrack.enabled;
+    this.playSound('mute');
+    const muteBtn = document.getElementById('call-mute-btn');
+    if (muteBtn) {
+      muteBtn.textContent = audioTrack.enabled ? '🎙️' : '🔇';
+      muteBtn.title = audioTrack.enabled ? 'Выключить микрофон' : 'Включить микрофон';
+    }
+  }
+
+  playRemoteAudio() {
+    if (!this.remoteStream) return;
+    const audioEl = document.getElementById('call-remote-audio');
+    if (audioEl) {
+      audioEl.srcObject = this.remoteStream;
+      audioEl.play().catch(e => console.warn('Remote audio play:', e));
+    }
+  }
+
+  startCallTimer() {
+    this.callStartTime = Date.now();
+    this.callTimerInterval = setInterval(() => {
+      const sec = Math.floor((Date.now() - this.callStartTime) / 1000);
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      const timerEl = document.getElementById('call-timer');
+      if (timerEl) timerEl.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+    }, 1000);
+  }
+
+  stopCallTimer() {
+    clearInterval(this.callTimerInterval);
+    this.callTimerInterval = null;
+  }
+
+  cleanup() {
+    this.localStream?.getTracks().forEach(t => t.stop());
+    this.localStream = null;
+    this.remoteStream = null;
+    this.peerConnection?.close();
+    this.peerConnection = null;
+    this.signalListener?.();
+    this.signalListener = null;
+    this.currentCall = null;
+    clearTimeout(this.callTimeout);
+    this.stopCallTimer();
+    this.processedIceCandidates.clear();
+  }
+
+  // ── UI (без изменений) ───────────────────────────────────
+  showOutgoingCallUI(otherName, otherAvatar) {
+    const overlay = document.getElementById('call-overlay');
+    if (!overlay) return;
+    overlay.innerHTML = `
+      <div class="call-modal call-outgoing">
+        <div class="call-avatar-big">${avatarHtml(otherAvatar, otherName, 96)}</div>
+        <div class="call-name">${esc(otherName)}</div>
+        <div class="call-status" id="call-status">Вызов...</div>
+        <div class="call-actions">
+          <button class="call-action-btn call-end-btn" id="call-end-btn" title="Завершить">📞</button>
+        </div>
+      </div>
+    `;
+    overlay.classList.add('active');
+    document.getElementById('call-end-btn').addEventListener('click', () => this.endCall('canceled'));
+  }
+
+  showActiveCallUI(otherName, otherAvatar, isInitiator) {
+    const overlay = document.getElementById('call-overlay');
+    if (!overlay) return;
+    overlay.innerHTML = `
+      <div class="call-modal call-active">
+        <div class="call-avatar-big">${avatarHtml(otherAvatar, otherName, 96)}</div>
+        <div class="call-name">${esc(otherName)}</div>
+        <div class="call-timer" id="call-timer">0:00</div>
+        <div class="call-actions">
+          <button class="call-action-btn" id="call-mute-btn" title="Выключить микрофон">🎙️</button>
+          <button class="call-action-btn call-end-btn" id="call-end-btn" title="Завершить">📞</button>
+        </div>
+        <audio id="call-remote-audio" autoplay playsinline></audio>
+      </div>
+    `;
+    overlay.classList.add('active');
+    document.getElementById('call-mute-btn').addEventListener('click', () => this.toggleMute());
+    document.getElementById('call-end-btn').addEventListener('click', () => this.endCall());
+    if (this.callStartTime) this.startCallTimer();
+  }
+
+  hideCallUI() {
+    const overlay = document.getElementById('call-overlay');
+    if (overlay) overlay.classList.remove('active');
+  }
+
+  showIncomingCallUI(callId, data) {
+    this.loadSounds();
+    let modal = document.getElementById('call-incoming-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'call-incoming-modal';
+      modal.className = 'call-incoming-overlay';
+      document.body.appendChild(modal);
+    }
+    modal.innerHTML = `
+      <div class="call-modal call-incoming">
+        <div class="call-avatar-big">${avatarHtml(data.initiatorAvatar, data.initiatorName, 96)}</div>
+        <div class="call-name">${esc(data.initiatorName)}</div>
+        <div class="call-status">Входящий звонок...</div>
+        <div class="call-actions">
+          <button class="call-action-btn call-reject-btn" id="call-reject-btn" title="Отклонить">❌</button>
+          <button class="call-action-btn call-answer-btn" id="call-answer-btn" title="Принять">✅</button>
+        </div>
+      </div>
+    `;
+    modal.classList.add('active');
+    document.getElementById('call-answer-btn').addEventListener('click', async () => {
+      this.hideIncomingCallUI();
+      await this.answerCall(callId, data);
+    });
+    document.getElementById('call-reject-btn').addEventListener('click', () => {
+      this.stopSound('incoming');
+      this.rejectCall(callId);
+    });
+  }
+
+  hideIncomingCallUI() {
+    const modal = document.getElementById('call-incoming-modal');
+    if (modal) modal.classList.remove('active');
+  }
+}
+
+const callManager = new CallManager();
