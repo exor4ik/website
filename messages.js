@@ -1449,7 +1449,9 @@ class CallManager {
     this.soundsLoaded = false;
     this.callStartTime = null;
     this.callTimerInterval = null;
-    this.processedIceCandidates = new Set(); // Кэш обработанных ICE
+    this.processedIceCandidates = new Set();
+    this.answerProcessed = false; // 🆕 Защита от повторной установки answer
+    this.isEnding = false; // 🆕 Защита от зацикливания endCall
   }
 
   loadSounds() {
@@ -1505,6 +1507,9 @@ class CallManager {
       return;
     }
 
+    this.isEnding = false;
+    this.answerProcessed = false;
+
     try {
       this.localStream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
@@ -1526,6 +1531,7 @@ class CallManager {
     });
 
     this.peerConnection.ontrack = (event) => {
+      console.log('🎵 Remote track received');
       this.remoteStream = event.streams[0];
       this.playRemoteAudio();
       this.stopSound('outgoing');
@@ -1534,7 +1540,6 @@ class CallManager {
       this.showActiveCallUI(this.currentCall.otherName, this.currentCall.otherAvatar, true);
     };
 
-    // ICE candidates → сохраняем в массив внутри документа звонка
     this.peerConnection.onicecandidate = async (event) => {
       if (event.candidate) {
         try {
@@ -1552,13 +1557,16 @@ class CallManager {
 
     this.peerConnection.onconnectionstatechange = () => {
       const state = this.peerConnection.connectionState;
-      if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+      console.log('Connection state:', state);
+      if ((state === 'disconnected' || state === 'failed' || state === 'closed') && !this.isEnding) {
         this.endCall();
       }
     };
 
     this.peerConnection.oniceconnectionstatechange = () => {
-      if (this.peerConnection.iceConnectionState === 'failed') {
+      const state = this.peerConnection.iceConnectionState;
+      console.log('ICE state:', state);
+      if (state === 'failed') {
         this.peerConnection?.restartIce();
       }
     };
@@ -1567,7 +1575,6 @@ class CallManager {
       const offer = await this.peerConnection.createOffer();
       await this.peerConnection.setLocalDescription(offer);
 
-      // Создаём документ звонка (ОДИН документ, без subcollection)
       await window.db.collection('calls').doc(callId).set({
         status: 'ringing',
         type: 'audio',
@@ -1580,17 +1587,15 @@ class CallManager {
         conversationId: convId,
         startedAt: firebase.firestore.FieldValue.serverTimestamp(),
         offer: { type: offer.type, sdp: offer.sdp },
-        iceCandidates: [], // Массив ICE candidates
+        iceCandidates: [],
       });
 
-      // Подписываемся на изменения документа (включая ICE и answer)
       this.subscribeToCallDoc(callId);
-
       this.showOutgoingCallUI(otherName, otherAvatar);
       this.playSound('outgoing');
 
       this.callTimeout = setTimeout(() => {
-        if (this.currentCall && this.currentCall.callId === callId) {
+        if (this.currentCall && this.currentCall.callId === callId && !this.isEnding) {
           this.endCall('missed');
         }
       }, 30000);
@@ -1602,12 +1607,14 @@ class CallManager {
     }
   }
 
-  // ── ВХОДЯЩИЙ ЗВОНОК (ответ) ──────────────────────────────
   async answerCall(callId, callData) {
     if (this.currentCall) {
       await this.rejectCall(callId, 'busy');
       return;
     }
+
+    this.isEnding = false;
+    this.answerProcessed = false;
 
     try {
       this.localStream = await navigator.mediaDevices.getUserMedia({
@@ -1636,6 +1643,7 @@ class CallManager {
     });
 
     this.peerConnection.ontrack = (event) => {
+      console.log('🎵 Remote track received');
       this.remoteStream = event.streams[0];
       this.playRemoteAudio();
       this.stopSound('incoming');
@@ -1661,13 +1669,16 @@ class CallManager {
 
     this.peerConnection.onconnectionstatechange = () => {
       const state = this.peerConnection.connectionState;
-      if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+      console.log('Connection state:', state);
+      if ((state === 'disconnected' || state === 'failed' || state === 'closed') && !this.isEnding) {
         this.endCall();
       }
     };
 
     this.peerConnection.oniceconnectionstatechange = () => {
-      if (this.peerConnection.iceConnectionState === 'failed') {
+      const state = this.peerConnection.iceConnectionState;
+      console.log('ICE state:', state);
+      if (state === 'failed') {
         this.peerConnection?.restartIce();
       }
     };
@@ -1677,16 +1688,13 @@ class CallManager {
       const answer = await this.peerConnection.createAnswer();
       await this.peerConnection.setLocalDescription(answer);
 
-      // Обновляем документ звонка (добавляем answer)
       await window.db.collection('calls').doc(callId).update({
         status: 'answered',
         connectedAt: firebase.firestore.FieldValue.serverTimestamp(),
         answer: { type: answer.type, sdp: answer.sdp },
       });
 
-      // Подписываемся на изменения (получим ICE от инициатора)
       this.subscribeToCallDoc(callId);
-
       this.hideIncomingCallUI();
       this.stopSound('incoming');
       this.showActiveCallUI(callData.initiatorName, callData.initiatorAvatar, false);
@@ -1697,8 +1705,10 @@ class CallManager {
     }
   }
 
-  // ── ОТКЛОНИТЬ ЗВОНОК ─────────────────────────────────────
   async rejectCall(callId, reason = 'rejected') {
+    if (this.isEnding) return;
+    this.isEnding = true;
+    
     try {
       await window.db.collection('calls').doc(callId).update({
         status: reason === 'busy' ? 'busy' : 'rejected',
@@ -1710,11 +1720,13 @@ class CallManager {
     this.hideIncomingCallUI();
     if (reason === 'busy') this.playSound('busy');
     else this.playSound('disconnected');
+    this.cleanup();
   }
 
-  // ── ЗАВЕРШИТЬ ЗВОНОК ─────────────────────────────────────
   async endCall(reason = 'ended') {
-    if (!this.currentCall) return;
+    if (!this.currentCall || this.isEnding) return; // 🆕 Защита от зацикливания
+    
+    this.isEnding = true; // 🆕 Устанавливаем флаг
 
     const { callId, convId, otherUid, otherName } = this.currentCall;
 
@@ -1726,14 +1738,12 @@ class CallManager {
     const duration = this.callStartTime ? Math.floor((Date.now() - this.callStartTime) / 1000) : 0;
 
     try {
-      // Обновляем документ звонка
       await window.db.collection('calls').doc(callId).update({
         status: reason,
         endedAt: firebase.firestore.FieldValue.serverTimestamp(),
         duration: duration,
       });
 
-      // Переносим звонок в историю conversation
       if (convId && reason !== 'rejected' && reason !== 'missed' && this.callStartTime) {
         const convRef = window.db.collection('conversations').doc(convId);
         const minutes = Math.floor(duration / 60);
@@ -1753,11 +1763,9 @@ class CallManager {
         await convRef.set({
           lastMessage: `📞 Звонок (${durationText})`,
           lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
-          // Добавляем в массив последних 50 звонков
           calls: firebase.firestore.FieldValue.arrayUnion(callRecord),
         }, { merge: true });
 
-        // Обрезаем массив до последних 50 звонков (опционально)
         const convSnap = await convRef.get();
         const calls = convSnap.data()?.calls || [];
         if (calls.length > 50) {
@@ -1766,7 +1774,6 @@ class CallManager {
         }
       }
 
-      // Удаляем документ звонка (экономим место)
       await window.db.collection('calls').doc(callId).delete();
 
     } catch (e) {
@@ -1777,30 +1784,33 @@ class CallManager {
     this.hideCallUI();
   }
 
-  // ── ПОДПИСКА НА ДОКУМЕНТ ЗВОНКА ──────────────────────────
   subscribeToCallDoc(callId) {
     this.signalListener?.();
 
     this.signalListener = window.db.collection('calls').doc(callId)
       .onSnapshot(async (doc) => {
-        if (!doc.exists) return;
+        if (!doc.exists || this.isEnding) return;
         
         const data = doc.data();
         
-        // Обработка answer (для инициатора)
-        if (data.answer && this.currentCall?.isInitiator && this.peerConnection.signalingState !== 'stable') {
-          try {
-            await this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-            clearTimeout(this.callTimeout);
-          } catch (e) {
-            console.warn('Set answer failed:', e);
+        // 🆕 Обработка answer (только один раз)
+        if (data.answer && this.currentCall?.isInitiator && !this.answerProcessed) {
+          if (this.peerConnection.signalingState !== 'stable') {
+            try {
+              await this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+              this.answerProcessed = true; // 🆕 Помечаем как обработанный
+              clearTimeout(this.callTimeout);
+              console.log('✅ Answer set successfully');
+            } catch (e) {
+              console.warn('Set answer failed:', e);
+            }
           }
         }
 
         // Обработка ICE candidates
         if (data.iceCandidates && Array.isArray(data.iceCandidates)) {
           for (const ice of data.iceCandidates) {
-            if (ice.from === currentUser.uid) continue; // Своё игнорируем
+            if (ice.from === currentUser.uid) continue;
             
             const iceKey = `${ice.from}-${JSON.stringify(ice.candidate)}`;
             if (this.processedIceCandidates.has(iceKey)) continue;
@@ -1816,7 +1826,7 @@ class CallManager {
         }
 
         // Обработка завершения звонка другой стороной
-        if (['ended', 'rejected', 'busy', 'missed', 'canceled'].includes(data.status) && this.currentCall) {
+        if (['ended', 'rejected', 'busy', 'missed', 'canceled'].includes(data.status) && !this.isEnding) {
           this.endCall(data.status);
         }
       }, err => console.error('Call doc listener error:', err));
@@ -1893,6 +1903,8 @@ class CallManager {
     clearTimeout(this.callTimeout);
     this.stopCallTimer();
     this.processedIceCandidates.clear();
+    this.answerProcessed = false; // 🆕 Сбрасываем флаг
+    // НЕ сбрасываем isEnding здесь, он сбрасывается в startCall/answerCall
   }
 
   // ── UI (без изменений) ───────────────────────────────────
