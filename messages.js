@@ -1533,11 +1533,11 @@ class CallManager {
     this.peerConnection.ontrack = (event) => {
       console.log('🎵 Remote track received');
       this.remoteStream = event.streams[0];
-      this.playRemoteAudio();
       this.stopSound('outgoing');
       this.playSound('connected');
       this.startCallTimer();
       this.showActiveCallUI(this.currentCall.otherName, this.currentCall.otherAvatar, true);
+      this.playRemoteAudio(); // ← теперь элемент уже в DOM
     };
 
     this.peerConnection.onicecandidate = async (event) => {
@@ -1645,11 +1645,11 @@ class CallManager {
     this.peerConnection.ontrack = (event) => {
       console.log('🎵 Remote track received');
       this.remoteStream = event.streams[0];
-      this.playRemoteAudio();
-      this.stopSound('incoming');
+      this.stopSound('outgoing');
       this.playSound('connected');
       this.startCallTimer();
-      this.showActiveCallUI(this.currentCall.otherName, this.currentCall.otherAvatar, false);
+      this.showActiveCallUI(this.currentCall.otherName, this.currentCall.otherAvatar, true);
+      this.playRemoteAudio(); // ← теперь элемент уже в DOM
     };
 
     this.peerConnection.onicecandidate = async (event) => {
@@ -1949,6 +1949,8 @@ class CallManager {
     document.getElementById('call-mute-btn').addEventListener('click', () => this.toggleMute());
     document.getElementById('call-end-btn').addEventListener('click', () => this.endCall());
     if (this.callStartTime) this.startCallTimer();
+
+    if (this.remoteStream) this.playRemoteAudio(); // ← страховка
   }
 
   hideCallUI() {
