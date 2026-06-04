@@ -336,9 +336,13 @@ class GroupCallManager {
     };
 
     // Создаём звонок в БД
+    const group = await this.getGroup(groupId);
+    const memberUids = group.members || [];
+    
     await window.db.collection('groupCalls').doc(callId).set({
       groupId,
       groupName,
+      memberUids, // ← ДОБАВЛЕНО: массив всех участников группы
       status: 'ringing',
       initiatorUid: currentUser.uid,
       initiatorName: userCache[currentUser.uid]?.name || 'Звонок',
@@ -789,16 +793,17 @@ class GroupCallManager {
   subscribeIncomingGroupCalls(myUid) {
     window.db.collection('groupCalls')
       .where('status', '==', 'ringing')
+      .where('memberUids', 'array-contains', myUid) // ← ДОБАВЛЕНО
       .onSnapshot(async (snap) => {
         for (const doc of snap.docs) {
           const data = doc.data();
-          if (!data.members?.includes(myUid)) continue;
           if (data._shown) continue;
-
+          if (data.initiatorUid === myUid) continue; // Не показываем свои звонки
+          
           try {
             await doc.ref.update({ _shown: true });
           } catch (e) {}
-
+          
           this.showIncomingGroupCallUI(doc.id, data);
         }
       }, err => console.error('Incoming group calls error:', err));
