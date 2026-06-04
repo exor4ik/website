@@ -342,7 +342,7 @@ class GroupCallManager {
     await window.db.collection('groupCalls').doc(callId).set({
       groupId,
       groupName,
-      memberUids, // ← ДОБАВЛЕНО: массив всех участников группы
+      memberUids, // ← ES6 shorthand: memberUids: memberUids
       status: 'ringing',
       initiatorUid: currentUser.uid,
       initiatorName: userCache[currentUser.uid]?.name || 'Звонок',
