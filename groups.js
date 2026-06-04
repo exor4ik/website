@@ -336,9 +336,6 @@ class GroupCallManager {
     };
 
     // Создаём звонок в БД
-    const group = await this.getGroup(groupId);
-    const memberUids = group.members || [];
-    
     await window.db.collection('groupCalls').doc(callId).set({
       groupId,
       groupName,
