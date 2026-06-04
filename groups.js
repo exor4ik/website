@@ -235,6 +235,10 @@ class GroupManager {
         const messages = [];
         const myKeys = await getOrCreateKeys();
 
+        // ✅ Предзагрузка данных всех уникальных отправителей (аватарки, имена)
+        const uniqueSenders = [...new Set(snap.docs.map(d => d.data().senderUid).filter(Boolean))];
+        await Promise.all(uniqueSenders.map(uid => userCache[uid] ? Promise.resolve() : getUser(uid)));
+
         for (const doc of snap.docs) {
           const rawMsg = doc.data();
           let msgText = rawMsg.text;
@@ -1226,7 +1230,10 @@ function renderGroupMessages(messages, container) {
     }
 
     const isOwn = msg.senderUid === currentUser.uid;
-    const senderName = msg.senderName || userCache[msg.senderUid]?.name || 'Участник';
+    // ✅ Берём актуальные имя и аватар из userCache (заполненного до рендера)
+    const cachedSender  = userCache[msg.senderUid] || {};
+    const senderName    = cachedSender.name   || msg.senderName || 'Участник';
+    const senderAvatar  = cachedSender.avatar || null;
 
     const msgEl = document.createElement('div');
     msgEl.className = `msg group-msg ${isOwn ? 'own' : ''}`;
@@ -1237,7 +1244,7 @@ function renderGroupMessages(messages, container) {
     const textHtml = hasText ? `<div class="msg-text">${esc(msg.text)}</div>` : '';
 
     msgEl.innerHTML = `
-      <div class="msg-avatar">${avatarHtml(null, senderName, 28)}</div>
+      <div class="msg-avatar">${avatarHtml(senderAvatar, senderName, 28)}</div>
       <div class="msg-content">
         ${!isOwn ? `<div class="msg-sender-name" style="font-size:.75rem;color:var(--muted,#888);margin-bottom:2px;">${esc(senderName)}</div>` : ''}
         <div class="msg-bubble">
