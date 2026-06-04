@@ -13,8 +13,12 @@ async function encryptForGroup(text, members, myKeys) {
 
   const encryptedKeys = {};
   for (const memberUid of members) {
-    if (memberUid === currentUser.uid) continue;
-    const pubKey = await getPublicKey(memberUid);
+    // ✅ FIX: Раньше currentUser.uid пропускался — свои сообщения нельзя было расшифровать.
+    // Теперь шифруем и для себя, используя свой publicKey напрямую из myKeys.
+    const pubKey = (memberUid === currentUser.uid)
+      ? myKeys.publicKey
+      : await getPublicKey(memberUid);
+
     if (!pubKey) {
       console.warn(`⚠️ Участник ${memberUid} не имеет E2EE ключей`);
       continue;
@@ -70,7 +74,6 @@ class GroupManager {
     const groupRef = window.db.collection('groups').doc();
     const now = firebase.firestore.FieldValue.serverTimestamp();
 
-    // Загружаем данные всех участников
     const memberData = {};
     for (const uid of members) {
       const user = await getUser(uid);
@@ -104,6 +107,8 @@ class GroupManager {
       [`memberNames.${uid}`]: user.name,
       [`memberAvatars.${uid}`]: user.avatar,
     });
+
+    delete this.groupCache[groupId]; // ✅ Сбрасываем кэш
   }
 
   async removeMember(groupId, uid) {
@@ -113,6 +118,31 @@ class GroupManager {
       [`memberNames.${uid}`]: firebase.firestore.FieldValue.delete(),
       [`memberAvatars.${uid}`]: firebase.firestore.FieldValue.delete(),
     });
+
+    delete this.groupCache[groupId]; // ✅ Сбрасываем кэш
+  }
+
+  // ✅ NEW: Удаление группы со всеми сообщениями
+  async deleteGroup(groupId) {
+    if (this.activeGroupId === groupId) {
+      this.unsubscribe();
+      this.activeGroupId = null;
+    }
+
+    const groupRef = window.db.collection('groups').doc(groupId);
+
+    // Удаляем сообщения чанками (лимит batch — 500)
+    const messagesSnap = await groupRef.collection('messages').get();
+    if (!messagesSnap.empty) {
+      for (let i = 0; i < messagesSnap.docs.length; i += 499) {
+        const batch = window.db.batch();
+        messagesSnap.docs.slice(i, i + 499).forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+      }
+    }
+
+    await groupRef.delete();
+    delete this.groupCache[groupId];
   }
 
   subscribeGroups(myUid, callback) {
@@ -252,9 +282,9 @@ const groupManager = new GroupManager();
 class GroupCallManager {
   constructor() {
     this.currentCall = null;
-    this.peerConnections = new Map(); // Map<uid, RTCPeerConnection>
+    this.peerConnections = new Map();
     this.localStream = null;
-    this.remoteStreams = new Map(); // Map<uid, MediaStream>
+    this.remoteStreams = new Map();
     this.signalListener = null;
     this.participantListener = null;
     this.callTimeout = null;
@@ -335,11 +365,10 @@ class GroupCallManager {
       isInitiator: true,
     };
 
-    // Создаём звонок в БД
     await window.db.collection('groupCalls').doc(callId).set({
       groupId,
       groupName,
-      memberUids, // ← ES6 shorthand: memberUids: memberUids
+      memberUids,
       status: 'ringing',
       initiatorUid: currentUser.uid,
       initiatorName: userCache[currentUser.uid]?.name || 'Звонок',
@@ -352,11 +381,9 @@ class GroupCallManager {
       startedAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
 
-    // Подписываемся на изменения звонка
     this.subscribeToCallDoc(callId);
     this.subscribeToParticipants(callId);
 
-    // Создаём соединения с каждым участником
     for (const uid of this.currentCall.memberUids) {
       await this.createPeerConnection(callId, uid, true);
     }
@@ -375,7 +402,6 @@ class GroupCallManager {
     const pc = new RTCPeerConnection(this.getIceConfig());
     this.peerConnections.set(remoteUid, pc);
 
-    // Добавляем локальный трек
     this.localStream.getTracks().forEach(track => {
       pc.addTrack(track, this.localStream);
     });
@@ -508,8 +534,6 @@ class GroupCallManager {
       .onSnapshot(async (doc) => {
         if (!doc.exists || this.isEnding) return;
         const data = doc.data();
-
-        // Обработка завершения звонка
         if (data.status === 'ended' && !this.isEnding) {
           this.endGroupCall('ended');
         }
@@ -528,20 +552,16 @@ class GroupCallManager {
           if (this.processedSignals.has(signalKey)) continue;
           this.processedSignals.add(signalKey);
 
-          // Обрабатываем только сигналы для нас
           if (data.to !== currentUser.uid) continue;
 
-          // Answer (для инициатора)
           if (data.answer && data.from !== currentUser.uid) {
             await this.handleAnswer(callId, data.from, data.answer);
           }
 
-          // Offer (для присоединившегося)
           if (data.offer && data.from !== currentUser.uid) {
             await this.handleOffer(callId, data.from, data.offer);
           }
 
-          // ICE candidates
           if (data.iceCandidates && Array.isArray(data.iceCandidates)) {
             await this.addIceCandidates(callId, data.from, data.iceCandidates);
           }
@@ -575,7 +595,6 @@ class GroupCallManager {
       isInitiator: false,
     };
 
-    // Обновляем статус участника
     await window.db.collection('groupCalls').doc(callId).update({
       [`participants.${currentUser.uid}`]: {
         joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -611,14 +630,12 @@ class GroupCallManager {
         duration: duration,
       });
 
-      // Удаляем все сигналы
       const signalsSnap = await window.db.collection('groupCalls').doc(callId)
         .collection('signals').get();
       const batch = window.db.batch();
       signalsSnap.docs.forEach(doc => batch.delete(doc.ref));
       await batch.commit();
 
-      // Удаляем сам звонок
       await window.db.collection('groupCalls').doc(callId).delete();
     } catch (e) {
       console.warn('End group call error:', e);
@@ -651,6 +668,8 @@ class GroupCallManager {
   playRemoteAudio(uid) {
     const stream = this.remoteStreams.get(uid);
     if (!stream) return;
+    const existing = document.getElementById(`group-call-audio-${uid}`);
+    if (existing) existing.remove();
     const audioEl = document.createElement('audio');
     audioEl.id = `group-call-audio-${uid}`;
     audioEl.srcObject = stream;
@@ -726,7 +745,6 @@ class GroupCallManager {
   updateActiveGroupCallUI() {
     const overlay = document.getElementById('call-overlay');
     if (!overlay || !overlay.classList.contains('active')) return;
-    // Просто перерендериваем
     if (this.currentCall) {
       this.showActiveGroupCallUI(this.currentCall.groupName, this.peerConnections.size + 1);
     }
@@ -790,17 +808,17 @@ class GroupCallManager {
   subscribeIncomingGroupCalls(myUid) {
     window.db.collection('groupCalls')
       .where('status', '==', 'ringing')
-      .where('memberUids', 'array-contains', myUid) // ← ДОБАВЛЕНО
+      .where('memberUids', 'array-contains', myUid)
       .onSnapshot(async (snap) => {
         for (const doc of snap.docs) {
           const data = doc.data();
           if (data._shown) continue;
-          if (data.initiatorUid === myUid) continue; // Не показываем свои звонки
-          
+          if (data.initiatorUid === myUid) continue;
+
           try {
             await doc.ref.update({ _shown: true });
           } catch (e) {}
-          
+
           this.showIncomingGroupCallUI(doc.id, data);
         }
       }, err => console.error('Incoming group calls error:', err));
@@ -838,7 +856,7 @@ function renderGroupsUI(myUid) {
   `;
 
   initGroupsList(myUid);
-  initNewGroupModal();
+  initNewGroupModal(); // ✅ Теперь создаёт модальное окно динамически
 }
 
 function initGroupsList(myUid) {
@@ -851,7 +869,6 @@ function initGroupsList(myUid) {
       list.innerHTML = '<div class="groups-empty">Нет групп.<br>Создайте первую!</div>';
       return;
     }
-
     groups.forEach(group => {
       list.appendChild(renderGroupItem(group, myUid));
     });
@@ -859,10 +876,8 @@ function initGroupsList(myUid) {
 }
 
 function renderGroupItem(group, myUid) {
-  const otherMembers = group.members.filter(u => u !== myUid);
-  const memberNames = otherMembers.map(u => group.memberNames?.[u] || 'Участник');
   const preview = group.lastMessage
-    ? (group._encrypted ? '🔐 Зашифрованное сообщение' : group.lastMessage.slice(0, 35) + '…')
+    ? '🔐 Зашифрованное сообщение'
     : 'Группа создана';
 
   const li = document.createElement('div');
@@ -875,7 +890,7 @@ function renderGroupItem(group, myUid) {
     <div class="group-info">
       <div class="group-name">${esc(group.name)}</div>
       <div class="group-preview">${esc(preview)}</div>
-      <div class="group-members">${memberNames.length} участников</div>
+      <div class="group-members">${(group.members || []).length} участников</div>
     </div>
   `;
 
@@ -883,10 +898,11 @@ function renderGroupItem(group, myUid) {
   return li;
 }
 
+// ─── OPEN GROUP CHAT ───────────────────────────────────────
+
 async function openGroupChat(groupId, groupName, members) {
   groupManager.activeGroupId = groupId;
 
-  // Подсветка в сайдбаре
   document.querySelectorAll('.group-item').forEach(el => {
     el.classList.toggle('active', el.dataset.groupId === groupId);
   });
@@ -897,25 +913,34 @@ async function openGroupChat(groupId, groupName, members) {
   chatArea.innerHTML = `
     <div class="group-chat-header">
       <div class="group-chat-header-avatar">👥</div>
-      <div>
+      <div class="group-chat-header-info" id="group-header-clickable" style="flex:1;cursor:pointer;">
         <div class="group-chat-header-name">${esc(groupName)}</div>
-        <div class="group-chat-header-members">${members.length} участников</div>
+        <div class="group-chat-header-members">${(members || []).length} участников</div>
       </div>
+      <button class="group-chat-info-btn" id="group-chat-info-btn" title="Информация о группе" style="background:none;border:none;font-size:1.2rem;cursor:pointer;padding:4px 8px;opacity:.7;">ℹ️</button>
       <button class="group-chat-call-btn" id="group-chat-call-btn" title="Групповой звонок">📞</button>
     </div>
-    <div class="group-chat-messages" id="group-chat-messages"></div>
+    <div style="display:flex;flex:1;overflow:hidden;">
+      <div class="group-chat-messages" id="group-chat-messages" style="flex:1;overflow-y:auto;"></div>
+      <div id="group-profile-panel" style="display:none;width:280px;min-width:280px;border-left:1px solid var(--border,#333);overflow-y:auto;background:var(--bg-secondary,#1a1a2e);padding:16px;box-sizing:border-box;"></div>
+    </div>
     <div class="group-chat-input-area">
       <textarea class="group-chat-input" id="group-chat-input" rows="1" placeholder="Написать в группу..."></textarea>
       <button class="group-chat-send-btn" id="group-chat-send-btn">↑</button>
     </div>
   `;
 
-  // Кнопка звонка
+  // ── Кнопка инфо / клик по шапке ──
+  const toggleProfile = () => showGroupProfile(groupId);
+  document.getElementById('group-chat-info-btn').addEventListener('click', toggleProfile);
+  document.getElementById('group-header-clickable').addEventListener('click', toggleProfile);
+
+  // ── Кнопка звонка ──
   document.getElementById('group-chat-call-btn').addEventListener('click', () => {
     groupCallManager.startGroupCall(groupId, groupName, members);
   });
 
-  // Отправка
+  // ── Отправка ──
   const inputEl = document.getElementById('group-chat-input');
   const sendBtn = document.getElementById('group-chat-send-btn');
 
@@ -923,6 +948,7 @@ async function openGroupChat(groupId, groupName, members) {
     const text = inputEl.value.trim();
     if (!text) return;
     inputEl.value = '';
+    inputEl.style.height = 'auto';
     try {
       await groupManager.sendMessage(groupId, text);
     } catch (e) {
@@ -934,18 +960,256 @@ async function openGroupChat(groupId, groupName, members) {
   inputEl.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
-
   inputEl.addEventListener('input', () => {
     inputEl.style.height = 'auto';
     inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
   });
 
-  // Подписка на сообщения
+  // ── Подписка на сообщения ──
   const msgContainer = document.getElementById('group-chat-messages');
   groupManager.subscribeMessages(groupId, currentUser.uid, messages => {
     renderGroupMessages(messages, msgContainer);
   });
 }
+
+// ─── GROUP PROFILE PANEL ───────────────────────────────────
+
+async function showGroupProfile(groupId) {
+  const panel = document.getElementById('group-profile-panel');
+  if (!panel) return;
+
+  // Toggle
+  if (panel.style.display !== 'none') {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = 'block';
+  panel.innerHTML = '<div style="color:var(--muted,#888);padding:8px 0;">Загрузка...</div>';
+
+  // Всегда свежие данные
+  delete groupManager.groupCache[groupId];
+  const group = await groupManager.getGroup(groupId);
+  if (!group) {
+    panel.innerHTML = '<div style="color:var(--muted,#888);">Группа не найдена</div>';
+    return;
+  }
+
+  const isCreator = group.createdBy === currentUser.uid;
+  const members = group.members || [];
+
+  const membersHtml = members.map(uid => {
+    const name = group.memberNames?.[uid] || 'Участник';
+    const avatar = group.memberAvatars?.[uid] || null;
+    const isMe = uid === currentUser.uid;
+    const isOwner = uid === group.createdBy;
+
+    return `
+      <div class="group-profile-member" data-uid="${uid}" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border,#2a2a3e);">
+        <div style="flex-shrink:0;">${avatarHtml(avatar, name, 36)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="color:var(--text,#fff);font-size:.88rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            ${esc(name)}${isMe ? ' <span style="color:var(--muted,#888);font-weight:400;">(вы)</span>' : ''}
+          </div>
+          ${isOwner ? '<div style="color:var(--accent,#7c3aed);font-size:.75rem;">Создатель</div>' : ''}
+        </div>
+        ${(isCreator && !isMe) ? `<button class="group-profile-remove-btn" data-uid="${uid}" title="Удалить из группы" style="background:none;border:none;color:var(--danger,#ef4444);cursor:pointer;font-size:1rem;padding:2px 6px;opacity:.7;flex-shrink:0;">✕</button>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  panel.innerHTML = `
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:3rem;">👥</div>
+      <div style="color:var(--text,#fff);font-weight:600;font-size:1rem;margin-top:6px;">${esc(group.name)}</div>
+      <div style="color:var(--muted,#888);font-size:.8rem;margin-top:2px;">${members.length} участников</div>
+    </div>
+
+    <div style="font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted,#888);margin-bottom:8px;">Участники</div>
+    <div id="group-members-list">${membersHtml}</div>
+
+    <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;">
+      <button id="group-add-member-btn" style="padding:8px 12px;border-radius:8px;border:1px solid var(--accent,#7c3aed);background:none;color:var(--accent,#7c3aed);cursor:pointer;font-size:.88rem;width:100%;">
+        + Добавить участника
+      </button>
+      ${isCreator
+        ? `<button id="group-delete-btn" style="padding:8px 12px;border-radius:8px;border:1px solid var(--danger,#ef4444);background:none;color:var(--danger,#ef4444);cursor:pointer;font-size:.88rem;width:100%;">
+             🗑️ Удалить группу
+           </button>`
+        : `<button id="group-leave-btn" style="padding:8px 12px;border-radius:8px;border:1px solid var(--danger,#ef4444);background:none;color:var(--danger,#ef4444);cursor:pointer;font-size:.88rem;width:100%;">
+             🚪 Покинуть группу
+           </button>`
+      }
+    </div>
+  `;
+
+  // ── Добавить участника ──
+  panel.querySelector('#group-add-member-btn')?.addEventListener('click', () => {
+    showAddMemberModal(groupId, group);
+  });
+
+  // ── Удалить группу ──
+  panel.querySelector('#group-delete-btn')?.addEventListener('click', async () => {
+    if (!confirm(`Удалить группу «${group.name}»? Это действие нельзя отменить.`)) return;
+    try {
+      await groupManager.deleteGroup(groupId);
+      panel.style.display = 'none';
+      const chatArea = document.getElementById('group-chat-area');
+      if (chatArea) {
+        chatArea.innerHTML = `
+          <div class="group-chat-placeholder">
+            <div>
+              <div class="group-chat-placeholder-icon">👥</div>
+              <div>Выберите группу или создайте новую</div>
+            </div>
+          </div>
+        `;
+      }
+    } catch (e) {
+      alert('Не удалось удалить группу: ' + e.message);
+    }
+  });
+
+  // ── Покинуть группу ──
+  panel.querySelector('#group-leave-btn')?.addEventListener('click', async () => {
+    if (!confirm(`Покинуть группу «${group.name}»?`)) return;
+    try {
+      await groupManager.removeMember(groupId, currentUser.uid);
+      panel.style.display = 'none';
+      const chatArea = document.getElementById('group-chat-area');
+      if (chatArea) {
+        chatArea.innerHTML = `
+          <div class="group-chat-placeholder">
+            <div>
+              <div class="group-chat-placeholder-icon">👥</div>
+              <div>Выберите группу или создайте новую</div>
+            </div>
+          </div>
+        `;
+      }
+    } catch (e) {
+      alert('Не удалось покинуть группу: ' + e.message);
+    }
+  });
+
+  // ── Удалить участника ──
+  panel.querySelectorAll('.group-profile-remove-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const uid = btn.dataset.uid;
+      const name = group.memberNames?.[uid] || 'участника';
+      if (!confirm(`Удалить ${name} из группы?`)) return;
+      try {
+        await groupManager.removeMember(groupId, uid);
+        btn.closest('[data-uid]').remove();
+      } catch (e) {
+        alert('Не удалось удалить участника: ' + e.message);
+      }
+    });
+  });
+}
+
+// ─── ADD MEMBER MODAL ──────────────────────────────────────
+
+function showAddMemberModal(groupId, group) {
+  let modal = document.getElementById('add-member-modal');
+  if (modal) modal.remove();
+
+  modal = document.createElement('div');
+  modal.id = 'add-member-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = `
+    <div id="add-member-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);"></div>
+    <div style="position:relative;z-index:1;background:var(--bg-secondary,#1a1a2e);border:1px solid var(--border,#333);border-radius:14px;padding:24px;width:360px;max-width:90vw;max-height:80vh;display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <h3 style="margin:0;color:var(--text,#fff);font-size:1rem;">+ Добавить участника</h3>
+        <button id="add-member-close" style="background:none;border:none;color:var(--muted,#888);font-size:1.4rem;cursor:pointer;line-height:1;">×</button>
+      </div>
+      <input type="text" id="add-member-search" placeholder="Поиск по имени..." autocomplete="off"
+        style="padding:10px 14px;border-radius:8px;border:1px solid var(--border,#333);background:var(--bg,#0f0f1a);color:var(--text,#fff);font-size:.9rem;outline:none;">
+      <div id="add-member-results" style="overflow-y:auto;max-height:300px;display:flex;flex-direction:column;gap:4px;"></div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const close = () => modal.remove();
+  modal.querySelector('#add-member-close').addEventListener('click', close);
+  modal.querySelector('#add-member-backdrop').addEventListener('click', close);
+
+  const searchInput = modal.querySelector('#add-member-search');
+  const results = modal.querySelector('#add-member-results');
+
+  searchInput.focus();
+
+  let searchTimeout;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    const q = searchInput.value.trim();
+    if (!q || q.length < 2) { results.innerHTML = ''; return; }
+
+    searchTimeout = setTimeout(async () => {
+      results.innerHTML = '<div style="color:var(--muted,#888);padding:8px;font-size:.85rem;">Поиск...</div>';
+      try {
+        const snap = await window.db.collection('users')
+          .where('name', '>=', q)
+          .where('name', '<=', q + '\uf8ff')
+          .limit(10)
+          .get();
+
+        results.innerHTML = '';
+        let found = 0;
+
+        snap.forEach(doc => {
+          if (doc.id === currentUser.uid) return;
+          if ((group.members || []).includes(doc.id)) return; // Уже в группе
+
+          found++;
+          const data = doc.data();
+          const el = document.createElement('div');
+          el.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;';
+          el.innerHTML = `
+            <div style="flex-shrink:0;">${avatarHtml(data.avatar, data.name, 34)}</div>
+            <div style="flex:1;color:var(--text,#fff);font-size:.88rem;font-weight:500;">${esc(data.name)}</div>
+            <button data-uid="${doc.id}" style="padding:5px 12px;border-radius:6px;border:1px solid var(--accent,#7c3aed);background:none;color:var(--accent,#7c3aed);cursor:pointer;font-size:.82rem;flex-shrink:0;">
+              + Добавить
+            </button>
+          `;
+
+          el.querySelector('button').addEventListener('click', async (e) => {
+            const btn = e.currentTarget;
+            btn.disabled = true;
+            btn.textContent = '...';
+            try {
+              await groupManager.addMember(groupId, doc.id);
+              btn.textContent = '✓';
+              btn.style.color = 'var(--success,#22c55e)';
+              btn.style.borderColor = 'var(--success,#22c55e)';
+              // Обновляем панель профиля если открыта
+              const panel = document.getElementById('group-profile-panel');
+              if (panel && panel.style.display !== 'none') {
+                showGroupProfile(groupId);
+              }
+            } catch (err) {
+              btn.disabled = false;
+              btn.textContent = '+ Добавить';
+              alert('Не удалось добавить: ' + err.message);
+            }
+          });
+
+          results.appendChild(el);
+        });
+
+        if (found === 0) {
+          results.innerHTML = '<div style="color:var(--muted,#888);padding:8px;font-size:.85rem;">Пользователи не найдены или уже в группе</div>';
+        }
+      } catch (err) {
+        console.error('Search error:', err);
+        results.innerHTML = '<div style="color:var(--danger,#ef4444);padding:8px;font-size:.85rem;">Ошибка поиска</div>';
+      }
+    }, 350);
+  });
+}
+
+// ─── RENDER MESSAGES ───────────────────────────────────────
 
 function renderGroupMessages(messages, container) {
   const fragment = document.createDocumentFragment();
@@ -967,12 +1231,17 @@ function renderGroupMessages(messages, container) {
     const msgEl = document.createElement('div');
     msgEl.className = `msg group-msg ${isOwn ? 'own' : ''}`;
 
+    const hasImage = !!msg.image;
+    const hasText = !!String(msg.text || '').trim();
+    const imageHtml = hasImage ? `<img class="msg-image" src="${esc(msg.image)}" alt="Изображение" loading="lazy" style="max-width:260px;border-radius:8px;display:block;">` : '';
+    const textHtml = hasText ? `<div class="msg-text">${esc(msg.text)}</div>` : '';
+
     msgEl.innerHTML = `
       <div class="msg-avatar">${avatarHtml(null, senderName, 28)}</div>
       <div class="msg-content">
-        <div class="msg-sender-name">${esc(senderName)}</div>
+        ${!isOwn ? `<div class="msg-sender-name" style="font-size:.75rem;color:var(--muted,#888);margin-bottom:2px;">${esc(senderName)}</div>` : ''}
         <div class="msg-bubble">
-          <div class="msg-text">${esc(msg.text)}</div>
+          ${imageHtml}${textHtml}
         </div>
         <div class="msg-time">${formatMsgTime(msg.createdAt)}</div>
       </div>
@@ -986,57 +1255,105 @@ function renderGroupMessages(messages, container) {
   scrollChatToBottom(container);
 }
 
+// ─── NEW GROUP MODAL (динамический) ────────────────────────
+
 function initNewGroupModal() {
-  const modal = document.getElementById('new-group-modal');
-  if (!modal) return;
-
   const openBtn = document.getElementById('new-group-btn');
-  const closeBtn = document.getElementById('new-group-close');
-  const backdrop = document.getElementById('new-group-backdrop');
-  const createBtn = document.getElementById('new-group-create');
-  const nameInput = document.getElementById('new-group-name');
-  const searchInput = document.getElementById('new-group-search');
-  const results = document.getElementById('new-group-results');
+  if (!openBtn) return;
 
-  let selectedMembers = new Set();
+  // ✅ FIX: Создаём модальное окно полностью динамически —
+  // больше не зависим от статического HTML в файле страницы.
+  let modal = document.getElementById('new-group-modal');
+  if (modal) modal.remove(); // Удаляем старый экземпляр при повторной инициализации
 
-  const open = () => { modal.classList.add('open'); nameInput.focus(); };
+  modal = document.createElement('div');
+  modal.id = 'new-group-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;';
+  modal.innerHTML = `
+    <div id="new-group-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);"></div>
+    <div style="position:relative;z-index:1;background:var(--bg-secondary,#1a1a2e);border:1px solid var(--border,#333);border-radius:14px;padding:24px;width:400px;max-width:90vw;max-height:85vh;display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <h3 style="margin:0;color:var(--text,#fff);font-size:1rem;">Создать группу</h3>
+        <button id="new-group-close" style="background:none;border:none;color:var(--muted,#888);font-size:1.4rem;cursor:pointer;line-height:1;">×</button>
+      </div>
+
+      <input type="text" id="new-group-name" placeholder="Название группы" autocomplete="off"
+        style="padding:10px 14px;border-radius:8px;border:1px solid var(--border,#333);background:var(--bg,#0f0f1a);color:var(--text,#fff);font-size:.9rem;outline:none;">
+
+      <div style="font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted,#888);">Участники</div>
+
+      <div id="new-group-selected" style="display:flex;flex-wrap:wrap;gap:6px;min-height:0;"></div>
+
+      <input type="text" id="new-group-search" placeholder="Поиск пользователей..." autocomplete="off"
+        style="padding:10px 14px;border-radius:8px;border:1px solid var(--border,#333);background:var(--bg,#0f0f1a);color:var(--text,#fff);font-size:.9rem;outline:none;">
+
+      <div id="new-group-results" style="overflow-y:auto;max-height:220px;display:flex;flex-direction:column;gap:4px;"></div>
+
+      <button id="new-group-create" style="padding:10px;border-radius:8px;border:none;background:var(--accent,#7c3aed);color:#fff;cursor:pointer;font-size:.9rem;font-weight:600;margin-top:4px;">
+        Создать группу
+      </button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const nameInput = modal.querySelector('#new-group-name');
+  const searchInput = modal.querySelector('#new-group-search');
+  const results = modal.querySelector('#new-group-results');
+  const selectedDisplay = modal.querySelector('#new-group-selected');
+  const createBtn = modal.querySelector('#new-group-create');
+
+  // ✅ Map вместо Set — храним uid → name для отображения
+  let selectedMembers = new Map();
+
+  const open = () => {
+    modal.style.display = 'flex';
+    nameInput.focus();
+  };
+
   const close = () => {
-    modal.classList.remove('open');
+    modal.style.display = 'none';
     nameInput.value = '';
     searchInput.value = '';
     results.innerHTML = '';
     selectedMembers.clear();
+    renderSelected();
   };
 
-  openBtn?.addEventListener('click', open);
-  closeBtn?.addEventListener('click', close);
-  backdrop?.addEventListener('click', close);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
-
-  createBtn?.addEventListener('click', async () => {
-    const name = nameInput.value.trim();
-    if (!name) { alert('Введите название группы'); return; }
-    if (selectedMembers.size === 0) { alert('Выберите хотя бы одного участника'); return; }
-
-    try {
-      const groupId = await groupManager.createGroup(name, Array.from(selectedMembers));
-      close();
-      // Открываем созданную группу
-      const group = await groupManager.getGroup(groupId);
-      openGroupChat(groupId, name, group.members);
-    } catch (e) {
-      alert('Не удалось создать группу: ' + e.message);
-    }
+  openBtn.addEventListener('click', open);
+  modal.querySelector('#new-group-close').addEventListener('click', close);
+  modal.querySelector('#new-group-backdrop').addEventListener('click', close);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && modal.style.display !== 'none') close();
   });
 
+  function renderSelected() {
+    selectedDisplay.innerHTML = '';
+    selectedMembers.forEach((name, uid) => {
+      const chip = document.createElement('div');
+      chip.style.cssText = 'display:flex;align-items:center;gap:5px;background:var(--accent-bg,rgba(124,58,237,.15));border:1px solid var(--accent,#7c3aed);border-radius:20px;padding:3px 10px 3px 8px;font-size:.8rem;color:var(--accent,#7c3aed);';
+      chip.innerHTML = `<span>${esc(name)}</span><button data-uid="${uid}" style="background:none;border:none;color:var(--accent,#7c3aed);cursor:pointer;font-size:.9rem;padding:0;line-height:1;margin-left:2px;">×</button>`;
+      chip.querySelector('button').addEventListener('click', () => {
+        selectedMembers.delete(uid);
+        renderSelected();
+        // Снимаем галочку в результатах поиска если видны
+        results.querySelectorAll(`[data-uid="${uid}"]`).forEach(el => {
+          el.classList.remove('selected');
+          const btn = el.querySelector('.ng-select-btn');
+          if (btn) { btn.textContent = '+'; btn.style.color = 'var(--accent,#7c3aed)'; btn.style.borderColor = 'var(--accent,#7c3aed)'; }
+        });
+      });
+      selectedDisplay.appendChild(chip);
+    });
+  }
+
   let searchTimeout;
-  searchInput?.addEventListener('input', () => {
+  searchInput.addEventListener('input', () => {
     clearTimeout(searchTimeout);
     const q = searchInput.value.trim();
     if (!q || q.length < 2) { results.innerHTML = ''; return; }
 
     searchTimeout = setTimeout(async () => {
+      results.innerHTML = '<div style="color:var(--muted,#888);padding:8px;font-size:.85rem;">Поиск...</div>';
       try {
         const snap = await window.db.collection('users')
           .where('name', '>=', q)
@@ -1045,41 +1362,70 @@ function initNewGroupModal() {
           .get();
 
         results.innerHTML = '';
+
         snap.forEach(doc => {
           if (doc.id === currentUser.uid) return;
           const data = doc.data();
           const isSelected = selectedMembers.has(doc.id);
 
           const el = document.createElement('div');
-          el.className = `new-group-user ${isSelected ? 'selected' : ''}`;
+          el.dataset.uid = doc.id;
+          el.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .15s;';
           el.innerHTML = `
-            <div class="new-group-user-avatar">${avatarHtml(data.avatar, data.name, 32)}</div>
-            <div>
-              <div style="color:#fff;font-size:.88rem;font-weight:500;">${esc(data.name)}</div>
-            </div>
-            <div style="margin-left:auto;color:var(--accent);font-size:1.2rem;${isSelected ? '' : 'opacity:0.3;'}">${isSelected ? '✓' : '+'}</div>
+            <div style="flex-shrink:0;">${avatarHtml(data.avatar, data.name, 34)}</div>
+            <div style="flex:1;color:var(--text,#fff);font-size:.88rem;font-weight:500;">${esc(data.name)}</div>
+            <button class="ng-select-btn" style="padding:5px 12px;border-radius:6px;border:1px solid ${isSelected ? 'var(--success,#22c55e)' : 'var(--accent,#7c3aed)'};background:none;color:${isSelected ? 'var(--success,#22c55e)' : 'var(--accent,#7c3aed)'};cursor:pointer;font-size:.82rem;flex-shrink:0;">
+              ${isSelected ? '✓' : '+'}
+            </button>
           `;
 
           el.addEventListener('click', () => {
+            const btn = el.querySelector('.ng-select-btn');
             if (selectedMembers.has(doc.id)) {
               selectedMembers.delete(doc.id);
-              el.classList.remove('selected');
-              el.querySelector('div[style*="margin-left"]').textContent = '+';
-              el.querySelector('div[style*="margin-left"]').style.opacity = '0.3';
+              btn.textContent = '+';
+              btn.style.color = 'var(--accent,#7c3aed)';
+              btn.style.borderColor = 'var(--accent,#7c3aed)';
             } else {
-              selectedMembers.add(doc.id);
-              el.classList.add('selected');
-              el.querySelector('div[style*="margin-left"]').textContent = '✓';
-              el.querySelector('div[style*="margin-left"]').style.opacity = '1';
+              selectedMembers.set(doc.id, data.name);
+              btn.textContent = '✓';
+              btn.style.color = 'var(--success,#22c55e)';
+              btn.style.borderColor = 'var(--success,#22c55e)';
             }
+            renderSelected();
           });
 
           results.appendChild(el);
         });
+
+        if (results.innerHTML === '') {
+          results.innerHTML = '<div style="color:var(--muted,#888);padding:8px;font-size:.85rem;">Пользователи не найдены</div>';
+        }
       } catch (err) {
         console.error('Search error:', err);
+        results.innerHTML = '<div style="color:var(--danger,#ef4444);padding:8px;font-size:.85rem;">Ошибка поиска</div>';
       }
     }, 350);
+  });
+
+  createBtn.addEventListener('click', async () => {
+    const name = nameInput.value.trim();
+    if (!name) { alert('Введите название группы'); return; }
+    if (selectedMembers.size === 0) { alert('Выберите хотя бы одного участника'); return; }
+
+    createBtn.disabled = true;
+    createBtn.textContent = 'Создание...';
+
+    try {
+      const groupId = await groupManager.createGroup(name, Array.from(selectedMembers.keys()));
+      close();
+      const group = await groupManager.getGroup(groupId);
+      if (group) openGroupChat(groupId, name, group.members);
+    } catch (e) {
+      alert('Не удалось создать группу: ' + e.message);
+      createBtn.disabled = false;
+      createBtn.textContent = 'Создать группу';
+    }
   });
 }
 
@@ -1095,7 +1441,6 @@ function initGroups() {
   });
 }
 
-// Автоинициализация если есть корневой элемент
 if (document.getElementById('groups-root')) {
   initGroups();
 }
