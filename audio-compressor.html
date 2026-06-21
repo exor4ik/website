@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Сжатие аудио — EgorNetwork</title>
+  <link rel="stylesheet" href="styles.css">
+<base target="_blank">
+</head>
+<body>
+  <div id="header-container"></div>
+
+  <main class="container">
+    <section class="card fade compress-wrap">
+      <h2>🎧 Локальное сжатие аудио</h2>
+      <p style="color: var(--muted); margin-bottom: 1rem;">
+        Файл обрабатывается прямо в вашем браузере. Никуда не загружается.<br>
+        Для цели <b>→ 1 МБ</b> подберётся оптимальный битрейт автоматически.
+      </p>
+
+      <input type="file" id="ac-input" class="vc-input" accept="audio/*">
+
+      <div class="vc-controls">
+        <label>Целевой размер: <span id="ac-size-val">1</span> МБ</label>
+        <input type="range" id="ac-size-slider" class="vc-crf-slider" min="0.5" max="10" value="1" step="0.5">
+        <div class="vc-hint">0.5 = минимум, 1 = баланс, 5+ = высокое качество. Автоматически рассчитывается битрейт Opus.</div>
+      </div>
+
+      <button id="ac-btn" class="vc-btn" disabled>🔹 Сжать аудио</button>
+      <div class="vc-progress-wrap"><div class="vc-progress-bar" id="ac-bar"></div></div>
+      <div class="vc-status" id="ac-status">Выберите аудио для начала</div>
+      <a id="ac-download" class="vc-download" style="display:none">⬇️ Скачать результат</a>
+    </section>
+  </main>
+
+  <div id="footer-container"></div>
+
+  <!-- Основные скрипты сайта (хедер, футер, анимации) -->
+  <script src="script.js"></script>
+  <!-- Модуль компрессора -->
+  <script type="module" src="audio-compressor.js"></script>
+</body>
+</html>

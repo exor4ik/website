@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Био</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Arial Black', 'Arial', sans-serif;
+    user-select: none;
+  }
+
+  /* Обёртка для центрирования масштабируемого контейнера */
+  #wrapper {
+    position: relative;
+    width: 800px;
+    height: 600px;
+    transform-origin: center center;
+  }
+
+  #container {
+    width: 800px;
+    height: 600px;
+    background: url('images/profile_background.png') center/cover no-repeat;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* --- Имя (статичное) --- */
+  #name {
+    position: absolute;
+    left: 30px;
+    top: 20px;
+    font-size: 38px;
+    color: #ffffff;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+  }
+
+  /* --- Заглавие (анимируемое текстовое поле #1) --- */
+  #title {
+    position: absolute;
+    left: 30px;
+    top: 110px;
+    font-size: 30px;
+    color: #ffff00;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+    max-width: 420px;
+  }
+
+  /* --- Описание (анимируемое текстовое поле #2, 3 строки) --- */
+  #description {
+    position: absolute;
+    left: 30px;
+    top: 175px;
+    width: 420px;
+    font-size: 17px;
+    color: #ffff00;
+    line-height: 1.6;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+    white-space: pre-line;
+    word-wrap: break-word;
+  }
+
+  /* --- Контейнер плёнки (ПРАВЕЕ и УЖЕ) --- */
+  #film-container {
+    position: absolute;
+    right: 10px;
+    top: 140px;
+    width: 340px;
+    height: 570px;
+    overflow: hidden;
+  }
+
+  /* --- Полоса плёнки --- */
+  #film-strip {
+    position: absolute;
+    width: 320px;
+    top: 0;
+    left: 0;
+  }
+
+  .film-frame {
+    width: 320px;
+    height: 320px;
+    position: relative;
+    display: block;
+  }
+
+  .film-frame img.film-bg {
+    width: 340px;
+    height: 320px;
+    display: block;
+  }
+
+  /* Изображение темы внутри кадра: пропорционально уменьшено */
+  .film-frame img.topic-img {
+    position: absolute;
+    left: 32px;
+    top: 5px;
+    width: 275px;
+    height: 205px;
+    object-fit: cover;
+  }
+
+  /* --- Стрелки --- */
+  #arrows {
+    position: absolute;
+    left: 420px;
+    bottom: 70px;
+  }
+  #arrows img {
+    width: 55px;
+    height: 110px;
+    display: block;
+  }
+
+  /* --- Лого --- */
+  #logo {
+    position: absolute;
+    left: 30px;
+    bottom: 25px;
+  }
+  #logo img {
+    width: 180px;
+    display: block;
+  }
+
+  /* Подсказка управления */
+  #hint {
+    position: absolute;
+    bottom: 8px;
+    right: 15px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    font-family: Arial, sans-serif;
+  }
+
+  /* --- Кнопка возврата --- */
+  #back-button {
+    position: absolute;
+    left: 30px;
+    bottom: 10px;
+    padding: 8px 16px;
+    background: rgba(255, 255, 0, 0.2);
+    border: 2px solid #ffff00;
+    color: #ffff00;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    transition: all 0.3s ease;
+  }
+
+  #back-button:hover {
+    background: rgba(255, 255, 0, 0.4);
+    transform: scale(1.05);
+  }
+</style>
+</head>
+<body>
+
+<div id="wrapper">
+  <div id="container">
+
+    <!-- Имя (статичное) -->
+    <div id="name">Био Exor4ik'а</div>
+
+    <!-- Текстовое поле #1 — заглавие темы -->
+    <div id="title">Бебееъъ</div>
+
+    <!-- Текстовое поле #2 — описание (3 строки) -->
+    <div id="description">Ббебеббеббебебъъъъ</div>
+
+    <!-- Плёнка проектора -->
+    <div id="film-container">
+      <div id="film-strip"></div>
+    </div>
+
+    <!-- Стрелки -->
+    <div id="arrows">
+      <img src="images/arrows.png" alt="↑↓">
+    </div>
+
+    <!-- Кнопка возврата -->
+    <a id="back-button" href="index.html">← Назад</a>
+
+    <div id="hint">↑↓ / Num8 Num2</div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   МАСШТАБИРОВАНИЕ ПОД РАЗМЕР ОКНА
+   ============================================================ */
+const BASE_W = 800;
+const BASE_H = 600;
+
+function resize() {
+  const scaleX = window.innerWidth / BASE_W;
+  const scaleY = window.innerHeight / BASE_H;
+  const scale = Math.min(scaleX, scaleY);
+  document.getElementById('wrapper').style.transform = `scale(${scale})`;
+}
+
+window.addEventListener('resize', resize);
+resize();
+
+/* ============================================================
+   ДАННЫЕ ТЕМ БИО (4 темы)
+   ============================================================ */
+const topics = [
+  {
+    title: 'Основная информация',
+    description: 'Живу в России, учусь на программиста. Работа мечты - Разработчик игр на движке "Unity". Мне 16 лет, начал разрабатывать в 14 (рановато как-то 💀💀💀) на движке Clickteam Fusion. Выучил движок за 4 месяца, игра которую я на нём сделал - Симулятор Кондиций. Через пол года я решил изучать Unity, потому что я хотел изучить создание 3D игр. Сейчас я изучил движок на 70%, а C# на ~35%. Люблю иногда попробовать изучать фреймворки разные или пописать музыку в Caustic.',
+    image: 'images/topic_1.png'
+  },
+  {
+    title: 'Как я живу',
+    description: 'Плохо. Почти ни один сервис который я использую не доступен в стране, а вместо них предлагают баганные или не работающие аналоги (зато они спокойно прослушивают из коробки ещё).',
+    image: 'images/topic_2.png'
+  },
+  {
+    title: 'Моя сборка компьютера',
+    description: 'Процессор: AMD Ryzen 5 5600G, оперативка 32 GB на частоте 3600 МГц, 2 диска WD RED на 2.7 ТБ, в роли видеокарты - AMD Vega 7 в разгоне до 2400 МГЦ. Этого для разработки хватает кстати.',
+    image: 'images/topic_3.png'
+  },
+  {
+    title: 'Проекты.',
+    description: 'Чел, иди на страницу скачивания игр и смотри.',
+    image: 'images/topic_4.png'
+  }
+];
+
+/* ============================================================
+   СОСТОЯНИЕ
+   ============================================================ */
+let currentIndex  = 0;
+let stripIndex    = 1;
+let isAnimating   = false;
+
+const FRAME_H     = 320;
+const ANIM_MS     = 600;
+const frameOrder  = [3, 0, 1, 2, 3, 0];
+
+/* ============================================================
+   DOM
+   ============================================================ */
+const filmStrip = document.getElementById('film-strip');
+const titleEl   = document.getElementById('title');
+const descEl    = document.getElementById('description');
+
+/* ============================================================
+   ЗВУКИ
+   ============================================================ */
+const filmMove  = new Audio('sound/film_move.wav');
+filmMove.loop   = true;
+filmMove.volume = 0.7;
+
+const filmStop  = new Audio('sound/film_stop.wav');
+filmStop.volume = 0.8;
+
+const profileBgm = new Audio('sound/profile.wav');
+profileBgm.loop  = true;
+profileBgm.volume = 0.5;
+
+/* ============================================================
+   ПОСТРОЕНИЕ ПОЛОСЫ ПЛЁНКИ
+   ============================================================ */
+function buildFilmStrip() {
+  filmStrip.innerHTML = '';
+  frameOrder.forEach((topicIdx) => {
+    const frame = document.createElement('div');
+    frame.className = 'film-frame';
+
+    const bg = document.createElement('img');
+    bg.className = 'film-bg';
+    bg.src = 'images/film.png';
+    bg.draggable = false;
+    frame.appendChild(bg);
+
+    const topicImg = document.createElement('img');
+    topicImg.className = 'topic-img';
+    topicImg.src = topics[topicIdx].image;
+    topicImg.draggable = false;
+    frame.appendChild(topicImg);
+
+    filmStrip.appendChild(frame);
+  });
+  filmStrip.style.transform = `translateY(-${stripIndex * FRAME_H}px)`;
+}
+
+/* ============================================================
+   ДВИЖЕНИЕ ПЛЁНКИ
+   ============================================================ */
+function moveFilm(direction) {
+  if (isAnimating) return;
+  isAnimating = true;
+
+  filmMove.currentTime = 0;
+  filmMove.play().catch(() => {});
+
+  filmStrip.style.transition =
+    `transform ${ANIM_MS}ms cubic-bezier(0.33, 1, 0.68, 1)`;
+
+  const needWrapDown = (direction === 'down' && stripIndex === frameOrder.length - 2);
+  const needWrapUp   = (direction === 'up'   && stripIndex === 1);
+
+  if (needWrapDown) {
+    stripIndex = frameOrder.length - 1;
+    currentIndex = 0;
+  } else if (needWrapUp) {
+    stripIndex = 0;
+    currentIndex = 3;
+  } else {
+    stripIndex += (direction === 'down') ? 1 : -1;
+    currentIndex = frameOrder[stripIndex];
+  }
+
+  filmStrip.style.transform = `translateY(-${stripIndex * FRAME_H}px)`;
+
+  updateText();
+
+  setTimeout(() => {
+    filmMove.pause();
+    filmMove.currentTime = 0;
+    filmStop.currentTime = 0;
+    filmStop.play().catch(() => {});
+
+    if (needWrapDown) {
+      filmStrip.style.transition = 'none';
+      stripIndex = 1;
+      filmStrip.style.transform = `translateY(-${stripIndex * FRAME_H}px)`;
+    } else if (needWrapUp) {
+      filmStrip.style.transition = 'none';
+      stripIndex = frameOrder.length - 2;
+      filmStrip.style.transform = `translateY(-${stripIndex * FRAME_H}px)`;
+    }
+
+    isAnimating = false;
+  }, ANIM_MS + 30);
+}
+
+/* ============================================================
+   АНИМАЦИЯ ТЕКСТА: белый → жёлтый за 0.5 сек
+   ============================================================ */
+function updateText() {
+  const topic = topics[currentIndex];
+
+  titleEl.style.transition = 'none';
+  descEl.style.transition  = 'none';
+  titleEl.style.color = '#ffffff';
+  descEl.style.color  = '#ffffff';
+
+  titleEl.textContent = topic.title;
+  descEl.textContent  = topic.description;
+
+  void titleEl.offsetWidth;
+
+  titleEl.style.transition = 'color 0.8s ease';
+  descEl.style.transition  = 'color 0.8s ease';
+  titleEl.style.color = '#ffff00';
+  descEl.style.color  = '#ffff00';
+}
+
+/* ============================================================
+   УПРАВЛЕНИЕ
+   ============================================================ */
+document.addEventListener('keydown', (e) => {
+  const key = e.key;
+  const code = e.code;
+
+  if (key === 'ArrowDown' || key === '2' || code === 'Numpad2') {
+    e.preventDefault();
+    moveFilm('down');
+  } else if (key === 'ArrowUp' || key === '8' || code === 'Numpad8') {
+    e.preventDefault();
+    moveFilm('up');
+  }
+});
+
+/* ============================================================
+   ФОНОВАЯ МУЗЫКА
+   ============================================================ */
+let bgStarted = false;
+function startBgm() {
+  if (bgStarted) return;
+  bgStarted = true;
+  profileBgm.play().catch(() => {});
+}
+document.addEventListener('click', startBgm, { once: true });
+document.addEventListener('keydown', startBgm, { once: true });
+
+/* ============================================================
+   ИНИЦИАЛИЗАЦИЯ
+   ============================================================ */
+buildFilmStrip();
+updateText();
+
+// Автозапуск музыки с задержкой (для совместимости с браузерами)
+setTimeout(() => {
+  startBgm();
+}, 100);
+</script>
+
+</body>
+</html>

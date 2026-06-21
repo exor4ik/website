@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Донаты — EgorNetwork</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="images/icon.png" type="image/png">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .donations-wrap {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      margin: 40px 0;
+    }
+    @media (max-width: 860px) {
+      .donations-wrap { grid-template-columns: 1fr; }
+    }
+    .donation-card {
+      background: rgba(20, 30, 60, 0.6);
+      border: 1px solid rgba(80, 140, 255, 0.3);
+      border-radius: 16px;
+      padding: 24px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 30px rgba(30, 80, 200, 0.2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .donation-card h3 {
+      color: #7ab8ff;
+      margin: 0;
+    }
+    .scene-canvas {
+      width: 100%;
+      height: 280px;
+      border-radius: 12px;
+      background: radial-gradient(circle at center, #0a1530 0%, #020510 100%);
+    }
+    .donation-info {
+      text-align: center;
+      color: #cfd8dc;
+      font-size: 16px;
+      line-height: 1.6;
+      width: 100%;
+    }
+    .donation-info .label {
+      color: #7a8899;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .wallet-address {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px dashed #1565c0;
+      padding: 12px;
+      border-radius: 8px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 12px;
+      color: #90caf9;
+      word-break: break-all;
+      text-align: center;
+      user-select: all;
+      margin: 12px 0;
+      line-height: 1.4;
+    }
+    .btn-action {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 12px 28px;
+      background: linear-gradient(135deg, #1565c0, #42a5f5);
+      color: #fff;
+      text-decoration: none;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 16px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 16px rgba(21, 101, 192, 0.4);
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .btn-action:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(66, 165, 245, 0.6);
+    }
+    .btn-action.success {
+      background: linear-gradient(135deg, #2e7d32, #4caf50);
+      box-shadow: 0 4px 16px rgba(46, 125, 50, 0.4);
+    }
+    .thanks {
+      text-align: center;
+      margin: 40px auto;
+      color: #90caf9;
+      font-size: 18px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+<div class="page-blur"></div>
+<div class="dust">
+  <span></span><span></span><span></span><span></span><span></span>
+  <span></span><span></span><span></span><span></span><span></span>
+  <span></span><span></span><span></span><span></span><span></span>
+</div>
+<div id="header-container"></div>
+<main class="container">
+  <section class="fade">
+    <h2>💙 Поддержать EgorNetwork</h2>
+    <p>Если тебе нравятся мои проекты и ты хочешь помочь развитию инди-студии — можешь задонатить удобным и безопасным способом. Каждая копейка идёт на покупку железа, софта и новые 3D-модели для игр.</p>
+  </section>
+
+  <div class="donations-wrap">
+    <!-- Boosty -->
+    <div class="donation-card fade">
+      <h3>🚀 Boosty (Подписка)</h3>
+      <canvas id="card-scene" class="scene-canvas"></canvas>
+      <div class="donation-info">
+        <div class="label">Безопасная оплата картой</div>
+        <p>Официальная страница студии на Boosty. Подписки, эксклюзивные билды игр из Unity и ранний доступ к ассетам.</p>
+        <a class="btn-action" href="https://boosty.to/egornetwork" target="_blank" rel="noopener noreferrer">Перейти на Boosty</a>
+      </div>
+    </div>
+
+    <!-- Monero -->
+    <div class="donation-card fade">
+      <h3>🕵️ Monero (XMR)</h3>
+      <canvas id="coin-scene" class="scene-canvas"></canvas>
+      <div class="donation-info">
+        <div class="label">Анонимный крипто-донат</div>
+        <p>Приватность превыше всего. Используй сеть Monero для полной анонимности транзакции.</p>
+        <div class="wallet-address" id="xmr-address">45BJSSZVTEedvbWSLTpb2SMNahjSGorg1EyByxzyrW55dDctziQH9U2J8L6zPcQHupLmXMdeKQffQ4tSNXndUPqiRexFaUg</div>
+        <button class="btn-action" id="copy-xmr-btn" onclick="copyXMR()">📋 Скопировать адрес</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="thanks fade">
+    <p>Слава АМД! 🙌 Спасибо каждому, кто поддерживает проект и ценит OpSec!</p>
+  </section>
+
+  <section class="fade card card-1">
+    <h3>🤔 Куда идут деньги?</h3>
+    <ul style="color:#cfd8dc;line-height:1.8;">
+      <li>🖥️ Железо для тестов (APU Vega 7 крутой, но для тяжёлых сцен в Unity нужна мощная RX)</li>
+      <li>🎮 Лицензии на Unity-ассеты и плагины</li>
+      <li>🎨 Покупка 3D-моделей, текстур и звуков</li>
+      <li>☕ Кофе и энергетики для ночных кодинг-сессий на Zorin OS</li>
+    </ul>
+  </section>
+</main>
+<div id="footer-container"></div>
+
+<script src="/libs/three.min.js"></script>
+<script>
+// ===== Функция копирования Monero адреса =====
+function copyXMR() {
+  const addr = "45BJSSZVTEedvbWSLTpb2SMNahjSGorg1EyByxzyrW55dDctziQH9U2J8L6zPcQHupLmXMdeKQffQ4tSNXndUPqiRexFaUg";
+  const btn = document.getElementById('copy-xmr-btn');
+  
+  navigator.clipboard.writeText(addr).then(() => {
+    const originalText = btn.innerText;
+    btn.innerText = "✅ Адрес скопирован!";
+    btn.classList.add('success');
+    
+    setTimeout(() => {
+      btn.innerText = originalText;
+      btn.classList.remove('success');
+    }, 2500);
+  }).catch(() => {
+    // Фоллбэк для старых браузеров или если нет HTTPS
+    const textArea = document.createElement("textarea");
+    textArea.value = addr;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textArea);
+    btn.innerText = "✅ Скопировано!";
+    setTimeout(() => { btn.innerText = "📋 Скопировать адрес"; }, 2500);
+  });
+}
+
+// ===== Сцена 1: Банковская карта (Символ фиата и Boosty) =====
+(function() {
+  const canvas = document.getElementById('card-scene');
+  if(!canvas) return;
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  camera.position.set(0, 1.5, 5);
+  camera.lookAt(0, 0, 0);
+
+  scene.add(new THREE.AmbientLight(0x404080, 0.6));
+  const dir = new THREE.DirectionalLight(0x90caf9, 1.2);
+  dir.position.set(3, 5, 4);
+  scene.add(dir);
+  const back = new THREE.DirectionalLight(0x1565c0, 0.6);
+  back.position.set(-3, -2, -3);
+  scene.add(back);
+
+  const shape = new THREE.Shape();
+  const W = 3.375, H = 2.125, R = 0.15;
+  shape.moveTo(-W/2 + R, -H/2);
+  shape.lineTo(W/2 - R, -H/2);
+  shape.quadraticCurveTo(W/2, -H/2, W/2, -H/2 + R);
+  shape.lineTo(W/2, H/2 - R);
+  shape.quadraticCurveTo(W/2, H/2, W/2 - R, H/2);
+  shape.lineTo(-W/2 + R, H/2);
+  shape.quadraticCurveTo(-W/2, H/2, -W/2, H/2 - R);
+  shape.lineTo(-W/2, -H/2 + R);
+  shape.quadraticCurveTo(-W/2, -H/2, -W/2 + R, -H/2);
+
+  const extrude = { depth: 0.08, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 3 };
+  const geo = new THREE.ExtrudeGeometry(shape, extrude);
+  geo.center();
+
+  const mat = new THREE.MeshPhongMaterial({ color: 0x1565c0, shininess: 120, specular: 0x90caf9 });
+  const card = new THREE.Mesh(geo, mat);
+
+  const chipGeo = new THREE.BoxGeometry(0.5, 0.4, 0.02);
+  const chipMat = new THREE.MeshPhongMaterial({ color: 0xffd700, shininess: 150, specular: 0xffffff });
+  const chip = new THREE.Mesh(chipGeo, chipMat);
+  chip.position.set(-0.9, 0.3, 0.06);
+
+  const group = new THREE.Group();
+  group.add(card);
+  group.add(chip);
+  scene.add(group);
+
+  function resize() {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function animate() {
+    group.rotation.y += 0.01;
+    group.rotation.x = Math.sin(Date.now() * 0.001) * 0.15;
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+// ===== Сцена 2: Крипто-токен (Monero) =====
+(function() {
+  const canvas = document.getElementById('coin-scene');
+  if(!canvas) return;
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  camera.position.set(0, 0, 5);
+  camera.lookAt(0, 0, 0);
+
+  scene.add(new THREE.AmbientLight(0x404080, 0.8));
+  const dir = new THREE.DirectionalLight(0x90caf9, 1.5);
+  dir.position.set(3, 5, 4);
+  scene.add(dir);
+  const back = new THREE.DirectionalLight(0x1565c0, 0.8);
+  back.position.set(-3, -2, -3);
+  scene.add(back);
+
+  // Основа монеты (Цилиндр)
+  const coinGeo = new THREE.CylinderGeometry(1.3, 1.3, 0.15, 64);
+  const coinMat = new THREE.MeshPhongMaterial({ 
+    color: 0x0d47a1, 
+    shininess: 180, 
+    specular: 0x90caf9,
+    emissive: 0x001133
+  });
+  const coin = new THREE.Mesh(coinGeo, coinMat);
+  coin.rotation.x = Math.PI / 2; // Поворачиваем плашмя к камере
+
+  // Внешнее светящееся кольцо
+  const ringGeo = new THREE.TorusGeometry(1.45, 0.06, 16, 100);
+  const ringMat = new THREE.MeshPhongMaterial({ 
+    color: 0x42a5f5, 
+    shininess: 200, 
+    specular: 0xffffff, 
+    emissive: 0x1565c0,
+    emissiveIntensity: 0.6
+  });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+
+  // Внутреннее кольцо (узор на монете)
+  const innerRingGeo = new THREE.TorusGeometry(0.8, 0.04, 16, 100);
+  const innerRing = new THREE.Mesh(innerRingGeo, ringMat);
+
+  // Центральная точка
+  const coreGeo = new THREE.SphereGeometry(0.2, 32, 32);
+  const coreMat = new THREE.MeshPhongMaterial({ color: 0x90caf9, emissive: 0x42a5f5, emissiveIntensity: 0.8 });
+  const core = new THREE.Mesh(coreGeo, coreMat);
+
+  const group = new THREE.Group();
+  group.add(coin);
+  group.add(ring);
+  group.add(innerRing);
+  group.add(core);
+  group.rotation.x = 0.4; // Лёгкий наклон для объёма
+  scene.add(group);
+
+  function resize() {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function animate() {
+    group.rotation.y += 0.015; // Крутим как монету
+    group.rotation.z = Math.sin(Date.now() * 0.0008) * 0.1; // Лёгкое покачивание
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+</script>
+<script src="script.js" defer></script>
+</body>
+</html>

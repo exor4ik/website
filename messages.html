@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Сообщения — EgorNetwork</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="images/icon.png" type="image/png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<style>
+  /* ═══════════════════════════════════════════════════════════
+   --- ОТКЛЮЧАЕМ глобальный плавный скролл script.js на этой странице
+   ═══════════════════════════════════════════════════════════ */
+  html, body {
+    overflow: hidden !important;
+    height: 100% !important;
+  }
+
+  .chat-messages,
+  .group-chat-messages,
+  .conv-sidebar,
+  .groups-sidebar,
+  #chat-messages,
+  #group-chat-messages {
+    overscroll-behavior-y: contain !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .page-blur {
+    pointer-events: none !important;
+  }
+
+  /* ── ВКЛАДКИ ЛС / ГРУППЫ ─────────────────────────────── */
+  .messages-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 8px 16px 0;
+    background: var(--bg-secondary, #181a20);
+    border-bottom: 1px solid var(--border, #2a2d36);
+  }
+
+  .messages-tab {
+    padding: 10px 20px;
+    background: transparent;
+    border: none;
+    color: var(--muted, #8a8f9a);
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 10px 10px 0 0;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .messages-tab:hover {
+    color: var(--text, #fff);
+    background: rgba(255,255,255,0.03);
+  }
+
+  .messages-tab.active {
+    color: var(--accent, #6c8cff);
+    background: var(--bg-primary, #12141a);
+  }
+
+  .messages-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent, #6c8cff);
+    border-radius: 2px 2px 0 0;
+  }
+
+  .messages-tab-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 6px;
+    background: var(--accent, #6c8cff);
+    color: #fff;
+    font-size: 0.7rem;
+    border-radius: 8px;
+    font-weight: 600;
+  }
+
+  /* Скрываем неактивную панель */
+  #messages-root, #groups-root {
+    flex: 1;
+    min-height: 0;
+  }
+
+  #messages-root.hidden, #groups-root.hidden {
+    display: none !important;
+  }
+
+  /* Контейнер для обеих панелей */
+  .messages-wrap {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 110px); /* header + tabs + footer */
+  }
+</style>
+<body>
+<div class="page-blur"></div>
+<div class="dust">
+  <span></span><span></span><span></span><span></span><span></span>
+  <span></span><span></span><span></span><span></span><span></span>
+</div>
+<div id="header-container"></div>
+
+<main class="messages-wrap">
+  <!-- ── ПЕРЕКЛЮЧАТЕЛЬ ВКЛАДОК ── -->
+  <div class="messages-tabs">
+    <button class="messages-tab active" data-tab="dm">
+      💬 Сообщения
+      <span class="messages-tab-badge" id="dm-tab-badge" style="display:none"></span>
+    </button>
+    <button class="messages-tab" data-tab="groups">
+      👥 Группы
+    </button>
+  </div>
+
+  <!-- ── ЛИЧНЫЕ СООБЩЕНИЯ ── -->
+  <div id="messages-root">
+    <div class="messages-guest">
+      <div>
+        <div style="font-size:3rem;margin-bottom:12px;">💬</div>
+        <h3>Загрузка...</h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ГРУППЫ (скрыт по умолчанию) ── -->
+  <div id="groups-root" class="hidden"></div>
+</main>
+
+<div id="call-overlay" class="call-overlay"></div>
+
+<!-- Модалка нового диалога -->
+<div class="new-conv-modal" id="new-conv-modal">
+  <div class="new-conv-backdrop" id="new-conv-backdrop"></div>
+  <div class="new-conv-box">
+    <button class="new-conv-close" id="new-conv-close">×</button>
+    <h3>💬 Новый диалог</h3>
+    <input class="new-conv-input" id="new-conv-search" placeholder="Введите имя пользователя..." autocomplete="off">
+    <div class="new-conv-results" id="new-conv-results"></div>
+    <p class="new-conv-error" id="new-conv-error"></p>
+  </div>
+</div>
+
+<!-- Модалка новой группы (стилизация как у new-conv-modal) -->
+<div class="new-conv-modal" id="new-group-modal">
+  <div class="new-conv-backdrop" id="new-group-backdrop"></div>
+  <div class="new-conv-box">
+    <button class="new-conv-close" id="new-group-close">×</button>
+    <h3>👥 Создать группу</h3>
+    <input class="new-conv-input" id="new-group-name" placeholder="Название группы..." autocomplete="off">
+    <input class="new-conv-input" id="new-group-search" placeholder="Добавить участников..." autocomplete="off" style="margin-top: 8px;">
+    <div class="new-conv-results" id="new-group-results"></div>
+    <button class="conv-new-btn" id="new-group-create" style="width: 100%; margin-top: 8px; padding: 12px;">Создать группу</button>
+  </div>
+</div>
+
+<div id="footer-container"></div>
+
+<!-- ── СКРИПТЫ ── -->
+<script src="script.js" defer></script>
+<script src="messages.js" defer></script>
+<script src="groups.js" defer></script>
+
+<!-- ── ЛОГИКА ВКЛАДОК ── -->
+<script defer>
+  document.addEventListener('DOMContentLoaded', () => {
+    const tabs = document.querySelectorAll('.messages-tab');
+    const dmRoot = document.getElementById('messages-root');
+    const groupsRoot = document.getElementById('groups-root');
+
+    // Группы инициализируются лениво — только при первом открытии
+    let groupsInitialized = false;
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const target = tab.dataset.tab;
+
+        // Обновляем активную вкладку
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        if (target === 'dm') {
+          dmRoot.classList.remove('hidden');
+          groupsRoot.classList.add('hidden');
+          document.title = 'Сообщения — EgorNetwork';
+        } else if (target === 'groups') {
+          dmRoot.classList.add('hidden');
+          groupsRoot.classList.remove('hidden');
+          document.title = 'Группы — EgorNetwork';
+
+          // Ленивая инициализация групп
+          if (!groupsInitialized && typeof initGroups === 'function') {
+            initGroups();
+            groupsInitialized = true;
+          }
+        }
+      });
+    });
+
+    // Если открыли по ?with=uid — остаёмся во вкладке ЛС (по умолчанию)
+  });
+</script>
+</body>
+</html>

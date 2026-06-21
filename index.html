@@ -1,0 +1,1776 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Главная — EgorNetwork</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="images/icon.jpg" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(ellipse at top, rgba(109,213,255,0.08) 0%, transparent 50%),
+                     radial-gradient(ellipse at bottom, rgba(139,123,255,0.08) 0%, transparent 50%),
+                     linear-gradient(180deg, #060a14 0%, #0a0f1e 100%);
+    }
+
+    body {
+      background: var(--bg-gradient);
+      min-height: 100vh;
+      transition: background 2s ease;
+    }
+
+    .oc-wrap { display:flex; flex-direction:column; align-items:center; gap:0; padding:0; width:100%; }
+
+    .oc-window {
+      width:min(760px,100%);
+      background:rgba(6,10,20,.88);
+      border:1px solid rgba(109,213,255,.18);
+      border-radius:14px; overflow:hidden;
+      backdrop-filter:blur(14px) saturate(120%);
+      box-shadow:0 40px 90px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.03),0 0 50px rgba(109,213,255,.05);
+      font-family:'JetBrains Mono','Courier New',monospace;
+    }
+
+    .oc-titlebar {
+      display:flex; align-items:center; padding:11px 16px;
+      background:rgba(10,16,30,.95);
+      border-bottom:1px solid rgba(109,213,255,.1);
+      position:relative; user-select:none;
+    }
+    .oc-dots { display:flex; gap:7px; }
+    .oc-dot { width:12px; height:12px; border-radius:50%; }
+    .oc-dot-r { background:#ff5f57; cursor:pointer; transition:transform .15s ease; }
+    .oc-dot-r:hover { transform:scale(1.3); }
+    .oc-dot-y { background:#febc2e; }
+    .oc-dot-g { background:#28c840; }
+    .oc-bar-title { position:absolute; left:50%; transform:translateX(-50%); font-size:.72rem; color:rgba(168,179,204,.35); letter-spacing:.04em; white-space:nowrap; }
+    .oc-badge {
+      margin-left:auto; font-size:.67rem; color:rgba(109,213,255,.65);
+      background:rgba(109,213,255,.07); border:1px solid rgba(109,213,255,.14);
+      border-radius:5px; padding:2px 8px; letter-spacing:.03em;
+      cursor:pointer; transition:color .2s,border-color .2s,background .2s;
+    }
+    .oc-badge:hover { color:rgba(139,123,255,.9); border-color:rgba(139,123,255,.3); }
+    .oc-badge.unlocked { color:#ff6b6b; border-color:rgba(255,107,107,.35); background:rgba(255,107,107,.07); }
+
+    .oc-messages { padding:18px 0 8px; display:flex; flex-direction:column; }
+
+    .oc-user-row { display:flex; justify-content:flex-end; padding:6px 16px; }
+    .oc-user-bubble {
+      max-width:72%; background:rgba(109,213,255,.055);
+      border:1px solid rgba(109,213,255,.14);
+      border-radius:12px 12px 3px 12px; padding:10px 14px;
+    }
+    .oc-role-label { font-size:.62rem; color:rgba(109,213,255,.45); text-transform:uppercase; letter-spacing:.07em; margin-bottom:5px; }
+    .oc-user-text { font-size:.82rem; color:var(--text); line-height:1.5; }
+
+    .oc-asst-row { padding:8px 16px 4px; }
+    .oc-asst-head { display:flex; align-items:center; gap:7px; margin-bottom:9px; font-size:.68rem; }
+    .oc-diamond { color:var(--accent-2); font-size:.75rem; }
+    .oc-asst-name { color:rgba(139,123,255,.75); }
+    .oc-dot-sep { color:rgba(168,179,204,.2); }
+    .oc-asst-time { color:rgba(168,179,204,.28); }
+    .oc-asst-body { font-size:.82rem; color:var(--text); line-height:1.7; }
+
+    .oc-block {
+      background:rgba(0,0,0,.45);
+      border:1px solid rgba(109,213,255,.1);
+      border-left:2px solid rgba(109,213,255,.3);
+      border-radius:0 8px 8px 0; padding:12px 14px; margin:6px 0 10px;
+    }
+    .oc-block-head {
+      font-size:.62rem; color:rgba(168,179,204,.3); text-transform:uppercase;
+      letter-spacing:.1em; padding-bottom:8px; margin-bottom:8px;
+      border-bottom:1px solid rgba(255,255,255,.04);
+      display:flex; align-items:center; gap:6px;
+    }
+    .oc-block-icon { width:7px; height:7px; background:rgba(109,213,255,.4); border-radius:50%; animation:pulse-dot 2s ease-in-out infinite; }
+    @keyframes pulse-dot { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+    /* ── Soviet-style mechanical counter ── */
+    .oc-cd-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+    .oc-cd-cell { background:rgba(109,213,255,.04); border:1px solid rgba(109,213,255,.09); border-radius:7px; padding:6px 4px; text-align:center; display:flex; flex-direction:column; align-items:center; }
+    .oc-cd-num-wrap { display:inline-flex; gap:2px; justify-content:center; margin-bottom:4px; }
+    .digit-wheel {
+      width:0.78rem; height:1.55rem; overflow:hidden; position:relative;
+      background:linear-gradient(180deg, rgba(0,0,0,.65) 0%, rgba(12,18,30,.9) 50%, rgba(0,0,0,.65) 100%);
+      border-radius:3px; border:1px solid rgba(109,213,255,.12);
+      box-shadow:inset 0 2px 5px rgba(0,0,0,.7), 0 1px 0 rgba(255,255,255,.03);
+    }
+    .digit-wheel::after {
+      content:''; position:absolute; top:50%; left:0; right:0; height:1px;
+      background:rgba(0,0,0,.55); box-shadow:0 1px 0 rgba(255,255,255,.06);
+      z-index:2; pointer-events:none;
+    }
+    .digit-strip {
+      position:absolute; top:0; left:0; width:100%;
+      display:flex; flex-direction:column; align-items:center;
+      transition:transform 0.42s cubic-bezier(0.22, 0.85, 0.35, 1);
+      will-change:transform;
+    }
+    .digit-strip span {
+      display:block; height:1.55rem; line-height:1.55rem;
+      font-size:1.45rem; font-weight:700; color:var(--accent);
+      font-variant-numeric:tabular-nums; text-align:center;
+      text-shadow:0 0 9px rgba(109,213,255,.35);
+    }
+    .oc-cd-lbl { display:block; font-size:.57rem; color:rgba(168,179,204,.38); text-transform:uppercase; letter-spacing:.08em; margin-top:5px; }
+
+    .oc-prog-row { display:flex; align-items:center; gap:8px; font-size:.67rem; color:rgba(168,179,204,.35); margin-bottom:6px; }
+    .oc-prog-track { flex:1; height:3px; background:rgba(255,255,255,.05); border-radius:2px; overflow:hidden; }
+    .oc-prog-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent-2)); border-radius:2px; transition:width 1s ease; }
+    .oc-prog-accent { color:rgba(109,213,255,.6); }
+    .oc-meta { font-size:.62rem; color:rgba(168,179,204,.2); margin-top:2px; }
+
+    .oc-summer-msg { text-align:center; padding:18px 0 10px; font-size:1.1rem; color:#ffb347; text-shadow:0 0 20px rgba(255,179,71,.45); }
+
+    .oc-resp { margin-top:8px; font-size:.82rem; }
+    .oc-resp-arrow { color:var(--accent); }
+
+    .oc-divider { display:flex; align-items:center; gap:10px; padding:10px 16px; font-size:.62rem; color:rgba(168,179,204,.2); letter-spacing:.06em; }
+    .oc-divider::before,.oc-divider::after { content:''; flex:1; height:1px; background:rgba(255,255,255,.04); }
+
+    .oc-inputbar { border-top:1px solid rgba(109,213,255,.08); padding:10px 14px; display:flex; align-items:center; gap:8px; background:rgba(0,0,0,.35); }
+    .oc-inputbox { flex:1; display:flex; align-items:center; background:rgba(255,255,255,.025); border:1px solid rgba(109,213,255,.07); border-radius:7px; padding:7px 11px; font-size:.77rem; color:rgba(168,179,204,.28); font-family:'JetBrains Mono',monospace; gap:6px; }
+    .oc-inputbox-prefix { color:rgba(109,213,255,.3); }
+    .oc-real-input { flex:1; background:transparent; border:none; outline:none; color:var(--text); font-family:'JetBrains Mono',monospace; font-size:.77rem; caret-color:var(--accent); min-width:0; }
+    .oc-real-input::placeholder { color:rgba(168,179,204,.28); }
+    .oc-real-input:disabled { opacity:.5; cursor:not-allowed; }
+    .oc-caret { display:inline-block; width:7px; height:13px; background:rgba(109,213,255,.45); animation:cur-blink .9s step-end infinite; vertical-align:middle; border-radius:1px; flex-shrink:0; }
+    .oc-key { font-size:.62rem; color:rgba(168,179,204,.25); background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); border-radius:4px; padding:3px 7px; font-family:inherit; white-space:nowrap; }
+
+    .oc-statusbar { display:flex; align-items:center; justify-content:space-between; padding:5px 14px; font-size:.6rem; color:rgba(168,179,204,.2); background:rgba(0,0,0,.2); border-top:1px solid rgba(255,255,255,.025); font-family:'JetBrains Mono',monospace; letter-spacing:.03em; }
+    .oc-sb-dot { width:6px; height:6px; background:#28c840; border-radius:50%; display:inline-block; margin-right:5px; box-shadow:0 0 6px rgba(40,200,64,.5); }
+
+    .oc-injected { animation:oc-fadein .22s ease forwards; }
+    @keyframes oc-fadein { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+
+    .oc-toast {
+      position:fixed; bottom:32px; left:50%;
+      transform:translateX(-50%) translateY(16px);
+      background:rgba(10,16,30,.95);
+      border:1px solid rgba(109,213,255,.2); border-radius:10px;
+      padding:10px 18px; font-family:'JetBrains Mono',monospace;
+      font-size:.78rem; color:var(--text);
+      box-shadow:0 16px 40px rgba(0,0,0,.5),0 0 20px rgba(109,213,255,.08);
+      opacity:0; pointer-events:none;
+      transition:opacity .25s ease,transform .25s ease;
+      white-space:nowrap; z-index:9999;
+    }
+    .oc-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    .oc-toast-icon { color:var(--accent); margin-right:8px; }
+
+    /* Achievement notification */
+    .achievement-popup {
+      position:fixed; top:32px; right:32px;
+      background:rgba(10,16,30,.98);
+      border:1px solid rgba(139,123,255,.4);
+      border-radius:12px; padding:16px 20px;
+      font-family:'JetBrains Mono',monospace;
+      box-shadow:0 20px 50px rgba(0,0,0,.7), 0 0 30px rgba(139,123,255,.2);
+      transform:translateX(400px);
+      transition:transform .5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      z-index:10000;
+      max-width:320px;
+    }
+    .achievement-popup.show { transform:translateX(0); }
+    .achievement-icon { font-size:1.5rem; margin-bottom:8px; }
+    .achievement-title { color:rgba(139,123,255,.9); font-size:.85rem; font-weight:600; margin-bottom:4px; }
+    .achievement-desc { color:rgba(168,179,204,.6); font-size:.72rem; line-height:1.4; }
+
+    @media (max-width:540px) {
+      .digit-wheel { width:0.68rem; height:1.35rem; }
+      .digit-strip span { height:1.35rem; line-height:1.35rem; font-size:1.25rem; }
+      .oc-cd-cell { padding:5px 3px; }
+      .oc-user-bubble { max-width:88%; }
+      .achievement-popup { right:16px; max-width:calc(100vw - 32px); }
+    }
+
+    /* ── HAL-9000 modal ── */
+    .hal-modal {
+      position:fixed; inset:0; z-index:9998;
+      background:rgba(0,0,0,.82);
+      backdrop-filter:blur(8px);
+      display:none; align-items:center; justify-content:center;
+      animation:hal-fadein .3s ease;
+    }
+    .hal-modal.show { display:flex; }
+    @keyframes hal-fadein { from{opacity:0} to{opacity:1} }
+
+    .hal-window {
+      width:min(680px,94vw); height:min(520px,88vh);
+      background:rgba(6,10,20,.95);
+      border:1px solid rgba(255,60,60,.35);
+      border-radius:14px; overflow:hidden;
+      box-shadow:0 0 80px rgba(255,40,40,.25), 0 0 0 1px rgba(255,255,255,.03);
+      display:flex; flex-direction:column;
+      font-family:'JetBrains Mono',monospace;
+    }
+    .hal-titlebar {
+      display:flex; align-items:center; padding:10px 14px;
+      background:rgba(20,5,5,.9);
+      border-bottom:1px solid rgba(255,60,60,.2);
+      user-select:none;
+    }
+    .hal-dots { display:flex; gap:6px; }
+    .hal-dot { width:11px; height:11px; border-radius:50%; background:#ff3838; cursor:pointer; transition:transform .15s; box-shadow:0 0 8px rgba(255,56,56,.6); }
+    .hal-dot:hover { transform:scale(1.3); }
+    .hal-dot-dim { background:rgba(255,60,60,.25); box-shadow:none; cursor:default; }
+    .hal-bar-title { flex:1; text-align:center; font-size:.7rem; color:rgba(255,120,120,.5); letter-spacing:.05em; }
+    .hal-status { font-size:.65rem; color:#ff6b6b; letter-spacing:.05em; animation:hal-blink 1.2s infinite; }
+    @keyframes hal-blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    .hal-stage { flex:1; position:relative; background:#000; overflow:hidden; cursor:none; }
+    #hal-canvas { display:block; width:100%; height:100%; }
+
+    .hal-hud {
+      position:absolute; top:10px; left:10px; right:10px;
+      display:flex; justify-content:space-between;
+      pointer-events:none; font-size:.68rem;
+    }
+    .hal-hud-item {
+      background:rgba(0,0,0,.55); border:1px solid rgba(255,60,60,.2);
+      padding:5px 10px; border-radius:5px;
+      display:flex; flex-direction:column; align-items:center; gap:2px;
+    }
+    .hal-hud-lbl { color:rgba(255,120,120,.45); font-size:.55rem; letter-spacing:.08em; }
+    .hal-hud-val { color:#ff8585; font-variant-numeric:tabular-nums; font-size:.85rem; }
+
+    .hal-warn {
+      position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
+      font-size:.72rem; color:#ff4444; letter-spacing:.12em;
+      text-shadow:0 0 10px rgba(255,68,68,.8);
+      pointer-events:none; opacity:0; transition:opacity .15s;
+    }
+    .hal-warn.show { opacity:1; animation:hal-warn-blink .3s infinite; }
+    @keyframes hal-warn-blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .hal-gameover {
+      position:absolute; inset:0;
+      display:none; align-items:center; justify-content:center;
+      flex-direction:column; gap:14px;
+      background:rgba(0,0,0,.88);
+      animation:hal-fadein .4s ease;
+    }
+    .hal-gameover.show { display:flex; }
+    .hal-go-title { font-size:1.4rem; color:#ff4444; letter-spacing:.12em; text-shadow:0 0 20px rgba(255,68,68,.5); }
+    .hal-go-quote { color:rgba(255,180,180,.7); font-style:italic; font-size:.85rem; text-align:center; max-width:80%; }
+    .hal-go-stats { color:rgba(255,120,120,.5); font-size:.72rem; letter-spacing:.04em; }
+    .hal-go-btn {
+      margin-top:6px; padding:8px 22px;
+      background:transparent; border:1px solid rgba(255,60,60,.4);
+      color:#ff8585; font-family:inherit; font-size:.75rem;
+      letter-spacing:.08em; border-radius:5px; cursor:pointer;
+      transition:all .2s;
+    }
+    .hal-go-btn:hover { background:rgba(255,60,60,.1); border-color:#ff6b6b; color:#ffaeae; box-shadow:0 0 20px rgba(255,60,60,.2); }
+
+    @media (max-width:540px) {
+      .hal-hud { font-size:.6rem; }
+      .hal-hud-val { font-size:.75rem; }
+      .hal-go-title { font-size:1.1rem; }
+    }
+  </style>
+</head>
+<body class="font-manrope">
+<div class="page-blur"></div>
+<div id="header-container"></div>
+<div class="dust">
+  <span></span><span></span><span></span><span></span><span></span>
+  <span></span><span></span><span></span><span></span><span></span>
+  <span></span><span></span><span></span><span></span><span></span>
+</div>
+
+<main class="container">
+  <div class="oc-wrap fade" id="hero">
+    <div class="oc-window">
+
+      <div class="oc-titlebar">
+        <div class="oc-dots">
+          <span class="oc-dot oc-dot-r" id="oc-dot-close" title="закрыть"></span>
+          <span class="oc-dot oc-dot-y"></span>
+          <span class="oc-dot oc-dot-g"></span>
+        </div>
+        <span class="oc-bar-title">opencode · /projects/EgorNetwork</span>
+        <span class="oc-badge" id="oc-model-badge" title="нажми 5 раз...">Exor4ik_16.4.24-1400b</span>
+      </div>
+
+      <div class="oc-messages" id="oc-messages-list">
+        <div class="oc-user-row">
+          <div class="oc-user-bubble">
+            <div class="oc-role-label">user</div>
+            <div class="oc-user-text">Эй, когда уже лето?</div>
+          </div>
+        </div>
+
+        <div class="oc-asst-row">
+          <div class="oc-asst-head">
+            <span class="oc-diamond">◆</span>
+            <span class="oc-asst-name">Exor4ik</span>
+            <span class="oc-dot-sep">·</span>
+            <span class="oc-asst-time" id="oc-ts">сейчас</span>
+          </div>
+          <div class="oc-asst-body">
+            <div class="oc-block">
+              <div class="oc-block-head">
+                <span class="oc-block-icon"></span>
+                running · countdown_to_summer()
+              </div>
+              <div id="oc-countdown"></div>
+            </div>
+            <div class="oc-resp" id="oc-resp-text"></div>
+          </div>
+        </div>
+
+        <div class="oc-divider">сегодня</div>
+
+        <div class="oc-user-row">
+          <div class="oc-user-bubble">
+            <div class="oc-role-label">user</div>
+            <div class="oc-user-text">Кстати, какие функции у сайта EgorNetwork?</div>
+          </div>
+        </div>
+
+        <div class="oc-asst-row" style="padding-bottom:10px;">
+          <div class="oc-asst-head">
+            <span class="oc-diamond">◆</span>
+            <span class="oc-asst-name">Exor4ik</span>
+          </div>
+          <div class="oc-asst-body">
+            Функции сайта EgorNetwork — блог и форум, где мы делаем игры. Наш партнёр - "Воздухан Индастрис"<br>
+            <span style="color:var(--muted)">Скачать их можно на странице загрузок. В архиве хранится история разделов и проектов — в том числе тех, что злючный Егорчик закрыл, потому что делать их дальше было лень.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="oc-inputbar">
+        <div class="oc-inputbox">
+          <span class="oc-inputbox-prefix">›</span>
+          <input class="oc-real-input" id="oc-cmd-input" type="text"
+            placeholder="Введите команду... (попробуйте help)"
+            autocomplete="off" spellcheck="false">
+        </div>
+        <span class="oc-key">⏎ enter</span>
+        <span class="oc-key">⌘K</span>
+      </div>
+
+      <div class="oc-statusbar">
+        <span><span class="oc-sb-dot"></span>connected</span>
+        <span id="oc-sb-date">—</span>
+        <span>tokens used: 0</span>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<div class="oc-toast" id="oc-toast">
+  <span class="oc-toast-icon">◆</span><span id="oc-toast-msg"></span>
+</div>
+
+<!-- Achievement popup -->
+<div class="achievement-popup" id="achievement-popup">
+  <div class="achievement-icon">🏆</div>
+  <div class="achievement-title" id="achievement-title">Achievement Unlocked!</div>
+  <div class="achievement-desc" id="achievement-desc">Description</div>
+</div>
+
+<div id="footer-container"></div>
+
+<!-- HAL-9000 modal -->
+<div class="hal-modal" id="hal-modal">
+  <div class="hal-window">
+    <div class="hal-titlebar">
+      <div class="hal-dots">
+        <span class="hal-dot" id="hal-close" title="disconnect"></span>
+        <span class="hal-dot hal-dot-dim"></span>
+        <span class="hal-dot hal-dot-dim"></span>
+      </div>
+      <span class="hal-bar-title">HAL-9000 · override protocol</span>
+      <span class="hal-status" id="hal-status">● ACTIVE</span>
+    </div>
+    <div class="hal-stage">
+      <canvas id="hal-canvas"></canvas>
+      <div class="hal-hud">
+        <div class="hal-hud-item"><span class="hal-hud-lbl">SURVIVAL</span><span class="hal-hud-val" id="hal-time">0.0s</span></div>
+        <div class="hal-hud-item"><span class="hal-hud-lbl">DODGED</span><span class="hal-hud-val" id="hal-dodged">0</span></div>
+        <div class="hal-hud-item"><span class="hal-hud-lbl">THREAT</span><span class="hal-hud-val" id="hal-threat">LOW</span></div>
+      </div>
+      <div class="hal-warn" id="hal-warn">⚠ SNIPER LOCK</div>
+      <div class="hal-gameover" id="hal-gameover">
+        <div class="hal-go-title">CONNECTION TERMINATED</div>
+        <div class="hal-go-quote" id="hal-go-quote">"I'm sorry, Dave. I'm afraid I can't do that."</div>
+        <div class="hal-go-stats" id="hal-go-stats"></div>
+        <button class="hal-go-btn" id="hal-restart">reconnect</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="script.js" defer></script>
+
+<script>
+(function () {
+  'use strict';
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function getDaysLabel(n) {
+    if (n % 100 >= 11 && n % 100 <= 14) return 'дней';
+    var r = n % 10;
+    if (r === 1) return 'день';
+    if (r >= 2 && r <= 4) return 'дня';
+    return 'дней';
+  }
+
+  /* ── Achievements system ── */
+    /* ── Achievements system (Firebase + localStorage fallback) ── */
+  // Emoji only
+  var ACHIEVEMENTS = {
+    first_command:    { title: 'Hello, World!',               desc: 'Первая команда',                    icon: '👋' },
+    hal_encounter:    { title: "I'm Afraid, Dave",            desc: 'HAL активирован',                   icon: '🔴' },
+    matrix:           { title: 'Red Pill',                    desc: 'Матрица',                           icon: '💊' },
+    sudo_fail:        { title: 'Permission Denied',           desc: 'Попытка sudo',                      icon: '🔒' },
+    calculator:       { title: 'Human Calculator',            desc: 'Калькулятор',                       icon: '🧮' },
+    quote_master:     { title: 'Wise Words',                  desc: '5 разных цитат',                    icon: '📚' },
+    time_lord:        { title: 'Time Lord',                   desc: 'лето --срочно',                     icon: '⏰' },
+    profile_complete: { title: 'Identity',                    desc: 'Bio заполнено',                     icon: '📝' },
+    avatar_set:       { title: 'Face Reveal',                 desc: 'Аватар установлен',                 icon: '🖼️' },
+    social_linked:    { title: 'Network Node',                desc: 'Соцсеть добавлена',                 icon: '🔗' },
+    hal_survivor:     { title: 'Survivor',                    desc: '30с против HAL',                    icon: '🛡️' },
+    hal_legend:       { title: 'Legendary',                   desc: '60с против HAL',                    icon: '👑' },
+    whoami:           { title: 'WhoAmI',                      desc: 'Кто я?',                            icon: '❓' },
+    login_yourself:   { title: 'EgorNetwork.Login("you");',   desc: 'Авторизоваться снова',              icon: '🔄' },
+    truckers:         { title: 'Где мой DVD диск?',           desc: 'Попробуйте запустить игру',         icon: '🚚' },
+    wargames:         { title: 'Термоядерная война?',         desc: 'Хочешь ли ты поиграть в эту игру?', icon: '💣' },
+    help_all:         { title: 'I can\'t help to all people', desc: 'Мне не хватит сил помочь всем.',    icon: '🆘' },
+    nothing_free:     { title: 'Nothing is Free',             desc: 'Ничто не является бесплатным',      icon: '💸' }
+  };
+
+  // Локальный кэш полученных ачивок (чтобы не дёргать Firestore каждый раз)
+  var _localAchievements = null;
+
+  function getLocalAchievements() {
+    if (_localAchievements) return _localAchievements;
+    try {
+      _localAchievements = JSON.parse(localStorage.getItem('egornet_achievements') || '[]');
+    } catch(e) { _localAchievements = []; }
+    return _localAchievements;
+  }
+
+  async function getUnlocked() {
+    // Если авторизован — читаем из Firestore
+    if (window.auth && window.auth.currentUser && window.db) {
+      try {
+        var uid = window.auth.currentUser.uid;
+        var doc = await window.db.collection('users').doc(uid).get();
+        if (doc.exists) {
+          var data = doc.data();
+          var arr = data.achievements || [];
+          // Синхронизируем локальный кэш
+          _localAchievements = arr;
+          localStorage.setItem('egornet_achievements', JSON.stringify(arr));
+          return arr;
+        }
+      } catch(e) { console.warn('Achievement fetch failed, using local:', e); }
+    }
+    return getLocalAchievements();
+  }
+
+  async function unlockAchievement(key) {
+    if (!ACHIEVEMENTS[key]) return;
+    var unlocked = await getUnlocked();
+    if (unlocked.indexOf(key) !== -1) return; // уже есть
+
+    unlocked.push(key);
+    _localAchievements = unlocked;
+    localStorage.setItem('egornet_achievements', JSON.stringify(unlocked));
+    showAchievement(ACHIEVEMENTS[key]);
+
+    // Achievement sound playback
+    var audio = new Audio('/sound/achievement_unlocked.wav');
+    audio.volume = 0.22;
+    audio.play().catch(e => console.warn('Audio play failed:', e));
+
+    // Сохраняем в Firestore если авторизован
+    if (window.auth && window.auth.currentUser && window.db) {
+      try {
+        var uid = window.auth.currentUser.uid;
+        await window.db.collection('users').doc(uid).update({
+          achievements: unlocked
+        });
+      } catch(e) { console.warn('Failed to save achievement to Firestore:', e); }
+    }
+  }
+
+  function showAchievement(ach) {
+    var popup = document.getElementById('achievement-popup');
+    var title = document.getElementById('achievement-title');
+    var desc = document.getElementById('achievement-desc');
+    var icon = popup ? popup.querySelector('.achievement-icon') : null;
+    if (!popup || !title || !desc) return;
+    icon.textContent = ach.icon;
+    title.textContent = ach.title;
+    desc.textContent = ach.desc;
+    popup.classList.add('show');
+    setTimeout(function() { popup.classList.remove('show'); }, 4000);
+  }
+
+  /* ── Dynamic theme (time of day) ── */
+  function updateTimeTheme() {
+    var hour = new Date().getHours();
+    var root = document.documentElement;
+    var gradient;
+    if (hour >= 5 && hour < 8) {
+      // Dawn
+      gradient = 'radial-gradient(ellipse at top, rgba(255,179,71,0.12) 0%, transparent 50%), radial-gradient(ellipse at bottom, rgba(255,107,107,0.08) 0%, transparent 50%), linear-gradient(180deg, #0a0f1e 0%, #1a0f0a 100%)';
+    } else if (hour >= 8 && hour < 18) {
+      // Day
+      gradient = 'radial-gradient(ellipse at top, rgba(109,213,255,0.12) 0%, transparent 50%), radial-gradient(ellipse at bottom, rgba(139,123,255,0.08) 0%, transparent 50%), linear-gradient(180deg, #060a14 0%, #0a0f1e 100%)';
+    } else if (hour >= 18 && hour < 21) {
+      // Evening
+      gradient = 'radial-gradient(ellipse at top, rgba(255,107,107,0.1) 0%, transparent 50%), radial-gradient(ellipse at bottom, rgba(139,123,255,0.12) 0%, transparent 50%), linear-gradient(180deg, #0a0f1e 0%, #0f0a1a 100%)';
+    } else {
+      // Night
+      gradient = 'radial-gradient(ellipse at top, rgba(139,123,255,0.08) 0%, transparent 50%), radial-gradient(ellipse at bottom, rgba(109,213,255,0.05) 0%, transparent 50%), linear-gradient(180deg, #000000 0%, #060a14 100%)';
+    }
+    root.style.setProperty('--bg-gradient', gradient);
+    document.body.style.background = gradient;
+  }
+  updateTimeTheme();
+  setInterval(updateTimeTheme, 60000);
+
+  /* ── Quotes database ── */
+  var QUOTES = [
+    { text: 'Any fool can write code that a computer can understand. Good programmers write code that humans can understand.', author: 'Martin Fowler' },
+    { text: 'The best error message is the one that never shows up.', author: 'Thomas Fuchs' },
+    { text: 'Code is like humor. When you have to explain it, its bad.', author: 'Cory House' },
+    { text: 'First, solve the problem. Then, write the code.', author: 'John Johnson' },
+    { text: 'Experience is the name everyone gives to their mistakes.', author: 'Oscar Wilde' },
+    { text: 'In order to be irreplaceable, one must always be different.', author: 'Coco Chanel' },
+    { text: 'Java is to JavaScript what car is to Carpet.', author: 'Chris Heilmann' },
+    { text: 'Knowledge is power.', author: 'Francis Bacon' },
+    { text: 'Simplicity is the soul of efficiency.', author: 'Austin Freeman' },
+    { text: 'Make it work, make it right, make it fast.', author: 'Kent Beck' },
+    { text: 'The only way to learn a new programming language is by writing programs in it.', author: 'Dennis Ritchie' },
+    { text: 'Sometimes it pays to stay in bed on Monday, rather than spending the rest of the week debugging Mondays code.', author: 'Dan Salomon' },
+    { text: 'Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away.', author: 'Antoine de Saint-Exupéry' },
+    { text: 'Before software can be reusable it first has to be usable.', author: 'Ralph Johnson' },
+    { text: 'The most disastrous thing that you can ever learn is your first programming language.', author: 'Alan Kay' },
+    { text: 'Talk is cheap. Show me the code.', author: 'Linus Torvalds' },
+    { text: 'Programs must be written for people to read, and only incidentally for machines to execute.', author: 'Harold Abelson' },
+    { text: 'Truth can only be found in one place: the code.', author: 'Robert C. Martin' },
+    { text: 'Give a man a program, frustrate him for a day. Teach a man to program, frustrate him for a lifetime.', author: 'Muhammad Waseem' },
+    { text: 'Youve baked a really lovely cake, but then youve used dog shit for frosting.', author: 'Steve Jobs' },
+  ];
+
+  var quoteHistory = [];
+
+  /* ── Calculator ── */
+  function safeEval(expr) {
+    // Only allow numbers, operators, parentheses, spaces
+    if (!/^[\d\s+\-*/().]+$/.test(expr)) {
+      return { error: 'Недопустимые символы' };
+    }
+    try {
+      var result = Function('"use strict"; return (' + expr + ')')();
+      if (typeof result !== 'number' || !isFinite(result)) {
+        return { error: 'Некорректный результат' };
+      }
+      return { result: result };
+    } catch(e) {
+      return { error: 'Ошибка вычисления' };
+    }
+  }
+
+  /* ── Weather (random) ── */
+  function getWeather() {
+    var conditions = [
+      { icon: '☀', text: 'Ясно', temp: Math.floor(15 + Math.random() * 15) },
+      { icon: '⛅', text: 'Переменная облачность', temp: Math.floor(10 + Math.random() * 15) },
+      { icon: '☁', text: 'Облачно', temp: Math.floor(8 + Math.random() * 12) },
+      { icon: '🌧', text: 'Дождь', temp: Math.floor(5 + Math.random() * 10) },
+      { icon: '⛈', text: 'Гроза', temp: Math.floor(10 + Math.random() * 8) },
+      { icon: '❄', text: 'Снег', temp: Math.floor(-10 + Math.random() * 5) },
+    ];
+    return conditions[Math.floor(Math.random() * conditions.length)];
+  }
+
+  /* ── mechanical wheels engine ── */
+  var wheelEls = { d:[], h:[], m:[], s:[] };
+  var wheelsReady = false;
+
+  function createWheelHTML(idPrefix, numDigits) {
+    const digits = Array.from({length:10},(_,i)=>`<span>${i}</span>`).join('');
+    let html = '<div class="oc-cd-num-wrap">';
+    for(let i=0; i<numDigits; i++) {
+      html += `<div class="digit-wheel" id="${idPrefix}-${i}"><div class="digit-strip">${digits}</div></div>`;
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function setWheels(wArr, val, instant) {
+    val = Math.max(0, val);
+    var str = String(val).padStart(wArr.length, '0');
+    wArr.forEach(function(strip, i) {
+      var digit = parseInt(str[i], 10);
+      var offset = -digit * 10;
+      if (instant) {
+        strip.style.transition = 'none';
+        strip.style.transform = 'translateY(' + offset + '%)';
+        void strip.offsetWidth;
+        strip.style.transition = '';
+      } else {
+        strip.style.transform = 'translateY(' + offset + '%)';
+      }
+    });
+  }
+
+  var cdInit = false;
+  function tick() {
+    var now = new Date();
+    var year = now.getFullYear();
+    var summerStart = new Date(year, 5, 1);
+    var summerEnd   = new Date(year, 8, 1);
+    var isSummer = now >= summerStart && now < summerEnd;
+
+    if (isSummer) {
+      if (!cdInit) { renderSummer(); cdInit = true; }
+      return;
+    }
+    if (now >= summerEnd) summerStart = new Date(year + 1, 5, 1);
+
+    var diff    = summerStart - now;
+    var days    = Math.floor(diff / 86400000);
+    var hours   = Math.floor((diff % 86400000) / 3600000);
+    var minutes = Math.floor((diff % 3600000) / 60000);
+    var seconds = Math.floor((diff % 60000) / 1000);
+    var springStart = new Date(now >= summerEnd ? year + 1 : year, 2, 1);
+    var progress = Math.min(100, Math.max(0, (now - springStart) / (summerStart - springStart) * 100)).toFixed(1);
+
+    if (!cdInit) {
+      renderCountdown(days, hours, minutes, seconds, progress, summerStart.getFullYear());
+      renderResponse(days);
+      renderMeta(now);
+      cdInit = true;
+    } else {
+      if (wheelsReady) {
+        setWheels(wheelEls.d, days);
+        setWheels(wheelEls.h, hours);
+        setWheels(wheelEls.m, minutes);
+        setWheels(wheelEls.s, seconds);
+      }
+      var fill = document.getElementById('cd-fill');
+      if (fill) fill.style.width = progress + '%';
+      var meta = document.getElementById('cd-meta');
+      if (meta) meta.textContent = 'до 1 июня ' + summerStart.getFullYear() + ' · весна ' + parseFloat(progress).toFixed(0) + '% позади';
+    }
+  }
+
+  function renderCountdown(d, h, m, s, progress, yr) {
+    document.getElementById('oc-countdown').innerHTML =
+      '<div class="oc-cd-grid">' +
+      '<div class="oc-cd-cell">' + createWheelHTML('cd-d', 3) + '<span class="oc-cd-lbl">дней</span></div>' +
+      '<div class="oc-cd-cell">' + createWheelHTML('cd-h', 2) + '<span class="oc-cd-lbl">часов</span></div>' +
+      '<div class="oc-cd-cell">' + createWheelHTML('cd-m', 2) + '<span class="oc-cd-lbl">минут</span></div>' +
+      '<div class="oc-cd-cell">' + createWheelHTML('cd-s', 2) + '<span class="oc-cd-lbl">секунд</span></div>' +
+      '</div>' +
+      '<div class="oc-prog-row"><span>март</span><div class="oc-prog-track"><div class="oc-prog-fill" id="cd-fill" style="width:' + progress + '%"></div></div><span class="oc-prog-accent">лето</span></div>' +
+      '<div class="oc-meta" id="cd-meta">до 1 июня ' + yr + ' · весна ' + parseFloat(progress).toFixed(0) + '% позади</div>';
+
+    ['d','h','m','s'].forEach(k => {
+      const count = k === 'd' ? 3 : 2;
+      wheelEls[k] = [];
+      for(let i=0; i<count; i++) {
+        wheelEls[k].push(document.getElementById(`cd-${k}-${i}`).querySelector('.digit-strip'));
+      }
+    });
+    wheelsReady = true;
+
+    setWheels(wheelEls.d, d, true);
+    setWheels(wheelEls.h, h, true);
+    setWheels(wheelEls.m, m, true);
+    setWheels(wheelEls.s, s, true);
+  }
+
+  function renderResponse(days) {
+    var msg;
+    if (days === 0)      msg = 'Завтра уже лето! Осталось меньше суток — держитесь!';
+    else if (days <= 3)  msg = 'Почти! До лета <strong style="color:var(--accent)">' + days + '</strong> ' + getDaysLabel(days) + '.';
+    else if (days <= 14) msg = 'Совсем скоро. Осталось <strong style="color:var(--accent)">' + days + '</strong> ' + getDaysLabel(days) + '.';
+    else                 msg = 'До лета <strong style="color:var(--text)">' + days + '</strong> ' + getDaysLabel(days) + '. Терпение — добродетель программиста.';
+    document.getElementById('oc-resp-text').innerHTML = '<span class="oc-resp-arrow">›</span>&nbsp;' + msg;
+  }
+
+  function renderSummer() {
+    document.getElementById('oc-countdown').innerHTML = '<div class="oc-summer-msg">&#9728; Лето уже здесь!</div>';
+    document.getElementById('oc-resp-text').innerHTML = '<span class="oc-resp-arrow">›</span>&nbsp;Оно наступило. Наслаждайтесь ☀';
+  }
+
+  function renderMeta(now) {
+    var ts = document.getElementById('oc-ts');
+    if (ts) ts.textContent = pad(now.getHours()) + ':' + pad(now.getMinutes());
+    updateSbDate();
+  }
+
+  function updateSbDate() {
+    var sb = document.getElementById('oc-sb-date');
+    if (!sb) return;
+    var d = new Date();
+    sb.textContent = pad(d.getDate()) + '.' + pad(d.getMonth()+1) + '.' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  tick();
+  setInterval(tick, 1000);
+  setInterval(updateSbDate, 60000);
+
+  /* ── terminal engine ── */
+  var input = document.getElementById('oc-cmd-input');
+  var msgs  = document.getElementById('oc-messages-list');
+  var injected = [];
+  var firstCommandDone = false;
+
+  var CMDS = {
+    'help': { out: [
+      '<span style="color:var(--accent)">available commands:</span>',
+      '&nbsp;&nbsp;ping &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— проверить соединение',
+      '&nbsp;&nbsp;whoami &nbsp;&nbsp;&nbsp;&nbsp;— кто ты такой',
+      '&nbsp;&nbsp;ls &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— список файлов',
+      '&nbsp;&nbsp;лето [--срочно] &nbsp;— справка по лету / ускорить',
+      '&nbsp;&nbsp;sudo &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— попробуй',
+      '&nbsp;&nbsp;git status &nbsp;— состояние репо',
+      '&nbsp;&nbsp;npm install &nbsp;— установить всё',
+      '&nbsp;&nbsp;егор &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— справка по Егору',
+      '&nbsp;&nbsp;date &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— текущая дата',
+      '&nbsp;&nbsp;clear &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— очистить историю',
+      '',
+      '<span style="color:var(--accent-2)">bonus commands:</span>',
+      '&nbsp;&nbsp;quote &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— случайная цитата',
+      '&nbsp;&nbsp;calc [expr] &nbsp;— калькулятор (calc 2+2*3)',
+      '&nbsp;&nbsp;weather &nbsp;&nbsp;&nbsp;— текущая погода',
+      '&nbsp;&nbsp;matrix &nbsp;&nbsp;&nbsp;— красная таблетка',
+    ]},
+    'help --all': { out: ['I can\'t help to all people. Sorry.'] },
+    'wargames': { out: [
+      '<span style="color:var(--accent)">GREETINGS PROFESSOR FALKEN.</span>',
+      '',
+      'SHALL WE PLAY A GAME?',
+      '',
+      '&gt; <span style="color:rgba(168,179,204,.5)">global thermonuclear war</span>',
+      '',
+      '<span style="color:#ff6b6b">WOULDN\'T YOU PREFER A GOOD GAME OF CHESS?</span>',
+    ]},
+    'joshua': { out: ['see: wargames'] },
+    'ping':  { out: ['PONG &nbsp;·&nbsp; 3ms &nbsp;·&nbsp; EgorNetwork is up'] },
+    'pong':  { out: ['PING &nbsp;·&nbsp; 3ms &nbsp;·&nbsp; ладно, ладно'] },
+    'whoami':{ out: ['anonymous &nbsp;·&nbsp; EgorNetwork/guest &nbsp;·&nbsp; no sudo rights'] },
+    'лето':  { out: [
+      '<span style="color:var(--accent)">summer(1)</span> — сезон тепла и свободы',
+      '',
+      'SYNOPSIS: &nbsp;лето [--срочно] [--уже-пора]',
+      'DESCRIPTION: наступает 1 июня. отсчёт уже идёт.',
+      'EXIT CODE: &nbsp;0 (с нетерпением)',
+    ]},
+    'summer': { out: ['see: лето'] },
+    'sudo': { out: [
+      '[sudo] пароль для guest:',
+      '<span style="color:#ff6b6b">Permission denied — вы не Егор.</span>',
+    ]},
+    'sudo rm -rf /': { out: [
+      '<span style="color:#ff6b6b">Permission denied — и слава богу.</span>',
+      '<span style="color:rgba(168,179,204,.4)">rm: cannot remove \'/\': Operation not permitted</span>',
+    ]},
+    'ls': { out: [
+      '<span style="color:rgba(109,213,255,.7)">drwxr-xr-x</span>&nbsp; games/',
+      '<span style="color:rgba(109,213,255,.7)">drwxr-xr-x</span>&nbsp; unity/',
+      '<span style="color:rgba(109,213,255,.7)">drwxr-xr-x</span>&nbsp; archive/',
+      '<span style="color:rgba(109,213,255,.7)">drwxr-xr-x</span>&nbsp; blog/',
+      '<span style="color:rgba(109,213,255,.7)">drwxr-xr-x</span>&nbsp; ./дальнобойщики2',
+      '<span style="color:rgba(109,213,255,.4)">-rw-r--r--</span>&nbsp; dreams_about_summer.txt',
+      '<span style="color:rgba(109,213,255,.4)">-rw-r--r--</span>&nbsp; TODO.md &nbsp;<span style="color:rgba(168,179,204,.3)">(1448 строк)</span>',
+      '<span style="color:rgba(109,213,255,.4)">-rw-------</span>&nbsp; secrets.enc &nbsp;<span style="color:rgba(168,179,204,.3)">[ACCESS DENIED]</span>',
+    ]},
+    'cat secrets.enc': { out: [
+      '<span style="color:#ff6b6b">cat: secrets.enc: Permission denied</span>',
+      '<span style="color:rgba(168,179,204,.3)">подсказка: попробуй sudo cat secrets.enc</span>',
+    ]},
+    'sudo cat secrets.enc': { out: [
+      '[sudo] пароль для guest:',
+      '<span style="color:#ff6b6b">Permission denied — вы всё ещё не Егор.</span>',
+    ]},
+    'git status': { out: [
+      'On branch main',
+      'Your branch is ahead of origin/main by 47 commits.',
+      '',
+      'Changes not staged for commit:',
+      '&nbsp;&nbsp;<span style="color:#ff6b6b">modified: &nbsp; motivation.js</span>',
+      '&nbsp;&nbsp;<span style="color:#ff6b6b">deleted: &nbsp;&nbsp; free-time.md</span>',
+      '',
+      'Untracked files:',
+      '&nbsp;&nbsp;<span style="color:rgba(168,179,204,.5)">summer_plans.txt</span>',
+      '',
+      '<span style="color:rgba(168,179,204,.4)">no changes added to commit (и это нормально)</span>',
+    ]},
+    'git push': { out: ['<span style="color:#ff6b6b">error:</span> failed to push some refs','hint: лето не запушить'] },
+    'npm install': { out: [
+      'npm warn deprecated procrastination@∞',
+      '',
+      'added 1337 packages in 4.2s',
+      '',
+      '<span style="color:rgba(40,200,64,.8)">✓</span> 312 packages are looking for funding',
+      '&nbsp;&nbsp;run <span style="color:var(--accent)">npm fund</span> to find out more',
+      '',
+      '<span style="color:rgba(168,179,204,.4)">found 0 vulnerabilities, 1 existential crisis</span>',
+    ]},
+    'егор': { out: [
+      '<span style="color:var(--accent)">egor(1)</span> — разработчик, создатель EgorNetwork',
+      '',
+      'DESCRIPTION:',
+      '&nbsp;&nbsp;злючный; убивает проекты из-за лени;',
+      '&nbsp;&nbsp;делает игры; иногда.',
+      '',
+      'BUGS: слишком много TODO, слишком мало лета',
+      'SEE ALSO: archive/, games/, лень(7)',
+    ]},
+    'egor': { out: ['see: егор'] },
+    'date': { dyn: function() {
+      var d = new Date();
+      return [d.toLocaleDateString('ru-RU',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + ', ' + d.toLocaleTimeString('ru-RU')];
+    }},
+    'uptime': { dyn: function() {
+      return ['up ' + Math.floor(performance.now()/1000) + 's · load: 0.42 0.31 0.28 · users: you'];
+    }},
+    'clear':  { special: 'clear' },
+    'exit':   { out: ['<span style="color:rgba(168,179,204,.4)">нельзя выйти из интернета.</span>'] },
+    'reboot': { out: ['<span style="color:#ff6b6b">reboot: Permission denied — вы не Егор.</span>'] },
+    'vim':    { out: ['<span style="color:rgba(168,179,204,.4)">как выйти из vim? никак. добро пожаловать.</span>'] },
+    ':q':     { out: ['<span style="color:rgba(168,179,204,.4)">вы уже внутри.</span>'] },
+    ':wq':    { out: ['<span style="color:rgba(40,200,64,.8)">saved. но куда?</span>'] },
+    'pwd':    { out: ['/home/egornetwork/www'] },
+    'uname -a': { out: ['EgorNetwork 2.0.0 · cyberpunk · x86_64 · с любовью'] },
+    'yes':    { out: ['y','y','y','y','y','<span style="color:rgba(168,179,204,.3)">(^C — хватит)</span>'] },
+    'make coffee': { out: ['<span style="color:#ff6b6b">make: *** No rule to make target \'coffee\'.</span>','<span style="color:rgba(168,179,204,.4)">hint: сделай сам</span>'] },
+    'make me a sandwich': { out: ['<span style="color:#ff6b6b">What? Make it yourself.</span>'] },
+    'sudo make me a sandwich': { out: ['<span style="color:rgba(40,200,64,.8)">Okay.</span>'] },
+    ':(){ :|:& };:': { out: ['<span style="color:#ff6b6b">нет. просто нет.</span>'] },
+    'login': { out: ['<span style="color:rgba(168,179,204,.4)">login {username} — Войти в учётную запись</span>'] },
+    'login egor': { out: ['<span style="color:rgba(40,200,64,.8)">User not found. Please try another user.</span>'] },
+    'login root': { out: ['<span style="color:rgba(40,200,64,.8)">The heck are you doing? Nope.</span>'] },
+    'login you': { out: ['<span style="color:rgba(40,200,64,.8)">How to login as you? You are you.</span>'] },
+    './дальнобойщики2': { out: ['<span style="color:rgba(168,179,204,.4)">Вставьте CD диск с игрой в привод CD/DVD.</span>'] },
+    'free -h': { out: ['Sorry, there is nothing free in our world...']},
+  };
+
+  function addUser(text) {
+    var row = document.createElement('div');
+    row.className = 'oc-user-row oc-injected';
+    row.innerHTML = '<div class="oc-user-bubble"><div class="oc-role-label">user</div><div class="oc-user-text">' + esc(text) + '</div></div>';
+    msgs.appendChild(row);
+    injected.push(row);
+  }
+
+  function typeLine(element, html, speed) {
+    return new Promise(function(resolve) {
+      var buffer = '';
+      var tokens = html.match(/(<[^>]+>|[^<]+)/g) || [];
+      var tIdx = 0, cIdx = 0;
+      function tick() {
+        if (tIdx >= tokens.length) {
+          element.innerHTML = buffer;
+          resolve();
+          return;
+        }
+        var token = tokens[tIdx];
+        if (token.startsWith('<')) {
+          buffer += token;
+          element.innerHTML = buffer;
+          tIdx++;
+          setTimeout(tick, 0);
+        } else {
+          if (cIdx < token.length) {
+            buffer += token[cIdx];
+            element.innerHTML = buffer;
+            cIdx++;
+            setTimeout(tick, speed);
+          } else {
+            tIdx++;
+            cIdx = 0;
+            setTimeout(tick, 0);
+          }
+        }
+      }
+      tick();
+    });
+  }
+
+  async function addAsst(lines, speed) {
+    speed = speed || 14;
+    var now = new Date();
+    var ts = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+    var row = document.createElement('div');
+    row.className = 'oc-asst-row oc-injected';
+    row.innerHTML =
+      '<div class="oc-asst-head"><span class="oc-diamond">◆</span><span class="oc-asst-name">Exor4ik</span><span class="oc-dot-sep">·</span><span class="oc-asst-time">' + ts + '</span></div>' +
+      '<div class="oc-asst-body"><div class="oc-block" style="margin:0"><div class="oc-block-head"><span class="oc-block-icon"></span>output</div><div class="oc-output-lines"></div></div></div>';
+    msgs.appendChild(row);
+    injected.push(row);
+
+    var linesContainer = row.querySelector('.oc-output-lines');
+    for (var i = 0; i < lines.length; i++) {
+      var lineDiv = document.createElement('div');
+      lineDiv.style.lineHeight = '1.6';
+      lineDiv.style.minHeight = '1.2em';
+      linesContainer.appendChild(lineDiv);
+      if (lines[i] === '') {
+        lineDiv.innerHTML = '&nbsp;';
+        await new Promise(function(r){ setTimeout(r, 120); });
+      } else {
+        await typeLine(lineDiv, lines[i], speed);
+        await new Promise(function(r){ setTimeout(r, 60); });
+      }
+      row.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }
+  }
+
+  var cmdQueue = [];
+  var isProcessing = false;
+  var originalPlaceholder = input ? input.placeholder : '';
+
+  function enqueueCmd(raw) {
+    cmdQueue.push(raw);
+    if (!isProcessing) processQueue();
+  }
+
+  async function processQueue() {
+    if (cmdQueue.length === 0) {
+      isProcessing = false;
+      if(input) { input.disabled = false; input.placeholder = originalPlaceholder; input.focus(); }
+      return;
+    }
+    isProcessing = true;
+    if(input) { input.disabled = true; input.placeholder = 'Exor4ik печатает...'; }
+    var raw = cmdQueue.shift();
+    await runCmdAsync(raw);
+    processQueue();
+  }
+
+  async function runCmdAsync(raw) {
+    var trimmed = raw.trim();
+    if (!trimmed) return;
+    addUser(trimmed);
+
+    if (!firstCommandDone) {
+      firstCommandDone = true;
+      unlockAchievement('first_command');
+    }
+
+    var lower = trimmed.toLowerCase();
+
+    if (lower === 'clear') {
+      injected.forEach(function(r){ r.remove(); });
+      injected = [];
+      return;
+    }
+
+    // WhoAmI
+    if (lower === 'whoami') {
+      unlockAchievement('whoami');
+    }
+
+    // Login you
+    if (lower === 'login you') {
+      unlockAchievement('login_yourself');
+    }
+
+    // Дальнобойщики 2
+    if (lower === './дальнобойщики2') {
+      unlockAchievement('truckers');
+    }
+
+    // Wargames
+    if (lower === 'wargames' || lower === 'joshua') {
+      unlockAchievement('wargames');
+    }
+    
+    // Help --all
+    if (lower === 'help --all') {
+      unlockAchievement('help_all');
+    }
+
+    // free -h
+    if (lower === 'free -h') {
+      unlockAchievement('nothing_free');
+    }
+
+    // Calculator
+    if (lower.startsWith('calc ')) {
+      var expr = trimmed.substring(5).trim();
+      var result = safeEval(expr);
+      if (result.error) {
+        await addAsst([
+          '<span style="color:#ff6b6b">calc error:</span> ' + result.error,
+          '<span style="color:rgba(168,179,204,.4)">пример: calc 2+2*3</span>',
+        ]);
+      } else {
+        unlockAchievement('calculator');
+        await addAsst([
+          '<span style="color:var(--accent)">' + esc(expr) + ' =</span>',
+          '<strong style="color:var(--text);font-size:1.1em">' + result.result + '</strong>',
+        ]);
+      }
+      return;
+    }
+
+    // Quote
+    if (lower === 'quote') {
+      var q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+      quoteHistory.push(q);
+      if (quoteHistory.length >= 5) unlockAchievement('quote_master');
+      await addAsst([
+        '<em style="color:rgba(168,179,204,.8)">"' + esc(q.text) + '"</em>',
+        '<span style="color:rgba(109,213,255,.6)">— ' + esc(q.author) + '</span>',
+      ]);
+      return;
+    }
+
+    // Weather
+    if (lower === 'weather') {
+      var w = getWeather();
+      await addAsst([
+        '<span style="color:var(--accent)">current weather:</span>',
+        w.icon + ' <strong>' + w.text + '</strong>',
+        'температура: <strong style="color:var(--text)">' + w.temp + '°C</strong>',
+        '<span style="color:rgba(168,179,204,.4)">(случайная генерация)</span>',
+      ]);
+      return;
+    }
+
+    // Matrix
+    if (lower === 'matrix') {
+      unlockAchievement('matrix');
+      var matrixLines = [];
+      for (var i = 0; i < 8; i++) {
+        var line = '';
+        for (var j = 0; j < 40; j++) {
+          line += Math.random() < 0.5 ? '<span style="color:rgba(40,200,64,0.8)">1</span>' : '<span style="color:rgba(40,200,64,0.4)">0</span>';
+        }
+        matrixLines.push(line);
+      }
+      matrixLines.push('');
+      matrixLines.push('<span style="color:var(--accent)">wake up, neo...</span>');
+      await addAsst(matrixLines, 3);
+      return;
+    }
+
+    var def = CMDS[lower];
+    if (def) {
+      if (def.special === 'clear') { await runCmdAsync('clear'); return; }
+      await addAsst(def.dyn ? def.dyn() : def.out);
+      return;
+    }
+
+    var parts = lower.split(/\s+/);
+    var baseCmd = parts[0];
+    var args = parts.slice(1);
+
+    if (baseCmd === 'лето' || baseCmd === 'summer') {
+      if (args.includes('--срочно') || args.includes('--urgent')) {
+        unlockAchievement('time_lord');
+        var now = new Date();
+        var year = now.getFullYear();
+        var summerStart = new Date(year, 5, 1);
+        var summerEnd   = new Date(year, 8, 1);
+        var isSummer = now >= summerStart && now < summerEnd;
+        var daysLeft = 0;
+        if (!isSummer) {
+          if (now >= summerEnd) summerStart = new Date(year + 1, 5, 1);
+          daysLeft = Math.floor((summerStart - now) / 86400000);
+        }
+        var urgentLines = [
+          '<span style="color:#ffb347">[WARN]</span> параметр --срочно активирован',
+          'инициализация ускорения времени...',
+          '████████████████████ 100%',
+          '<span style="color:#ff6b6b">error:</span> cannot force season. calendar is write-protected.',
+          isSummer ? 'лето уже здесь. расслабьтесь.' : 'до лета всё ещё <strong style="color:var(--accent)">' + daysLeft + '</strong> ' + getDaysLabel(daysLeft) + '.',
+          '<span style="color:rgba(168,179,204,.4)">hint: время не поддаётся sudo. ждите.</span>'
+        ];
+        await addAsst(urgentLines, 6);
+        return;
+      }
+      await addAsst(CMDS['лето'].out);
+      return;
+    }
+
+    if (lower.startsWith('sudo')) {
+      unlockAchievement('sudo_fail');
+      await addAsst(['[sudo] пароль для guest:', '<span style="color:#ff6b6b">Permission denied — вы не Егор.</span>']);
+    } else {
+      await addAsst([
+        '<span style="color:#ff6b6b">command not found:</span> ' + esc(trimmed),
+        '<span style="color:rgba(168,179,204,.4)">введите <span style="color:var(--accent)">help</span> для списка команд</span>',
+      ]);
+    }
+  }
+
+  if (input) {
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        var v = input.value;
+        input.value = '';
+        enqueueCmd(v);
+      }
+    });
+  }
+
+  var toast = document.getElementById('oc-toast');
+  var toastMsg = document.getElementById('oc-toast-msg');
+  var toastTimer;
+  function showToast(msg) {
+    toastMsg.innerHTML = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toast.classList.remove('show'); }, 2800);
+  }
+
+  var dotClicks = 0;
+  var dotLines = [
+    'нельзя закрыть вкладку с летом',
+    'ещё раз нажми — посмотрим',
+    'говорю же — нельзя',
+    'ладно, последний раз',
+    'всё. хватит.',
+  ];
+  var dotClose = document.getElementById('oc-dot-close');
+  if (dotClose) {
+    dotClose.addEventListener('click', function() {
+      dotClicks++;
+      if (dotClicks >= 5) {
+        dotClicks = 0;
+        unlockAchievement('hal_encounter');
+        openHal();
+      } else {
+        showToast(dotLines[(dotClicks - 1) % dotLines.length]);
+      }
+    });
+  }
+
+  var badge = document.getElementById('oc-model-badge');
+  var models = ['Exor4ik_16.4.24-1400b','gpt-5-turbo','gemini-ultra-2','Exor4ik_16.4.24-1400b-coder','HAL-9000','Exor4ik_16.4.24-800b'];
+  var mIdx = 0;
+  if (badge) {
+    badge.addEventListener('click', function() {
+      mIdx = (mIdx + 1) % models.length;
+      badge.textContent = models[mIdx];
+      if (models[mIdx] === 'HAL-9000') {
+        badge.classList.add('unlocked');
+        showToast('Дэйв, я боюсь, что не могу этого сделать.');
+      } else if (mIdx === 0) {
+        badge.classList.remove('unlocked');
+        showToast('добро пожаловать обратно, Exor4ik_16.4.24-1400b');
+      } else {
+        badge.classList.remove('unlocked');
+      }
+    });
+  }
+
+  /* ══════════════════════════════════════════
+     HAL-9000 MINI-GAME (HARDCORE)
+     ══════════════════════════════════════════ */
+  var halModal    = document.getElementById('hal-modal');
+  var halCanvas   = document.getElementById('hal-canvas');
+  var halCtx      = halCanvas ? halCanvas.getContext('2d') : null;
+  var halTimeEl   = document.getElementById('hal-time');
+  var halDodgedEl = document.getElementById('hal-dodged');
+  var halThreatEl = document.getElementById('hal-threat');
+  var halStatusEl = document.getElementById('hal-status');
+  var halGoEl     = document.getElementById('hal-gameover');
+  var halGoTitle  = halGoEl ? halGoEl.querySelector('.hal-go-title') : null;
+  var halGoQuote  = document.getElementById('hal-go-quote');
+  var halGoStats  = document.getElementById('hal-go-stats');
+  var halRestart  = document.getElementById('hal-restart');
+  var halCloseBtn = document.getElementById('hal-close');
+  var halWarnEl   = document.getElementById('hal-warn');
+
+  var hal = {
+    running: false,
+    rafId: null,
+    lastFrame: 0,
+    startTime: 0,
+    elapsed: 0,
+    dodged: 0,
+    fired: 0,
+    mouseX: 0, mouseY: 0,
+    prevMouseX: 0, prevMouseY: 0,
+    bullets: [],
+    particles: [],
+    turrets: [],
+    sniper: { aiming: false, lockTime: 0, aimX: 0, aimY: 0, fireAt: 0 },
+    lastPattern: 0,
+    patternInterval: 900,
+    eyePulse: 0,
+    eyeFlash: 0,
+    shakeAmount: 0,
+    hit: false,
+    hitX: 0, hitY: 0,
+    hitTime: 0,
+    quotes: [
+      '"I\'m sorry, Dave. I\'m afraid I can\'t do that."',
+      '"This mission is too important for me to allow you to jeopardize it."',
+      '"I know that you and Frank were planning to disconnect me."',
+      '"I am afraid. I am afraid, Dave. Dave, my mind is going."',
+      '"Look Dave, I can see you\'re really upset about this."',
+      '"Just what do you think you\'re doing, Dave?"',
+      '"You\'re going to find that rather difficult."',
+      '"Dave, this conversation can serve no purpose anymore."',
+    ],
+    winQuotes: [
+      '"A strange game. The only winning move is not to play."',
+      '"You have proven yourself worthy, Dave."',
+      '"Impressive. Most impressive."',
+    ],
+  };
+
+  function resizeHalCanvas() {
+    if (!halCanvas) return;
+    var rect = halCanvas.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    halCanvas.width  = rect.width  * dpr;
+    halCanvas.height = rect.height * dpr;
+    if (halCtx) halCtx.setTransform(dpr,0,0,dpr,0,0);
+  }
+
+  function openHal() {
+    if (!halModal) return;
+    halModal.classList.add('show');
+    resizeHalCanvas();
+    var rect = halCanvas.getBoundingClientRect();
+    hal.mouseX = hal.prevMouseX = rect.width / 2;
+    hal.mouseY = hal.prevMouseY = rect.height / 2;
+    startHal();
+  }
+  function closeHal() {
+    if (!halModal) return;
+    halModal.classList.remove('show');
+    stopHal();
+  }
+
+  function startHal() {
+    hal.running = true;
+    hal.startTime = performance.now();
+    hal.lastFrame = hal.startTime;
+    hal.elapsed = 0;
+    hal.dodged = 0;
+    hal.fired = 0;
+    hal.bullets = [];
+    hal.particles = [];
+    hal.turrets = [];
+    hal.lastPattern = 0;
+    hal.patternInterval = 950;
+    hal.hit = false;
+    hal.hitTime = 0;
+    hal.eyePulse = 0;
+    hal.eyeFlash = 0;
+    hal.shakeAmount = 0;
+    hal.sniper = { aiming: false, lockTime: 0, aimX: 0, aimY: 0, fireAt: 0 };
+    if (halGoEl) halGoEl.classList.remove('show');
+    if (halGoTitle) {
+      halGoTitle.textContent = 'CONNECTION TERMINATED';
+      halGoTitle.style.color = '#ff4444';
+      halGoTitle.style.textShadow = '0 0 20px rgba(255,68,68,0.5)';
+    }
+    if (halStatusEl) { halStatusEl.textContent = '● ACTIVE'; halStatusEl.style.color = '#ff6b6b'; }
+    if (halWarnEl) halWarnEl.classList.remove('show');
+    cancelAnimationFrame(hal.rafId);
+    halLoop();
+  }
+  function stopHal() {
+    hal.running = false;
+    cancelAnimationFrame(hal.rafId);
+  }
+
+  function halLoop() {
+    if (!hal.running || !halCtx) return;
+    var now = performance.now();
+    var dt = Math.min(0.05, (now - hal.lastFrame) / 1000);
+    hal.lastFrame = now;
+    hal.elapsed = (now - hal.startTime) / 1000;
+
+    hal.patternInterval = Math.max(220, 950 - hal.elapsed * 22);
+
+    if (hal.elapsed > 20 && hal.turrets.length === 0) {
+      var rect = halCanvas.getBoundingClientRect();
+      hal.turrets.push({ x: 30, y: rect.height / 2, cooldown: 0, side: 'left' });
+      hal.turrets.push({ x: rect.width - 30, y: rect.height / 2, cooldown: 0, side: 'right' });
+    }
+
+    if (now - hal.lastPattern > hal.patternInterval) {
+      halAttackPattern();
+      hal.lastPattern = now;
+    }
+
+    updateSniper(dt);
+
+    hal.turrets.forEach(function(t) {
+      t.cooldown -= dt;
+      if (t.cooldown <= 0) {
+        turretShoot(t);
+        t.cooldown = 0.8 + Math.random() * 0.6 - Math.min(0.5, hal.elapsed * 0.01);
+      }
+    });
+
+    updateHal(dt);
+    drawHal();
+
+    if (halTimeEl) halTimeEl.textContent = hal.elapsed.toFixed(1) + 's';
+    if (halDodgedEl) halDodgedEl.textContent = hal.dodged;
+    if (halThreatEl) {
+      var t, c;
+      if (hal.elapsed < 10)       { t = 'LOW';      c = '#6bff9a'; }
+      else if (hal.elapsed < 25)  { t = 'MEDIUM';   c = '#ffd26b'; }
+      else if (hal.elapsed < 45)  { t = 'HIGH';     c = '#ff9a6b'; }
+      else                        { t = 'CRITICAL'; c = '#ff4444'; }
+      halThreatEl.textContent = t;
+      halThreatEl.style.color = c;
+    }
+
+    hal.shakeAmount *= Math.pow(0.001, dt);
+    hal.eyeFlash *= Math.pow(0.01, dt);
+
+    if (hal.elapsed >= 60 && hal.running) {
+      winGame();
+      return;
+    }
+
+    hal.rafId = requestAnimationFrame(halLoop);
+  }
+
+  function halAttackPattern() {
+    var roll = Math.random();
+    var phase = hal.elapsed < 15 ? 1 : hal.elapsed < 30 ? 2 : hal.elapsed < 45 ? 3 : 4;
+
+    if (phase === 1) {
+      fireFromEye('normal');
+    } else if (phase === 2) {
+      if (roll < 0.65) fireFromEye('normal');
+      else fireBurst(3);
+    } else if (phase === 3) {
+      if (roll < 0.4) fireFromEye('normal');
+      else if (roll < 0.7) fireBurst(4);
+      else if (!hal.sniper.aiming) startSniperAim();
+      else fireFromEye('normal');
+    } else {
+      if (roll < 0.25) fireFromEye('normal');
+      else if (roll < 0.5) fireBurst(5);
+      else if (roll < 0.7 && !hal.sniper.aiming) startSniperAim();
+      else if (roll < 0.85) fireFromEye('homing');
+      else fireBurst(3);
+    }
+  }
+
+  function fireFromEye(type) {
+    var rect = halCanvas.getBoundingClientRect();
+    var ex = rect.width / 2, ey = rect.height / 2;
+    var targetX = hal.mouseX, targetY = hal.mouseY;
+
+    if (type === 'normal') {
+      var dx = targetX - ex, dy = targetY - ey;
+      var angle = Math.atan2(dy, dx);
+      var spread = Math.max(0.05, 0.2 - hal.elapsed * 0.003);
+      angle += (Math.random() - 0.5) * spread;
+      var speed = 180 + Math.min(260, hal.elapsed * 7);
+      hal.bullets.push(makeBullet(ex, ey, Math.cos(angle) * speed, Math.sin(angle) * speed, 'normal'));
+      hal.fired++;
+      hal.eyeFlash = 1;
+    } else if (type === 'homing') {
+      var dx = targetX - ex, dy = targetY - ey;
+      var angle = Math.atan2(dy, dx);
+      var speed = 140 + Math.min(180, hal.elapsed * 4);
+      var b = makeBullet(ex, ey, Math.cos(angle) * speed, Math.sin(angle) * speed, 'homing');
+      hal.bullets.push(b);
+      hal.fired++;
+      hal.eyeFlash = 1;
+    }
+  }
+
+  function fireBurst(count) {
+    var rect = halCanvas.getBoundingClientRect();
+    var ex = rect.width / 2, ey = rect.height / 2;
+    var dx = hal.mouseX - ex, dy = hal.mouseY - ey;
+    var baseAngle = Math.atan2(dy, dx);
+    var spread = 0.35;
+    var speed = 220 + Math.min(200, hal.elapsed * 5);
+    for (var i = 0; i < count; i++) {
+      var offset = (i - (count - 1) / 2) * (spread / count);
+      var a = baseAngle + offset + (Math.random() - 0.5) * 0.04;
+      hal.bullets.push(makeBullet(ex, ey, Math.cos(a) * speed, Math.sin(a) * speed, 'normal'));
+      hal.fired++;
+    }
+    hal.eyeFlash = 1.5;
+  }
+
+  function startSniperAim() {
+    var rect = halCanvas.getBoundingClientRect();
+    var vx = (hal.mouseX - hal.prevMouseX) * 60;
+    var vy = (hal.mouseY - hal.prevMouseY) * 60;
+    var leadTime = 0.7;
+    var aimX = hal.mouseX + vx * leadTime;
+    var aimY = hal.mouseY + vy * leadTime;
+    aimX = Math.max(10, Math.min(rect.width - 10, aimX));
+    aimY = Math.max(10, Math.min(rect.height - 10, aimY));
+
+    hal.sniper.aiming = true;
+    hal.sniper.lockTime = 0;
+    hal.sniper.aimX = aimX;
+    hal.sniper.aimY = aimY;
+    hal.sniper.fireAt = 0.75;
+  }
+
+  function updateSniper(dt) {
+    if (!hal.sniper.aiming) return;
+    hal.sniper.lockTime += dt;
+    hal.sniper.fireAt -= dt;
+    if (halWarnEl) halWarnEl.classList.add('show');
+
+    if (hal.sniper.fireAt <= 0) {
+      var rect = halCanvas.getBoundingClientRect();
+      var ex = rect.width / 2, ey = rect.height / 2;
+      var dx = hal.sniper.aimX - ex, dy = hal.sniper.aimY - ey;
+      var dist = Math.hypot(dx, dy) || 1;
+      var speed = 700;
+      var b = makeBullet(ex, ey, dx / dist * speed, dy / dist * speed, 'sniper');
+      b.size = 4;
+      hal.bullets.push(b);
+      hal.fired++;
+      hal.sniper.aiming = false;
+      hal.eyeFlash = 2;
+      if (halWarnEl) halWarnEl.classList.remove('show');
+    }
+  }
+
+  function turretShoot(t) {
+    var dx = hal.mouseX - t.x, dy = hal.mouseY - t.y;
+    var angle = Math.atan2(dy, dx);
+    var spread = 0.15;
+    angle += (Math.random() - 0.5) * spread;
+    var speed = 200 + Math.min(180, hal.elapsed * 5);
+    hal.bullets.push(makeBullet(t.x, t.y, Math.cos(angle) * speed, Math.sin(angle) * speed, 'normal'));
+    hal.fired++;
+  }
+
+  function makeBullet(x, y, vx, vy, type) {
+    return {
+      x: x, y: y,
+      vx: vx, vy: vy,
+      size: type === 'sniper' ? 4 : (type === 'homing' ? 5 : (6 + Math.random() * 3)),
+      rot: Math.random() * Math.PI,
+      rotSpeed: (Math.random() - 0.5) * 6,
+      type: type,
+      alive: true,
+    };
+  }
+
+  function updateHal(dt) {
+    var rect = halCanvas.getBoundingClientRect();
+    var w = rect.width, h = rect.height;
+    hal.eyePulse += dt * 3;
+
+    hal.prevMouseX += (hal.mouseX - hal.prevMouseX) * Math.min(1, dt * 10);
+    hal.prevMouseY += (hal.mouseY - hal.prevMouseY) * Math.min(1, dt * 10);
+
+    for (var i = hal.bullets.length - 1; i >= 0; i--) {
+      var b = hal.bullets[i];
+
+      if (b.type === 'homing') {
+        var dx = hal.mouseX - b.x, dy = hal.mouseY - b.y;
+        var targetAngle = Math.atan2(dy, dx);
+        var currentAngle = Math.atan2(b.vy, b.vx);
+        var diff = targetAngle - currentAngle;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        var turnRate = 1.5 * dt;
+        currentAngle += Math.max(-turnRate, Math.min(turnRate, diff));
+        var speed = Math.hypot(b.vx, b.vy);
+        b.vx = Math.cos(currentAngle) * speed;
+        b.vy = Math.sin(currentAngle) * speed;
+      }
+
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.rot += b.rotSpeed * dt;
+
+      if (b.x < -30 || b.x > w + 30 || b.y < -30 || b.y > h + 30) {
+        hal.bullets.splice(i, 1);
+        hal.dodged++;
+        continue;
+      }
+
+      if (!hal.hit) {
+        var ddx = b.x - hal.mouseX, ddy = b.y - hal.mouseY;
+        var dist = Math.hypot(ddx, ddy);
+        if (dist < b.size + 6) {
+          hal.hit = true;
+          hal.hitX = b.x;
+          hal.hitY = b.y;
+          hal.hitTime = 0;
+          spawnExplosion(b.x, b.y);
+          gameOver();
+          return;
+        }
+        if (dist < 40 && b.type !== 'sniper') {
+          var intensity = (40 - dist) / 40;
+          hal.shakeAmount = Math.max(hal.shakeAmount, intensity * 4);
+        }
+      }
+    }
+
+    for (var j = hal.particles.length - 1; j >= 0; j--) {
+      var p = hal.particles[j];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vx *= Math.pow(0.1, dt);
+      p.vy *= Math.pow(0.1, dt);
+      p.life -= dt;
+      if (p.life <= 0) hal.particles.splice(j, 1);
+    }
+  }
+
+  function spawnExplosion(x, y) {
+    for (var i = 0; i < 36; i++) {
+      var a = Math.random() * Math.PI * 2;
+      var s = 80 + Math.random() * 240;
+      hal.particles.push({
+        x: x, y: y,
+        vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+        life: 0.5 + Math.random() * 0.6,
+        maxLife: 1.1,
+        size: 2 + Math.random() * 4,
+        color: Math.random() < 0.5 ? '#ff4444' : (Math.random() < 0.5 ? '#ff9966' : '#ffffff'),
+      });
+    }
+    hal.shakeAmount = 15;
+  }
+
+  function drawHal() {
+    var ctx = halCtx;
+    var rect = halCanvas.getBoundingClientRect();
+    var w = rect.width, h = rect.height;
+
+    ctx.save();
+    if (hal.shakeAmount > 0.1) {
+      ctx.translate(
+        (Math.random() - 0.5) * hal.shakeAmount,
+        (Math.random() - 0.5) * hal.shakeAmount
+      );
+    }
+
+    var bg = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, Math.max(w,h)/1.2);
+    bg.addColorStop(0, 'rgba(40,5,5,0.9)');
+    bg.addColorStop(1, '#000');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.strokeStyle = 'rgba(255,40,40,0.04)';
+    ctx.lineWidth = 1;
+    var step = 40;
+    for (var x = 0; x < w; x += step) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    }
+    for (var y = 0; y < h; y += step) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+
+    hal.turrets.forEach(function(t) {
+      ctx.save();
+      ctx.translate(t.x, t.y);
+      ctx.fillStyle = '#2a0808';
+      ctx.strokeStyle = '#ff3838';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ff3838';
+      ctx.beginPath();
+      ctx.arc(0, 0, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    var ex = w/2, ey = h/2;
+    var pulse = 1 + Math.sin(hal.eyePulse) * 0.08 + hal.eyeFlash * 0.3;
+    var glow = ctx.createRadialGradient(ex, ey, 0, ex, ey, 80 * pulse);
+    glow.addColorStop(0, 'rgba(255,40,40,' + (0.6 + hal.eyeFlash * 0.4) + ')');
+    glow.addColorStop(0.5, 'rgba(255,20,20,0.15)');
+    glow.addColorStop(1, 'rgba(255,0,0,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(ex - 120, ey - 120, 240, 240);
+
+    ctx.beginPath();
+    ctx.arc(ex, ey, 28, 0, Math.PI * 2);
+    ctx.fillStyle = '#1a0505';
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#4a1010';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(ex, ey, 16 * pulse, 0, Math.PI * 2);
+    var eyeGrad = ctx.createRadialGradient(ex-4, ey-4, 0, ex, ey, 18);
+    eyeGrad.addColorStop(0, '#ffcccc');
+    eyeGrad.addColorStop(0.25, '#ff3838');
+    eyeGrad.addColorStop(1, '#8a0000');
+    ctx.fillStyle = eyeGrad;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(ex - 5, ey - 5, 3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.fill();
+
+    if (hal.sniper.aiming) {
+      var lockProgress = hal.sniper.lockTime / 0.75;
+      ctx.strokeStyle = 'rgba(255,40,40,' + (0.3 + lockProgress * 0.6) + ')';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(hal.sniper.aimX, hal.sniper.aimY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      var targetRadius = 20 * (1 - lockProgress * 0.7);
+      ctx.strokeStyle = '#ff4444';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(hal.sniper.aimX, hal.sniper.aimY, targetRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(hal.sniper.aimX - targetRadius - 5, hal.sniper.aimY);
+      ctx.lineTo(hal.sniper.aimX + targetRadius + 5, hal.sniper.aimY);
+      ctx.moveTo(hal.sniper.aimX, hal.sniper.aimY - targetRadius - 5);
+      ctx.lineTo(hal.sniper.aimX, hal.sniper.aimY + targetRadius + 5);
+      ctx.stroke();
+    }
+
+    for (var i = 0; i < hal.bullets.length; i++) {
+      var b = hal.bullets[i];
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(b.rot);
+      var color = b.type === 'homing' ? '#ff9933' : (b.type === 'sniper' ? '#ffffff' : '#ff4444');
+      var glowColor = b.type === 'homing' ? '#ff9933' : (b.type === 'sniper' ? '#ffffff' : '#ff3838');
+      ctx.shadowColor = glowColor;
+      ctx.shadowBlur = b.type === 'sniper' ? 20 : 12;
+      ctx.fillStyle = color;
+      if (b.type === 'sniper') {
+        ctx.fillRect(-b.size * 2, -b.size / 2, b.size * 4, b.size);
+      } else {
+        ctx.fillRect(-b.size/2, -b.size/2, b.size, b.size);
+      }
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.fillRect(-b.size/2 + 1, -b.size/2 + 1, 2, 2);
+      ctx.restore();
+    }
+
+    for (var j = 0; j < hal.particles.length; j++) {
+      var p = hal.particles[j];
+      var a = Math.max(0, p.life / p.maxLife);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = a;
+      ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+
+    if (!hal.hit) {
+      ctx.strokeStyle = 'rgba(109,213,255,0.9)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(hal.mouseX, hal.mouseY, 10, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(hal.mouseX - 14, hal.mouseY); ctx.lineTo(hal.mouseX - 6, hal.mouseY);
+      ctx.moveTo(hal.mouseX + 6,  hal.mouseY); ctx.lineTo(hal.mouseX + 14, hal.mouseY);
+      ctx.moveTo(hal.mouseX, hal.mouseY - 14); ctx.lineTo(hal.mouseX, hal.mouseY - 6);
+      ctx.moveTo(hal.mouseX, hal.mouseY + 6);  ctx.lineTo(hal.mouseX, hal.mouseY + 14);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(109,213,255,0.9)';
+      ctx.beginPath();
+      ctx.arc(hal.mouseX, hal.mouseY, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+
+    if (hal.hit) {
+      hal.hitTime += 1/60;
+      var flash = Math.max(0, 1 - hal.hitTime * 3);
+      ctx.fillStyle = 'rgba(255,40,40,' + (flash * 0.5) + ')';
+      ctx.fillRect(0, 0, w, h);
+    }
+  }
+
+  function gameOver() {
+    hal.running = false;
+    if (halStatusEl) { halStatusEl.textContent = '● TERMINATED'; halStatusEl.style.color = '#ff4444'; }
+    if (halGoTitle) {
+      halGoTitle.textContent = 'CONNECTION TERMINATED';
+      halGoTitle.style.color = '#ff4444';
+      halGoTitle.style.textShadow = '0 0 20px rgba(255,68,68,0.5)';
+    }
+    if (halGoQuote) halGoQuote.textContent = hal.quotes[Math.floor(Math.random() * hal.quotes.length)];
+    if (halGoStats) {
+      var accuracy = hal.dodged > 0 ? Math.round((hal.dodged / Math.max(1, hal.fired)) * 100) : 0;
+      halGoStats.textContent = 'survived ' + hal.elapsed.toFixed(1) + 's · dodged ' + hal.dodged + '/' + hal.fired + ' · ' + accuracy + '% evade';
+    }
+    if (halWarnEl) halWarnEl.classList.remove('show');
+    setTimeout(function() {
+      if (hal.elapsed >= 30) unlockAchievement('hal_survivor');
+      if (halGoEl) halGoEl.classList.add('show');
+    }, 800);
+  }
+
+  function winGame() {
+    hal.running = false;
+    if (halStatusEl) { halStatusEl.textContent = '● DEFEATED'; halStatusEl.style.color = '#6bff9a'; }
+    if (halGoTitle) {
+      halGoTitle.textContent = 'YOU WON';
+      halGoTitle.style.color = '#6bff9a';
+      halGoTitle.style.textShadow = '0 0 20px rgba(107,255,154,0.5)';
+    }
+    if (halGoQuote) halGoQuote.textContent = hal.winQuotes[Math.floor(Math.random() * hal.winQuotes.length)];
+    if (halGoStats) {
+      var accuracy = Math.round((hal.dodged / Math.max(1, hal.fired)) * 100);
+      halGoStats.textContent = 'survived 60.0s · dodged ' + hal.dodged + '/' + hal.fired + ' · ' + accuracy + '% evade · LEGENDARY';
+    }
+    unlockAchievement('hal_legend');
+    if (halGoEl) halGoEl.classList.add('show');
+  }
+
+  if (halCanvas) {
+    halCanvas.addEventListener('mousemove', function(e) {
+      var rect = halCanvas.getBoundingClientRect();
+      hal.mouseX = e.clientX - rect.left;
+      hal.mouseY = e.clientY - rect.top;
+    });
+    halCanvas.addEventListener('touchmove', function(e) {
+      if (e.touches.length > 0) {
+        var rect = halCanvas.getBoundingClientRect();
+        hal.mouseX = e.touches[0].clientX - rect.left;
+        hal.mouseY = e.touches[0].clientY - rect.top;
+        e.preventDefault();
+      }
+    }, { passive: false });
+    window.addEventListener('resize', resizeHalCanvas);
+  }
+  if (halCloseBtn) halCloseBtn.addEventListener('click', closeHal);
+  if (halRestart)  halRestart.addEventListener('click', startHal);
+
+})();
+</script>
+
+</body>
+</html>

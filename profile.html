@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Профиль — EgorNetwork</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="images/icon.png" type="image/png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page-blur"></div>
+<div class="dust">
+  <span></span><span></span><span></span><span></span><span></span>
+  <span></span><span></span><span></span><span></span><span></span>
+</div>
+<div id="header-container"></div>
+
+<main class="profile-wrap">
+  <!-- Переключатель вида -->
+  <div class="view-switcher" id="view-switcher" style="display:none;">
+    <button class="view-btn active" data-view="default">🌐 Обычный</button>
+    <button class="view-btn" data-view="terminal">💻 Терминал</button>
+    <button class="view-btn" data-view="win95">🪟 Win95</button>
+  </div>
+
+  <!-- Скелетон -->
+  <div id="profile-root">
+    <div class="profile-card profile-skeleton">
+      <div class="skel-block" style="height:220px;margin:-36px -32px 22px;border-radius:22px 22px 24px 24px;"></div>
+      <div class="profile-header" style="margin-top:-112px;position:relative;z-index:1;">
+        <div class="skel-block" style="width:162px;height:162px;border-radius:20px;"></div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:10px;padding-top:4px;">
+          <div class="skel-block" style="width:200px;height:26px;border-radius:8px;"></div>
+          <div class="skel-block" style="width:90px;height:18px;border-radius:20px;"></div>
+        </div>
+      </div>
+      <div class="skel-block" style="width:60px;height:12px;margin-bottom:10px;border-radius:4px;"></div>
+      <div class="skel-block" style="width:100%;height:60px;border-radius:10px;"></div>
+    </div>
+  </div>
+</main>
+
+<div id="footer-container"></div>
+<input type="file" id="avatar-file-input" accept="image/*">
+<script src="script.js" defer></script>
+<script src="comments.js" defer></script>
+<script src="profile.js" defer></script>
+</body>
+</html>

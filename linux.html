@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Инструкции Linux — EgorNetwork</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="images/icon.jpg" type="image/png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page-blur"></div>
+<div class="dust">
+  <span></span><span></span><span></span><span></span><span></span>
+  <span></span><span></span><span></span><span></span><span></span>
+  <span></span><span></span><span></span><span></span><span></span>
+</div>
+<div id="header-container"></div>
+<main class="container">
+  <section class="fade">
+    <h2>🐧 Инструкции по установке игр на Linux</h2>
+    <p>Пошаговые инструкции и советы по запуску игр EgorNetwork на Linux.</p>
+  </section>
+
+  <section class="fade card-1 card">
+    <h3>Установка через Wine/Proton</h3>
+    <p style="color:#aaa;margin:12px 0;">Большинство игр для Windows можно запустить на Linux через Wine или Proton (Steam Play).</p>
+    <ol style="color:#ccc;line-height:1.8;">
+      <li>Установите Wine:
+        <div class="code-block">
+          <code style="background:rgba(255,255,255,.1);padding:2px 6px;border-radius:4px;">sudo apt install wine</code>
+          <button class="copy-btn">Копировать</button>
+        </div>
+        (для Debian/Ubuntu)</li>
+      <li>Или включите Proton в Steam: Настройки → Steam Play → Включить Steam Play</li>
+      <li>Запустите установщик игры через Wine</li>
+      <li>Следуйте инструкциям установщика</li>
+      <a class="button" style="color: rgb(255, 255, 255); display:inline-block;padding:10px 20px;border-radius:8px;background:rgba(255,255,255,.1);" href="https://gitlab.winehq.org/wine/wine/-/wikis/Debian-Ubuntu">Более подробно расписано на сайте Wine.</a>
+    </ol>
+  </section>
+
+  <section class="fade card-2 card">
+    <h3>Проблемы и решения</h3>
+    <p style="color:#aaa;margin:12px 0;">Частые проблемы и способы их решения.</p>
+    <ul style="color:#ccc;line-height:1.8;">
+      <li><strong>Игра не запускается:</strong> Попробуйте установить зависимости через winetricks</li>
+      <li><strong>Нет звука:</strong> Проверьте настройки звука в Wine</li>
+      <li><strong>Низкая производительность:</strong> Используйте Proton Experimental</li>
+    </ul>
+  </section>
+
+  <section class="fade card-3 card" style="text-align:center;">
+    <p style="color:#aaa;margin-bottom:16px;">Нужна помощь?</p>
+    <a href="https://discord.gg/4e3wN9t79R" target="_blank" rel="noopener" class="btn" style="display:inline-block;padding:10px 20px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;text-decoration:none;transition:background .3s;">Обратиться в Discord</a>
+  </section>
+</main>
+<div id="footer-container"></div>
+<script src="script.js" defer></script>
+</body>
+</html>
